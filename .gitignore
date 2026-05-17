@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+venv/
+
+# Environment (secrets)
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Pytest
+.pytest_cache/
+.coverage
+
+# Logs
+*.log
+
+# Note:
+# models/classifier.onnx 는 Docker 이미지에 번들되므로 git 에 commit 합니다 (43MB)
+# 너무 큰 모델이면 git-lfs 또는 Supabase Storage 다운로드로 변경하세요
