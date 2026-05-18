@@ -13,7 +13,7 @@ DEFAULT_MODEL_ARCH: str = "cnn"  # mlp | cnn
 
 
 def _resolve_model_path() -> Path:
-    """모델 위치 우선순위:
+    """Color stream 모델 — 우선순위:
     1. WASTE_API_MODEL_PATH 환경변수
     2. waste-api/models/classifier.onnx  (배포 패키지 내 번들 — Docker 등)
     3. ../waste-classifier/outputs/models/cnn/classifier.onnx  (로컬 sibling)
@@ -29,7 +29,31 @@ def _resolve_model_path() -> Path:
     return CLASSIFIER_ROOT / "outputs" / "models" / DEFAULT_MODEL_ARCH / "classifier.onnx"
 
 
+def _resolve_edge_model_path() -> Path | None:
+    """Edge stream 모델 (선택). 없으면 ensemble 비활성."""
+    env_path = os.getenv("WASTE_API_EDGE_MODEL_PATH")
+    if env_path:
+        p = Path(env_path)
+        return p if p.exists() else None
+
+    bundled = PROJECT_ROOT / "models" / "classifier_edge.onnx"
+    if bundled.exists():
+        return bundled
+
+    sibling = CLASSIFIER_ROOT / "outputs" / "models" / "cnn_edge" / "classifier.onnx"
+    if sibling.exists():
+        return sibling
+    return None
+
+
 MODEL_PATH: Path = _resolve_model_path()
+EDGE_MODEL_PATH: Path | None = _resolve_edge_model_path()
+
+# Ensemble 가중치 (color weight)
+# 0.8 이 test set 에서 최적 (92.61% vs color 단독 91.82%)
+ENSEMBLE_COLOR_WEIGHT: float = float(
+    os.getenv("WASTE_API_ENSEMBLE_COLOR_WEIGHT", "0.8"),
+)
 
 # 클래스 정의 (waste-preprocessor·waste-classifier와 동일 순서)
 CLASS_LABELS: tuple[str, ...] = (

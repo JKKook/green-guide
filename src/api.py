@@ -8,14 +8,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src import config
 from src.classes import ClassRegistry
-from src.inference import get_classifier, reset_classifier
-from src.preprocess import ImageDecodeError, preprocess
+from src.inference import get_active_meta, get_classifier, reset_classifier
+from src.preprocess import ImageDecodeError, preprocess_both
 from src.schemas import (
     FeedbackRequest,
     FeedbackResponse,
     HealthResponse,
     LabelsResponse,
+    ModelVersionResponse,
     PredictionResponse,
+    ReloadModelResponse,
     ServiceInfo,
 )
 from src.uploads import get_recorder, reset_recorder
@@ -24,8 +26,17 @@ from src.uploads import get_recorder, reset_recorder
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     classifier = get_classifier()
+    meta = get_active_meta()
     ClassRegistry.load()
-    print(f"[startup] loaded model arch={classifier.arch} from {classifier.model_path}")
+    print(f"[startup] color model: {classifier.model_path}")
+    print(f"[startup] edge model: {classifier.edge_model_path or '(disabled)'}")
+    print(f"[startup] inference mode: "
+          f"{'ensemble (color+edge)' if classifier.has_edge_stream else 'single (color)'}")
+    if meta is not None:
+        print(f"[startup] remote model version: v{meta.version} "
+              f"(accuracy={meta.test_accuracy}, feedback={meta.feedback_count})")
+    else:
+        print("[startup] remote model version: (fallback — Supabase 에 active row 없음)")
     print(f"[startup] class registry: "
           f"{len(ClassRegistry.all_slugs())} total "
           f"({len(ClassRegistry.trained_slugs())} trained)")
@@ -90,6 +101,53 @@ def reload_classes() -> dict[str, int]:
     }
 
 
+@app.get("/model/latest", response_model=ModelVersionResponse, tags=["meta"])
+def model_latest() -> ModelVersionResponse:
+    """현재 서비스가 사용 중인 모델 버전 메타데이터.
+
+    Flutter 앱이 부팅 시 호출 → 자신의 캐시 버전과 비교 → 더 새 게 있으면
+    color_url / edge_url 로 직접 다운로드.
+    """
+    meta = get_active_meta()
+    if meta is None:
+        return ModelVersionResponse(is_fallback=True)
+    return ModelVersionResponse(
+        version=meta.version,
+        color_url=meta.color_url,
+        edge_url=meta.edge_url,
+        color_sha256=meta.color_sha256,
+        edge_sha256=meta.edge_sha256,
+        test_accuracy=meta.test_accuracy,
+        num_classes=meta.num_classes,
+        class_labels=meta.class_labels,
+        feedback_count=meta.feedback_count,
+        is_fallback=False,
+    )
+
+
+@app.post("/admin/reload-model", response_model=ReloadModelResponse, tags=["admin"])
+def reload_model() -> ReloadModelResponse:
+    """모델 강제 재로드 — Supabase 의 최신 active 버전을 다시 fetch.
+
+    retrain.py 가 새 ONNX 를 publish 한 직후 호출하면 즉시 반영됨
+    (그렇지 않으면 다음 서버 재시작까지 옛 모델 그대로).
+    """
+    prev_meta = get_active_meta()
+    prev_version = prev_meta.version if prev_meta else None
+
+    reset_classifier()
+    get_classifier()  # 재로드 트리거 — model_loader.resolve_model_paths() 다시 호출됨
+    new_meta = get_active_meta()
+    new_version = new_meta.version if new_meta else None
+
+    return ReloadModelResponse(
+        reloaded=True,
+        previous_version=prev_version,
+        new_version=new_version,
+        is_fallback=new_meta is None,
+    )
+
+
 @app.post("/predict", response_model=PredictionResponse, tags=["inference"])
 async def predict(
     image: UploadFile = File(..., description="분류할 폐기물 이미지"),
@@ -116,14 +174,14 @@ async def predict(
 
     classifier = get_classifier()
     try:
-        model_input = preprocess(raw, classifier.arch)
+        color_input, edge_input = preprocess_both(raw)
     except ImageDecodeError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
 
-    result = classifier.predict(model_input)
+    result = classifier.predict(color_input, edge_input)
 
     upload_id: str | None = None
     if config.COLLECT_USER_UPLOADS:

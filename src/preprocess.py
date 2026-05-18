@@ -63,3 +63,50 @@ def preprocess(raw: bytes, arch: str) -> np.ndarray:
     img = decode_image(raw)
     arr = to_normalized_array(img)
     return to_model_input(arr, arch)
+
+
+def to_edge_input(arr: np.ndarray) -> np.ndarray:
+    """(H, W, C) RGB normalized → (1, 3, H, W) Sobel edge map (3채널 복제, ImageNet 재정규화).
+    waste-classifier 의 WasteEdgeDataset 와 동일 변환.
+    """
+    mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+    std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+
+    # 1) 역정규화 → [0,1] RGB
+    rgb = (arr * std + mean).clip(0.0, 1.0)
+    # 2) Grayscale
+    gray = rgb[..., 0] * 0.299 + rgb[..., 1] * 0.587 + rgb[..., 2] * 0.114
+
+    # 3) Sobel (numpy 구현)
+    sx = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=np.float32)
+    sy = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=np.float32)
+    # 패딩 후 convolve (간단 구현)
+    padded = np.pad(gray, 1, mode="edge")
+    h, w = gray.shape
+    edge_x = np.zeros_like(gray)
+    edge_y = np.zeros_like(gray)
+    for i in range(3):
+        for j in range(3):
+            edge_x += sx[i, j] * padded[i:i + h, j:j + w]
+            edge_y += sy[i, j] * padded[i:i + h, j:j + w]
+    edge = np.sqrt(edge_x ** 2 + edge_y ** 2)
+
+    # 4) [0,1] 정규화 + 3채널 복제
+    if edge.max() > 1e-6:
+        edge = edge / edge.max()
+    edge_3c = np.stack([edge, edge, edge], axis=0)  # (3, H, W)
+
+    # 5) ImageNet 정규화 → (1, 3, H, W)
+    mean_chw = mean.reshape(3, 1, 1)
+    std_chw = std.reshape(3, 1, 1)
+    normalized = (edge_3c - mean_chw) / std_chw
+    return normalized[np.newaxis, ...].astype(np.float32)
+
+
+def preprocess_both(raw: bytes) -> tuple[np.ndarray, np.ndarray]:
+    """원본 bytes → (color_tensor, edge_tensor) — ensemble 용."""
+    img = decode_image(raw)
+    arr = to_normalized_array(img)
+    color_input = to_model_input(arr, "cnn")
+    edge_input = to_edge_input(arr)
+    return color_input, edge_input

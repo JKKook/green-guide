@@ -67,3 +67,34 @@ class FeedbackResponse(BaseModel):
 class ErrorResponse(BaseModel):
     error: str
     detail: str | None = None
+
+
+class ModelVersionResponse(BaseModel):
+    """현재 active 모델 버전 메타데이터 — 클라이언트(앱) 가 자체 캐시와 비교용."""
+    model_config = _ALLOW_MODEL_FIELDS
+
+    version: str | None = Field(
+        default=None,
+        description="active 버전 문자열. null 이면 서버가 fallback(번들/sibling) 사용 중.",
+    )
+    color_url: str | None = None
+    edge_url: str | None = None
+    color_sha256: str | None = None
+    edge_sha256: str | None = None
+    test_accuracy: float | None = None
+    num_classes: int | None = None
+    class_labels: list[str] | None = None
+    feedback_count: int | None = None
+    is_fallback: bool = Field(
+        ...,
+        description="true 면 Supabase active row 가 없어 로컬 fallback 모델 사용 중",
+    )
+
+
+class ReloadModelResponse(BaseModel):
+    model_config = _ALLOW_MODEL_FIELDS
+
+    reloaded: bool
+    previous_version: str | None = None
+    new_version: str | None = None
+    is_fallback: bool
