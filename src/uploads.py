@@ -94,13 +94,15 @@ class UploadRecorder:
         confirmed: bool,
         corrected_label: str | None,
     ) -> dict[str, Any]:
-        """사용자 피드백을 user_uploads 에 기록."""
+        """사용자 피드백을 user_uploads 에 기록.
+
+        Note: 라벨 유효성은 api.py 의 endpoint 에서 ClassRegistry (Supabase 동적 라벨)
+        로 이미 검증됨. 여기서는 confirmed/corrected_label 의 상호 배타성만 확인.
+        """
         if confirmed and corrected_label is not None:
             raise ValueError("confirmed=True 면 corrected_label 은 None 이어야 함")
         if not confirmed and corrected_label is None:
             raise ValueError("confirmed=False 면 corrected_label 필수")
-        if corrected_label is not None and corrected_label not in config.CLASS_LABELS:
-            raise ValueError(f"invalid label: {corrected_label!r}")
 
         # 현재 row 조회 — predicted_class 가 정답일 경우 feedback_label 로 그대로 저장
         existing = (
