@@ -7,6 +7,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from src import config
+from src.cam_renderer import render_overlay_png_base64
 from src.classes import ClassRegistry
 from src.inference import get_active_meta, get_classifier, reset_classifier
 from src.preprocess import ImageDecodeError, preprocess_both
@@ -17,6 +18,7 @@ from src.schemas import (
     LabelsResponse,
     ModelVersionResponse,
     PredictionResponse,
+    PredictionWithCamResponse,
     ReloadModelResponse,
     ServiceInfo,
 )
@@ -148,17 +150,14 @@ def reload_model() -> ReloadModelResponse:
     )
 
 
-@app.post("/predict", response_model=PredictionResponse, tags=["inference"])
-async def predict(
-    image: UploadFile = File(..., description="분류할 폐기물 이미지"),
-) -> PredictionResponse:
+async def _read_and_validate_image(image: UploadFile) -> bytes:
+    """공통 헬퍼 — 업로드 검증 + bytes 반환."""
     if image.content_type not in config.SUPPORTED_CONTENT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail=f"지원하지 않는 파일 형식: {image.content_type}. "
                    f"지원 형식: {', '.join(config.SUPPORTED_CONTENT_TYPES)}",
         )
-
     raw = await image.read()
     if len(raw) > config.MAX_UPLOAD_SIZE_BYTES:
         raise HTTPException(
@@ -171,6 +170,14 @@ async def predict(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="빈 파일이 업로드됨",
         )
+    return raw
+
+
+@app.post("/predict", response_model=PredictionResponse, tags=["inference"])
+async def predict(
+    image: UploadFile = File(..., description="분류할 폐기물 이미지"),
+) -> PredictionResponse:
+    raw = await _read_and_validate_image(image)
 
     classifier = get_classifier()
     try:
@@ -196,6 +203,60 @@ async def predict(
             print(f"[warn] upload collection failed: {exc}")
 
     return PredictionResponse(**result, upload_id=upload_id)
+
+
+@app.post(
+    "/predict-with-cam",
+    response_model=PredictionWithCamResponse,
+    tags=["inference"],
+)
+async def predict_with_cam(
+    image: UploadFile = File(..., description="분류할 폐기물 이미지"),
+) -> PredictionWithCamResponse:
+    """`/predict` + heatmap PNG (base64 data URI).
+
+    응답의 `cam_base64` 를 그대로 `<img src=...>` / Flutter Image.memory 로 표시.
+    모델이 cam-aware ONNX 가 아니면 `cam_available=false` + `cam_base64=null`.
+    """
+    raw = await _read_and_validate_image(image)
+
+    classifier = get_classifier()
+    try:
+        color_input, edge_input = preprocess_both(raw)
+    except ImageDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    result = classifier.predict(color_input, edge_input, want_cam=True)
+    cam_array = result.pop("cam", None)
+
+    cam_b64: str | None = None
+    if cam_array is not None:
+        try:
+            cam_b64 = render_overlay_png_base64(raw, cam_array)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] CAM rendering failed: {exc}")
+
+    # /predict 와 동일하게 upload 기록 (active learning 데이터로 동등하게 누적)
+    upload_id: str | None = None
+    if config.COLLECT_USER_UPLOADS:
+        try:
+            upload_id = get_recorder().record_prediction(
+                image_bytes=raw,
+                content_type=image.content_type or "application/octet-stream",
+                prediction=result,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] upload collection failed: {exc}")
+
+    return PredictionWithCamResponse(
+        **result,
+        upload_id=upload_id,
+        cam_base64=cam_b64,
+        cam_available=classifier.has_cam_output,
+    )
 
 
 @app.post("/feedback", response_model=FeedbackResponse, tags=["learning"])

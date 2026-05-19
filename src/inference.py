@@ -60,24 +60,46 @@ class WasteClassifier:
     def has_edge_stream(self) -> bool:
         return self.edge_session is not None
 
+    @property
+    def has_cam_output(self) -> bool:
+        """color 모델이 (logits, cam) 2-output 으로 export 됐는지."""
+        return "cam" in {o.name for o in self.session.get_outputs()}
+
     def _run(self, session: ort.InferenceSession, input_name: str,
              tensor: np.ndarray) -> np.ndarray:
         return session.run([config.ONNX_OUTPUT_NAME], {input_name: tensor})[0]
+
+    def _run_color_with_cam(self, tensor: np.ndarray) -> tuple[np.ndarray, np.ndarray | None]:
+        """color 모델 1회 호출 → (logits, cam_per_class or None).
+
+        cam_per_class shape: (B, num_classes, H, W) — 보통 (1, 6, 7, 7).
+        모델이 단일 출력이면 cam=None.
+        """
+        if self.has_cam_output:
+            logits, cam = self.session.run(
+                ["logits", "cam"], {self.input_name: tensor},
+            )
+            return logits, cam
+        logits = self.session.run(["logits"], {self.input_name: tensor})[0]
+        return logits, None
 
     def predict(
         self,
         color_input: np.ndarray,
         edge_input: np.ndarray | None = None,
+        want_cam: bool = False,
     ) -> dict[str, Any]:
         """가능하면 ensemble, 아니면 color 단일.
 
         Args:
             color_input: (1, 3, 224, 224) — 항상 필요
             edge_input: (1, 3, 224, 224) — has_edge_stream 시에만 사용
+            want_cam: True 면 응답에 'cam' (np.ndarray, (H, W)) 포함.
+                      color 모델이 cam-aware 일 때만 의미 있음.
         """
         t0 = time.perf_counter()
 
-        color_logits = self._run(self.session, self.input_name, color_input)
+        color_logits, color_cam_all = self._run_color_with_cam(color_input)
         color_probs = _softmax(color_logits)[0]
 
         if self.has_edge_stream and edge_input is not None:
@@ -100,7 +122,7 @@ class WasteClassifier:
 
         elapsed_ms = (time.perf_counter() - t0) * 1000
         idx = int(probs.argmax())
-        return {
+        result: dict[str, Any] = {
             "predicted_class": config.CLASS_LABELS[idx],
             "predicted_index": idx,
             "confidence": float(probs[idx]),
@@ -111,6 +133,17 @@ class WasteClassifier:
             "model_arch": mode,
             "inference_ms": round(elapsed_ms, 2),
         }
+        if want_cam and color_cam_all is not None:
+            # color stream 의 cam 만 사용 — ensemble 의 top 클래스에 대해
+            # (cam 은 color 만 갖고 있음; edge 는 단일 출력).
+            # 안전: 모델 출력 N 채널과 CLASS_LABELS 길이가 어긋날 수 있어 bounds check.
+            num_cam_classes = color_cam_all.shape[1]
+            if 0 <= idx < num_cam_classes:
+                result["cam"] = color_cam_all[0, idx]  # (H, W), np.ndarray
+            else:
+                # 인덱스 매핑이 어긋난 비정상 상태 — silently skip cam
+                print(f"[warn] cam idx {idx} 가 모델 출력 채널 수 ({num_cam_classes}) 범위 밖")
+        return result
 
 
 _classifier: WasteClassifier | None = None

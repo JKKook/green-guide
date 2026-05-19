@@ -98,3 +98,17 @@ class ReloadModelResponse(BaseModel):
     previous_version: str | None = None
     new_version: str | None = None
     is_fallback: bool
+
+
+class PredictionWithCamResponse(PredictionResponse):
+    """`/predict-with-cam` 응답 — 예측 + heatmap overlay (base64 PNG data URI)."""
+
+    cam_base64: str | None = Field(
+        default=None,
+        description="원본 이미지 + heatmap alpha-blend 한 PNG (data:image/png;base64,…). "
+                    "현재 모델이 cam-aware ONNX 가 아니면 null.",
+    )
+    cam_available: bool = Field(
+        ...,
+        description="false 면 서버가 단일 출력 ONNX 사용 중이라 CAM 생성 불가",
+    )
