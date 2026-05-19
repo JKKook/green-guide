@@ -25,12 +25,15 @@ class WasteClassifier:
     - predict_color() 는 color 입력 받음
     - predict_ensemble() 는 (color, edge) 입력 받음
     - predict() 는 사용 가능한 모델 따라 자동 선택
+    - labels: ONNX output 순서와 일치하는 클래스 라벨. 동적 N개 지원 (active
+      model_versions row 의 class_labels 가 정본; 없으면 config.CLASS_LABELS).
     """
 
     def __init__(
         self,
         model_path: Path | None = None,
         edge_model_path: Path | None = None,
+        labels: list[str] | tuple[str, ...] | None = None,
     ) -> None:
         self.model_path = model_path or config.MODEL_PATH
         if not self.model_path.exists():
@@ -45,6 +48,8 @@ class WasteClassifier:
             str(self.model_path),
             providers=["CPUExecutionProvider"],
         )
+        # 라벨 — 동적 (remote meta) 우선, 없으면 정적 fallback
+        self.labels: tuple[str, ...] = tuple(labels) if labels else config.CLASS_LABELS
 
         # Edge stream (선택)
         self.edge_model_path = edge_model_path or config.EDGE_MODEL_PATH
@@ -105,30 +110,42 @@ class WasteClassifier:
         if self.has_edge_stream and edge_input is not None:
             edge_logits = self._run(self.edge_session, self.edge_input_name, edge_input)
             edge_probs = _softmax(edge_logits)[0]
-            # Late fusion — weighted ensemble.
-            # color 0.8 / edge 0.2 가 test set 에서 최적 (92.61%, color 단독 91.82%)
-            # → 약 클래스 (glass·metal·plastic·trash) 모두 개선
-            probs = (
-                config.ENSEMBLE_COLOR_WEIGHT * color_probs
-                + (1.0 - config.ENSEMBLE_COLOR_WEIGHT) * edge_probs
-            )
-            mode = (
-                f"ensemble (color={config.ENSEMBLE_COLOR_WEIGHT:.1f}, "
-                f"edge={1 - config.ENSEMBLE_COLOR_WEIGHT:.1f})"
-            )
+            # Shape sanity — color/edge 가 다른 클래스 수로 학습됐을 수 있음
+            # (예: color 만 retrain 했고 edge 는 옛 6-class 그대로).
+            # 그 경우 ensemble 불가, color 단독으로 fallback.
+            if edge_probs.shape == color_probs.shape:
+                # Late fusion — weighted ensemble.
+                # color 0.8 / edge 0.2 가 test set 에서 최적 (92.61%, color 단독 91.82%)
+                probs = (
+                    config.ENSEMBLE_COLOR_WEIGHT * color_probs
+                    + (1.0 - config.ENSEMBLE_COLOR_WEIGHT) * edge_probs
+                )
+                mode = (
+                    f"ensemble (color={config.ENSEMBLE_COLOR_WEIGHT:.1f}, "
+                    f"edge={1 - config.ENSEMBLE_COLOR_WEIGHT:.1f})"
+                )
+            else:
+                probs = color_probs
+                mode = (
+                    f"single (color — edge skipped: "
+                    f"shape {edge_probs.shape} ≠ {color_probs.shape})"
+                )
         else:
             probs = color_probs
             mode = "single (color)"
 
         elapsed_ms = (time.perf_counter() - t0) * 1000
         idx = int(probs.argmax())
+        # 모델 출력 길이와 라벨 수가 일치해야 하지만, 미스매치 시 안전하게 클램프
+        labels = self.labels
+        n_match = min(len(labels), len(probs))
         result: dict[str, Any] = {
-            "predicted_class": config.CLASS_LABELS[idx],
+            "predicted_class": labels[idx] if idx < len(labels) else f"class_{idx}",
             "predicted_index": idx,
             "confidence": float(probs[idx]),
             "all_probabilities": {
-                label: float(probs[i])
-                for i, label in enumerate(config.CLASS_LABELS)
+                labels[i]: float(probs[i])
+                for i in range(n_match)
             },
             "model_arch": mode,
             "inference_ms": round(elapsed_ms, 2),
@@ -151,14 +168,17 @@ _active_meta: Any = None  # RemoteModelMeta | None — None 이면 fallback (con
 
 
 def get_classifier() -> WasteClassifier:
-    """싱글톤. 첫 호출 시 Supabase 의 active 버전을 fetch (있으면) 후 로드."""
+    """싱글톤. 첫 호출 시 Supabase 의 active 버전을 fetch (있으면) 후 로드.
+    active meta 의 class_labels 가 있으면 그것을 사용 (동적 N 클래스 지원)."""
     global _classifier, _active_meta
     if _classifier is None:
         from src.model_loader import resolve_model_paths
         color_path, edge_path, meta = resolve_model_paths()
+        labels = meta.class_labels if meta and meta.class_labels else None
         _classifier = WasteClassifier(
             model_path=color_path,
             edge_model_path=edge_path,
+            labels=labels,
         )
         _active_meta = meta
     return _classifier
