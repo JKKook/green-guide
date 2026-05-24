@@ -54,6 +54,20 @@ class Segmenter:
         chw = tmp.transpose((2, 0, 1))[np.newaxis, ...].astype(np.float32)
         return chw
 
+    def object_mask_grid(self, image_bytes: bytes, grid: int) -> np.ndarray:
+        """u2netp saliency → grid×grid 객체 점유 비율 (0~1). 없으면 전부 1."""
+        if not self.available or self.session is None:
+            return np.ones((grid, grid), dtype=np.float32)
+        orig = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        inp = self._preprocess(orig)
+        out = self.session.run(None, {self.input_name: inp})[0][0, 0]
+        mi, ma = float(out.min()), float(out.max())
+        out = (out - mi) / (ma - mi + 1e-8)
+        m = Image.fromarray((out * 255).astype(np.uint8)).resize(
+            (grid, grid), Image.BILINEAR,
+        )
+        return np.array(m).astype(np.float32) / 255.0
+
     def segment(self, image_bytes: bytes) -> dict:
         """이미지 → {cutout_base64, bbox_norm, object_ratio}.
 

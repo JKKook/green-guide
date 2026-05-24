@@ -74,6 +74,15 @@ class WasteClassifier:
              tensor: np.ndarray) -> np.ndarray:
         return session.run([config.ONNX_OUTPUT_NAME], {input_name: tensor})[0]
 
+    def region_cam(self, color_input: np.ndarray) -> tuple[dict, np.ndarray | None]:
+        """분류 결과 + 전체 클래스 CAM (C, h, w) 반환 — 다중재질 영역 분석용.
+        cam-aware ONNX 가 아니면 cam=None.
+        """
+        result = self.predict(color_input)
+        _, cam_all = self._run_color_with_cam(color_input)
+        cam = cam_all[0] if cam_all is not None else None  # (C, h, w)
+        return result, cam
+
     def _run_color_with_cam(self, tensor: np.ndarray) -> tuple[np.ndarray, np.ndarray | None]:
         """color 모델 1회 호출 → (logits, cam_per_class or None).
 

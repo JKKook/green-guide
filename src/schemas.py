@@ -114,6 +114,29 @@ class PredictionWithCamResponse(PredictionResponse):
     )
 
 
+class MaterialRegion(BaseModel):
+    """다중재질 분석에서 검출된 한 재질 영역."""
+    slug: str
+    bbox_norm: list[float] = Field(..., description="[x0,y0,x1,y1] 0~1 (라벨 위치용)")
+    avg_conf: float
+    cell_count: int
+
+
+class PredictionWithRegionsResponse(PredictionResponse):
+    """`/predict-with-regions` 응답 — 예측 + 다중재질 영역 + 빗금 오버레이."""
+
+    overlay_base64: str | None = Field(
+        default=None,
+        description="원본 이미지에 영역별 빗금을 그린 JPEG (data URI). 누끼 이미지 대신 표시.",
+    )
+    regions: list[MaterialRegion] = Field(
+        default_factory=list,
+        description="검출된 재질 영역들 (확실히 다른 재질만). 1개면 단일재질, 2+면 다중재질.",
+    )
+    grid_h: int = 0
+    grid_w: int = 0
+
+
 class PredictionWithMaskResponse(PredictionResponse):
     """`/predict-with-mask` 응답 — 예측 + 객체 누끼(cutout)."""
 

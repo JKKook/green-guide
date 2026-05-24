@@ -84,6 +84,11 @@ class ClassRegistry:
         return [c.slug for c in cls.load()]
 
     @classmethod
+    def color_map(cls) -> dict[str, str | None]:
+        """slug → color_hex (다중재질 빗금 색상용)."""
+        return {c.slug: c.color_hex for c in cls.load()}
+
+    @classmethod
     def trained_slugs(cls) -> list[str]:
         """현재 ONNX 모델이 출력하는 클래스 (sort_order 순)."""
         return [c.slug for c in cls.load() if c.trained_in_model]

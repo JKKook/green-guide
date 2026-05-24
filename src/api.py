@@ -16,13 +16,16 @@ from src.schemas import (
     FeedbackResponse,
     HealthResponse,
     LabelsResponse,
+    MaterialRegion,
     ModelVersionResponse,
     PredictionResponse,
     PredictionWithCamResponse,
     PredictionWithMaskResponse,
+    PredictionWithRegionsResponse,
     ReloadModelResponse,
     ServiceInfo,
 )
+from src.regions import extract_regions, render_hatching
 from src.segment import get_segmenter
 from src.uploads import get_recorder, reset_recorder
 
@@ -311,6 +314,75 @@ async def predict_with_mask(
         cutout_base64=seg["cutout_base64"],
         bbox_norm=seg["bbox_norm"],
         object_ratio=seg["object_ratio"],
+    )
+
+
+@app.post(
+    "/predict-with-regions",
+    response_model=PredictionWithRegionsResponse,
+    tags=["inference"],
+)
+async def predict_with_regions(
+    image: UploadFile = File(..., description="분류할 폐기물 이미지"),
+) -> PredictionWithRegionsResponse:
+    """`/predict` + 다중재질 영역 분석 (CAM-argmax + u2netp).
+
+    한 물체 안에서 재질이 확실히 다른 영역만 분리 → 원본에 빗금 오버레이.
+    grid 9타일 대체. 재질이 1개면 단일, 2+면 다중재질로 표시.
+    """
+    raw = await _read_and_validate_image(image)
+
+    classifier = get_classifier()
+    try:
+        color_input, edge_input = preprocess_both(raw)
+    except ImageDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc),
+        ) from exc
+
+    result, cam = classifier.region_cam(color_input)
+
+    overlay_b64: str | None = None
+    regions_out: list[MaterialRegion] = []
+    grid_h = grid_w = 0
+    if cam is not None:
+        try:
+            grid_h, grid_w = cam.shape[1], cam.shape[2]
+            mask_grid = get_segmenter().object_mask_grid(raw, grid_h)
+            labels = list(classifier.labels)
+            regions = extract_regions(cam, mask_grid, labels)
+            if regions:
+                overlay_b64 = render_hatching(
+                    raw, regions, grid_h, grid_w, ClassRegistry.color_map(),
+                )
+                regions_out = [
+                    MaterialRegion(
+                        slug=r["slug"], bbox_norm=r["bbox_norm"],
+                        avg_conf=r["avg_conf"], cell_count=len(r["cells"]),
+                    )
+                    for r in regions
+                ]
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] region analysis failed: {exc}")
+
+    upload_id: str | None = None
+    if config.COLLECT_USER_UPLOADS:
+        try:
+            upload_id = get_recorder().record_prediction(
+                image_bytes=raw,
+                content_type=image.content_type or "application/octet-stream",
+                prediction=result,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] upload collection failed: {exc}")
+
+    return PredictionWithRegionsResponse(
+        **result,
+        upload_id=upload_id,
+        overlay_base64=overlay_b64,
+        regions=regions_out,
+        grid_h=grid_h,
+        grid_w=grid_w,
     )
 
 
