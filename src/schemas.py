@@ -112,3 +112,21 @@ class PredictionWithCamResponse(PredictionResponse):
         ...,
         description="false 면 서버가 단일 출력 ONNX 사용 중이라 CAM 생성 불가",
     )
+
+
+class PredictionWithMaskResponse(PredictionResponse):
+    """`/predict-with-mask` 응답 — 예측 + 객체 누끼(cutout)."""
+
+    cutout_base64: str | None = Field(
+        default=None,
+        description="객체만 남기고 배경 투명 처리한 RGBA PNG (data URI). "
+                    "앱이 [dim 원본] 위에 겹쳐 객체 부각 + 라벨 오버레이.",
+    )
+    bbox_norm: list[float] | None = Field(
+        default=None,
+        description="객체 bounding box [x0,y0,x1,y1] 0~1 정규화. 라벨 위치용. 없으면 null.",
+    )
+    object_ratio: float = Field(
+        default=0.0,
+        description="객체가 프레임에서 차지하는 면적 비율 (0~1).",
+    )

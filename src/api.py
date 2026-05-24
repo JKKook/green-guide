@@ -19,9 +19,11 @@ from src.schemas import (
     ModelVersionResponse,
     PredictionResponse,
     PredictionWithCamResponse,
+    PredictionWithMaskResponse,
     ReloadModelResponse,
     ServiceInfo,
 )
+from src.segment import get_segmenter
 from src.uploads import get_recorder, reset_recorder
 
 
@@ -257,6 +259,72 @@ async def predict_with_cam(
         cam_base64=cam_b64,
         cam_available=classifier.has_cam_output,
     )
+
+
+@app.post(
+    "/predict-with-mask",
+    response_model=PredictionWithMaskResponse,
+    tags=["inference"],
+)
+async def predict_with_mask(
+    image: UploadFile = File(..., description="분류할 폐기물 이미지"),
+) -> PredictionWithMaskResponse:
+    """`/predict` + 객체 누끼(saliency mask + bbox).
+
+    앱이 mask 로 배경을 dim 하고 객체 위에 단일 재질 라벨을 오버레이.
+    grid(9타일) 방식 대체 — 객체 하나에 라벨 하나로 깔끔하게.
+    """
+    raw = await _read_and_validate_image(image)
+
+    classifier = get_classifier()
+    try:
+        color_input, edge_input = preprocess_both(raw)
+    except ImageDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    result = classifier.predict(color_input, edge_input)
+
+    # 누끼 (saliency segmentation → cutout)
+    seg = {"cutout_base64": None, "bbox_norm": None, "object_ratio": 0.0}
+    try:
+        seg = get_segmenter().segment(raw)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] segmentation failed: {exc}")
+
+    upload_id: str | None = None
+    if config.COLLECT_USER_UPLOADS:
+        try:
+            upload_id = get_recorder().record_prediction(
+                image_bytes=raw,
+                content_type=image.content_type or "application/octet-stream",
+                prediction=result,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] upload collection failed: {exc}")
+
+    return PredictionWithMaskResponse(
+        **result,
+        upload_id=upload_id,
+        cutout_base64=seg["cutout_base64"],
+        bbox_norm=seg["bbox_norm"],
+        object_ratio=seg["object_ratio"],
+    )
+
+
+@app.post("/segment", tags=["inference"])
+async def segment(
+    image: UploadFile = File(..., description="누끼할 이미지"),
+) -> dict:
+    """객체 누끼만 — 분류 없이 cutout + bbox 반환 (앱이 분류와 병렬 호출)."""
+    raw = await _read_and_validate_image(image)
+    try:
+        return get_segmenter().segment(raw)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] segmentation failed: {exc}")
+        return {"cutout_base64": None, "bbox_norm": None, "object_ratio": 0.0}
 
 
 @app.post("/feedback", response_model=FeedbackResponse, tags=["learning"])
