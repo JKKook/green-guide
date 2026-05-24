@@ -13,9 +13,32 @@ from __future__ import annotations
 import io
 
 import numpy as np
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from src import config
+
+
+def normalize_orientation(raw: bytes) -> bytes:
+    """EXIF orientation 을 실제 픽셀에 적용 (회전 태그 제거 후 재인코딩).
+
+    폰 카메라 JPEG 은 센서 방향 그대로 픽셀을 저장하고 회전은 EXIF 태그로만
+    표시한다. PIL·onnxruntime 은 이 태그를 무시하므로 서버의 분류·CAM·빗금이
+    회전된 버퍼 위에서 돌아가, EXIF 를 적용해 똑바로 보여주는 Flutter 표시와
+    어긋난다. 업로드 경계에서 한 번 보정해 모든 다운스트림을 일관시킨다.
+    회전 태그가 없으면(orientation=1 또는 부재) 원본 그대로 반환.
+    """
+    try:
+        img = Image.open(io.BytesIO(raw))
+        orientation = img.getexif().get(0x0112)  # 0x0112 = Orientation
+        if not orientation or orientation == 1:
+            return raw
+        fixed = ImageOps.exif_transpose(img).convert("RGB")
+        buf = io.BytesIO()
+        fixed.save(buf, format="JPEG", quality=95)
+        return buf.getvalue()
+    except (UnidentifiedImageError, OSError) as exc:
+        print(f"[warn] EXIF 정규화 실패, 원본 사용: {exc}")
+        return raw
 
 
 _MEAN = np.array(config.IMAGENET_MEAN, dtype=np.float32)

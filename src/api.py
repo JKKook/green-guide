@@ -10,7 +10,7 @@ from src import config
 from src.cam_renderer import render_overlay_png_base64
 from src.classes import ClassRegistry
 from src.inference import get_active_meta, get_classifier, reset_classifier
-from src.preprocess import ImageDecodeError, preprocess_both
+from src.preprocess import ImageDecodeError, normalize_orientation, preprocess_both
 from src.schemas import (
     FeedbackRequest,
     FeedbackResponse,
@@ -175,7 +175,9 @@ async def _read_and_validate_image(image: UploadFile) -> bytes:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="빈 파일이 업로드됨",
         )
-    return raw
+    # EXIF 회전 태그를 픽셀에 적용 — Flutter 표시(태그 적용)와 서버 처리
+    # (분류·CAM·빗금·누끼) 의 방향을 일치시킴.
+    return normalize_orientation(raw)
 
 
 @app.post("/predict", response_model=PredictionResponse, tags=["inference"])
