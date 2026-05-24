@@ -40,7 +40,7 @@ class PredictionResponse(BaseModel):
     predicted_class: str = Field(..., description="가장 높은 확률의 클래스 이름")
     predicted_index: int = Field(..., ge=0, description="가장 높은 확률의 클래스 인덱스")
     confidence: float = Field(..., ge=0.0, le=1.0, description="예측 클래스의 확률")
-    all_probabilities: dict[str, float] = Field(..., description="6개 클래스 전체 확률 분포")
+    all_probabilities: dict[str, float] = Field(..., description="전체 클래스 확률 분포 (동적 N개)")
     model_arch: str = Field(..., description="사용된 모델 아키텍처 (mlp | cnn)")
     inference_ms: float = Field(..., description="ONNX 추론 소요 시간 (밀리초)")
     upload_id: str | None = Field(

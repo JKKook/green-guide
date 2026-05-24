@@ -19,25 +19,27 @@ from src import config
 
 
 def normalize_orientation(raw: bytes) -> bytes:
-    """EXIF orientation 을 실제 픽셀에 적용 (회전 태그 제거 후 재인코딩).
+    """EXIF orientation 을 픽셀에 적용 + 모든 EXIF 메타데이터(GPS 포함) 제거 후 재인코딩.
 
-    폰 카메라 JPEG 은 센서 방향 그대로 픽셀을 저장하고 회전은 EXIF 태그로만
-    표시한다. PIL·onnxruntime 은 이 태그를 무시하므로 서버의 분류·CAM·빗금이
-    회전된 버퍼 위에서 돌아가, EXIF 를 적용해 똑바로 보여주는 Flutter 표시와
-    어긋난다. 업로드 경계에서 한 번 보정해 모든 다운스트림을 일관시킨다.
-    회전 태그가 없으면(orientation=1 또는 부재) 원본 그대로 반환.
+    두 가지 목적:
+    1) 회전 정규화 — 폰 카메라는 센서 방향 픽셀 + 회전 태그로 저장하는데 PIL·
+       onnxruntime 은 태그를 무시한다. 업로드 경계에서 적용해 분류·CAM·빗금이
+       Flutter 표시(EXIF 적용)와 같은 방향을 보게 한다.
+    2) 개인정보 제거 — 사진에 박힌 GPS 위치정보 등 EXIF 를 저장·처리 전에 삭제.
+       동의 화면의 "위치정보(GPS)는 업로드 전 제거됩니다" 고지를 이행한다.
+       (PIL save 시 exif 를 전달하지 않으면 메타데이터가 빠진 채 재인코딩됨)
+
+    항상 재인코딩한다 — 회전 태그 유무와 무관하게 GPS 등 메타를 확실히 제거하기 위함.
+    디코딩 실패 시에만 원본 반환(추론은 가능하도록).
     """
     try:
         img = Image.open(io.BytesIO(raw))
-        orientation = img.getexif().get(0x0112)  # 0x0112 = Orientation
-        if not orientation or orientation == 1:
-            return raw
-        fixed = ImageOps.exif_transpose(img).convert("RGB")
+        fixed = ImageOps.exif_transpose(img).convert("RGB")  # 회전 적용 + EXIF 분리
         buf = io.BytesIO()
-        fixed.save(buf, format="JPEG", quality=95)
+        fixed.save(buf, format="JPEG", quality=95)  # exif 미전달 → GPS 등 메타 제거
         return buf.getvalue()
     except (UnidentifiedImageError, OSError) as exc:
-        print(f"[warn] EXIF 정규화 실패, 원본 사용: {exc}")
+        print(f"[warn] 이미지 정규화 실패, 원본 사용: {exc}")
         return raw
 
 
