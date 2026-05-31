@@ -12,3 +12,7 @@ pytest-asyncio==0.24.0
 # user_uploads 수집·피드백
 supabase==2.7.4
 python-dotenv==1.0.1
+
+# MediaPipe Hands — predict-centered, predict-with-regions 에서 손 영역 검출 후 제외
+mediapipe==0.10.18
+opencv-python==4.10.0.84

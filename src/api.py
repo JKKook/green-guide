@@ -25,6 +25,7 @@ from src.schemas import (
     ReloadModelResponse,
     ServiceInfo,
 )
+from src.hand_detector import get_hand_detector
 from src.regions import extract_regions, render_hatching
 from src.segment import get_segmenter
 from src.uploads import get_recorder, reset_recorder
@@ -212,48 +213,109 @@ async def predict(
     return PredictionResponse(**result, upload_id=upload_id)
 
 
+def _auto_crop_to_object(raw: bytes, expand: float = 0.10) -> bytes:
+    """u2netp 으로 객체 bbox 검출 → bbox + padding 으로 크롭 → JPEG bytes 반환.
+
+    bbox 검출 실패 또는 크롭 너무 작으면 원본 그대로. /predict-centered 와
+    /predict-with-regions 가 공통 사용. 객체 중심 입력으로 표준화 → 잡배경 영향 ↓.
+    """
+    import io  # noqa: PLC0415
+    from PIL import Image  # noqa: PLC0415
+
+    try:
+        seg = get_segmenter().segment(raw)
+        bbox_norm = seg.get("bbox_norm")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] segment for auto-crop failed: {exc}")
+        return raw
+
+    if not bbox_norm:
+        return raw
+
+    try:
+        img = Image.open(io.BytesIO(raw)).convert("RGB")
+        W, H = img.size
+        x0 = max(0, int((bbox_norm[0] - expand) * W))
+        y0 = max(0, int((bbox_norm[1] - expand) * H))
+        x1 = min(W, int((bbox_norm[2] + expand) * W))
+        y1 = min(H, int((bbox_norm[3] + expand) * H))
+        if x1 - x0 < 64 or y1 - y0 < 64:
+            return raw  # 너무 작은 크롭은 의미 없음 — 원본
+        buf = io.BytesIO()
+        img.crop((x0, y0, x1, y1)).save(buf, format="JPEG", quality=92)
+        return buf.getvalue()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] bbox crop failed: {exc}")
+        return raw
+
+
+def _force_non_object_result(reason: str) -> dict:
+    """모델 호출 없이 non_object 결과 dict 반환 (손 지배 등 OOD 강제 분기).
+
+    [classifier.predict 와 동일 schema] — predicted_class/index/confidence/
+    all_probabilities/model_arch/inference_ms.
+    """
+    from src.classes import ClassRegistry  # noqa: PLC0415
+    labels = list(ClassRegistry.all_slugs())
+    probs = {l: 0.0 for l in labels}
+    if "non_object" in labels:
+        non_idx = labels.index("non_object")
+        probs["non_object"] = 1.0
+        cls = "non_object"
+    else:
+        # fallback — non_object 가 DB 에 없으면 etc 로
+        non_idx = labels.index("etc") if "etc" in labels else 0
+        probs[labels[non_idx]] = 1.0
+        cls = labels[non_idx]
+    return {
+        "predicted_class": cls,
+        "predicted_index": non_idx,
+        "confidence": 1.0,
+        "all_probabilities": probs,
+        "model_arch": f"hand-detected: {reason}",
+        "inference_ms": 0.0,
+    }
+
+
 @app.post("/predict-centered", response_model=PredictionResponse, tags=["inference"])
 async def predict_centered(
     image: UploadFile = File(..., description="분류할 폐기물 이미지 (객체 자동 크롭 후 분류)"),
 ) -> PredictionResponse:
     """객체 자동 크롭 → 분류. Smart capture 가 사용.
 
-    u2netp 으로 객체 bbox 감지 → bbox + 10% padding 으로 크롭 → 분류. 사용자 입력을
-    객체 중심으로 표준화. Test C1 측정에서 70% 크롭 +4.4pp 의 효과를 직접 적용.
-    bbox 검출 실패 또는 너무 작은 경우 원본 그대로 fallback.
+    파이프라인:
+      1. MediaPipe Hands — 손 검출. 손이 50%+ 이미지 차지 → 모델 호출 없이 non_object 응답
+      2. u2netp 객체 bbox → 10% padding crop
+      3. ResNet18 분류 (cropped 입력)
     """
-    import io  # noqa: PLC0415
-    from PIL import Image  # noqa: PLC0415
-
     raw = await _read_and_validate_image(image)
 
-    # 1. 객체 bbox 감지 (u2netp)
+    # 1. 손 검출 — 손이 지배적이면 모델 분류 skip 하고 non_object 응답
     try:
-        seg = get_segmenter().segment(raw)
-        bbox_norm = seg.get("bbox_norm")
+        hand_area = get_hand_detector().hand_area_ratio(raw)
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] segment for centered crop failed: {exc}")
-        bbox_norm = None
+        print(f"[warn] hand detection failed: {exc}")
+        hand_area = 0.0
 
-    # 2. bbox 크롭 (검출 실패/너무 작으면 원본)
-    cropped_raw = raw
-    if bbox_norm:
-        try:
-            img = Image.open(io.BytesIO(raw)).convert("RGB")
-            W, H = img.size
-            expand = 0.10  # 객체 컨텍스트 약간 포함
-            x0 = max(0, int((bbox_norm[0] - expand) * W))
-            y0 = max(0, int((bbox_norm[1] - expand) * H))
-            x1 = min(W, int((bbox_norm[2] + expand) * W))
-            y1 = min(H, int((bbox_norm[3] + expand) * H))
-            if x1 - x0 >= 64 and y1 - y0 >= 64:
-                buf = io.BytesIO()
-                img.crop((x0, y0, x1, y1)).save(buf, format="JPEG", quality=92)
-                cropped_raw = buf.getvalue()
-        except Exception as exc:  # noqa: BLE001
-            print(f"[warn] bbox crop failed: {exc}")
+    if hand_area >= 0.50:
+        # 손바닥/손등 이 이미지 대부분 — 폐기물 아님으로 응답 (재촬영 안내)
+        result = _force_non_object_result(f"hand area {hand_area:.2f} >= 0.50")
+        upload_id: str | None = None
+        if config.COLLECT_USER_UPLOADS:
+            try:
+                upload_id = get_recorder().record_prediction(
+                    image_bytes=raw,
+                    content_type=image.content_type or "application/octet-stream",
+                    prediction=result,
+                )
+            except Exception as exc:  # noqa: BLE001
+                print(f"[warn] upload collection failed: {exc}")
+        return PredictionResponse(**result, upload_id=upload_id)
 
-    # 3. classify (cropped or original)
+    # 2. 객체 크롭
+    cropped_raw = _auto_crop_to_object(raw)
+
+    # 3. 분류
     classifier = get_classifier()
     try:
         color_input, edge_input = preprocess_both(cropped_raw)
@@ -264,8 +326,8 @@ async def predict_centered(
 
     result = classifier.predict(color_input, edge_input)
 
-    # 4. upload 기록 (원본 이미지 — 사용자 피드백·재학습은 원본 기준)
-    upload_id: str | None = None
+    # upload 기록 (원본 이미지 — 사용자 피드백·재학습은 원본 기준)
+    upload_id = None
     if config.COLLECT_USER_UPLOADS:
         try:
             upload_id = get_recorder().record_prediction(
@@ -394,12 +456,18 @@ async def predict_with_mask(
 async def predict_with_regions(
     image: UploadFile = File(..., description="분류할 폐기물 이미지"),
 ) -> PredictionWithRegionsResponse:
-    """`/predict` + 다중재질 영역 분석 (CAM-argmax + u2netp).
+    """`/predict` + 다중재질 영역 분석 (CAM-argmax + u2netp + 손 제외).
 
-    한 물체 안에서 재질이 확실히 다른 영역만 분리 → 원본에 빗금 오버레이.
-    grid 9타일 대체. 재질이 1개면 단일, 2+면 다중재질로 표시.
+    파이프라인:
+      1. 객체 자동 크롭 (u2netp bbox + 10% padding) — 잡배경 영역 noise 차단
+      2. 손 영역 mask 검출 (MediaPipe Hands) — CAM 분석에서 손 cell 제외
+      3. CAM-argmax 로 재질별 영역 분리 → 빗금 오버레이
+
+    손 영역을 mask 에서 빼서 (object_mask AND NOT hand_mask) regions 가 손 픽셀을
+    의류/종이상자 로 spurious 분류하던 문제 해결.
     """
-    raw = await _read_and_validate_image(image)
+    raw_orig = await _read_and_validate_image(image)
+    raw = _auto_crop_to_object(raw_orig)
 
     classifier = get_classifier()
     try:
@@ -418,6 +486,12 @@ async def predict_with_regions(
         try:
             grid_h, grid_w = cam.shape[1], cam.shape[2]
             mask_grid = get_segmenter().object_mask_grid(raw, grid_h)
+            # 손 mask 검출 → object mask 에서 손 영역 제외
+            try:
+                hand_grid = get_hand_detector().mask_grid(raw, grid_h)
+                mask_grid = mask_grid * (1.0 - hand_grid).clip(0.0, 1.0)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[warn] hand mask grid failed: {exc}")
             labels = list(classifier.labels)
             regions = extract_regions(cam, mask_grid, labels)
             if regions:
@@ -434,11 +508,12 @@ async def predict_with_regions(
         except Exception as exc:  # noqa: BLE001
             print(f"[warn] region analysis failed: {exc}")
 
+    # upload 기록은 원본 이미지 (사용자 피드백·재학습 일관성)
     upload_id: str | None = None
     if config.COLLECT_USER_UPLOADS:
         try:
             upload_id = get_recorder().record_prediction(
-                image_bytes=raw,
+                image_bytes=raw_orig,
                 content_type=image.content_type or "application/octet-stream",
                 prediction=result,
             )
