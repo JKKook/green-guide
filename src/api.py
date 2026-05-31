@@ -212,6 +212,73 @@ async def predict(
     return PredictionResponse(**result, upload_id=upload_id)
 
 
+@app.post("/predict-centered", response_model=PredictionResponse, tags=["inference"])
+async def predict_centered(
+    image: UploadFile = File(..., description="분류할 폐기물 이미지 (객체 자동 크롭 후 분류)"),
+) -> PredictionResponse:
+    """객체 자동 크롭 → 분류. Smart capture 가 사용.
+
+    u2netp 으로 객체 bbox 감지 → bbox + 10% padding 으로 크롭 → 분류. 사용자 입력을
+    객체 중심으로 표준화. Test C1 측정에서 70% 크롭 +4.4pp 의 효과를 직접 적용.
+    bbox 검출 실패 또는 너무 작은 경우 원본 그대로 fallback.
+    """
+    import io  # noqa: PLC0415
+    from PIL import Image  # noqa: PLC0415
+
+    raw = await _read_and_validate_image(image)
+
+    # 1. 객체 bbox 감지 (u2netp)
+    try:
+        seg = get_segmenter().segment(raw)
+        bbox_norm = seg.get("bbox_norm")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] segment for centered crop failed: {exc}")
+        bbox_norm = None
+
+    # 2. bbox 크롭 (검출 실패/너무 작으면 원본)
+    cropped_raw = raw
+    if bbox_norm:
+        try:
+            img = Image.open(io.BytesIO(raw)).convert("RGB")
+            W, H = img.size
+            expand = 0.10  # 객체 컨텍스트 약간 포함
+            x0 = max(0, int((bbox_norm[0] - expand) * W))
+            y0 = max(0, int((bbox_norm[1] - expand) * H))
+            x1 = min(W, int((bbox_norm[2] + expand) * W))
+            y1 = min(H, int((bbox_norm[3] + expand) * H))
+            if x1 - x0 >= 64 and y1 - y0 >= 64:
+                buf = io.BytesIO()
+                img.crop((x0, y0, x1, y1)).save(buf, format="JPEG", quality=92)
+                cropped_raw = buf.getvalue()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] bbox crop failed: {exc}")
+
+    # 3. classify (cropped or original)
+    classifier = get_classifier()
+    try:
+        color_input, edge_input = preprocess_both(cropped_raw)
+    except ImageDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc),
+        ) from exc
+
+    result = classifier.predict(color_input, edge_input)
+
+    # 4. upload 기록 (원본 이미지 — 사용자 피드백·재학습은 원본 기준)
+    upload_id: str | None = None
+    if config.COLLECT_USER_UPLOADS:
+        try:
+            upload_id = get_recorder().record_prediction(
+                image_bytes=raw,
+                content_type=image.content_type or "application/octet-stream",
+                prediction=result,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] upload collection failed: {exc}")
+
+    return PredictionResponse(**result, upload_id=upload_id)
+
+
 @app.post(
     "/predict-with-cam",
     response_model=PredictionWithCamResponse,
