@@ -28,6 +28,7 @@ from src.schemas import (
 from src.hand_detector import get_hand_detector
 from src.regions import extract_regions, render_hatching
 from src.segment import get_segmenter
+from src.stage1_classifier import get_stage1_classifier
 from src.uploads import get_recorder, reset_recorder
 
 
@@ -283,14 +284,14 @@ async def predict_centered(
 ) -> PredictionResponse:
     """객체 자동 크롭 → 분류. Smart capture 가 사용.
 
-    파이프라인:
-      1. MediaPipe Hands — 손 검출. 손이 50%+ 이미지 차지 → 모델 호출 없이 non_object 응답
-      2. u2netp 객체 bbox → 10% padding crop
-      3. ResNet18 분류 (cropped 입력)
+    Two-stage Cascade 파이프라인:
+      Stage 0 (MediaPipe Hands): 손 50%+ → 모델 호출 없이 non_object
+      Stage 1 (MobileNetV3-Small binary): waste/non_object 이진 판정
+      Stage 2 (ResNet18 13-class): waste 면 정밀 분류
     """
     raw = await _read_and_validate_image(image)
 
-    # 1. 손 검출 — 손이 지배적이면 모델 분류 skip 하고 non_object 응답
+    # ─ Stage 0: 손 dominance 체크 ──────────────────────
     try:
         hand_area = get_hand_detector().hand_area_ratio(raw)
     except Exception as exc:  # noqa: BLE001
@@ -298,7 +299,6 @@ async def predict_centered(
         hand_area = 0.0
 
     if hand_area >= 0.50:
-        # 손바닥/손등 이 이미지 대부분 — 폐기물 아님으로 응답 (재촬영 안내)
         result = _force_non_object_result(f"hand area {hand_area:.2f} >= 0.50")
         upload_id: str | None = None
         if config.COLLECT_USER_UPLOADS:
@@ -312,10 +312,30 @@ async def predict_centered(
                 print(f"[warn] upload collection failed: {exc}")
         return PredictionResponse(**result, upload_id=upload_id)
 
-    # 2. 객체 크롭
+    # ─ Stage 1: binary classifier — waste/non-waste 판정 ─
+    try:
+        is_waste, waste_prob = get_stage1_classifier().predict(raw)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] stage1 failed: {exc}")
+        is_waste, waste_prob = True, 1.0   # fail-open: stage2 로 위임
+
+    if not is_waste:
+        result = _force_non_object_result(f"stage1 waste_prob={waste_prob:.3f} < 0.50")
+        upload_id = None
+        if config.COLLECT_USER_UPLOADS:
+            try:
+                upload_id = get_recorder().record_prediction(
+                    image_bytes=raw,
+                    content_type=image.content_type or "application/octet-stream",
+                    prediction=result,
+                )
+            except Exception as exc:  # noqa: BLE001
+                print(f"[warn] upload collection failed: {exc}")
+        return PredictionResponse(**result, upload_id=upload_id)
+
+    # ─ Stage 2: 자동 크롭 + 13-class 분류 ─────────────
     cropped_raw = _auto_crop_to_object(raw)
 
-    # 3. 분류
     classifier = get_classifier()
     try:
         color_input, edge_input = preprocess_both(cropped_raw)
@@ -456,17 +476,38 @@ async def predict_with_mask(
 async def predict_with_regions(
     image: UploadFile = File(..., description="분류할 폐기물 이미지"),
 ) -> PredictionWithRegionsResponse:
-    """`/predict` + 다중재질 영역 분석 (CAM-argmax + u2netp + 손 제외).
+    """`/predict` + 다중재질 영역 분석 (Cascade + CAM-argmax + u2netp + 손 제외).
 
     파이프라인:
-      1. 객체 자동 크롭 (u2netp bbox + 10% padding) — 잡배경 영역 noise 차단
-      2. 손 영역 mask 검출 (MediaPipe Hands) — CAM 분석에서 손 cell 제외
-      3. CAM-argmax 로 재질별 영역 분리 → 빗금 오버레이
-
-    손 영역을 mask 에서 빼서 (object_mask AND NOT hand_mask) regions 가 손 픽셀을
-    의류/종이상자 로 spurious 분류하던 문제 해결.
+      Stage 1 (binary): waste 아니면 → non_object 응답 (regions 분석 skip)
+      Stage 2 (regions): waste 면 객체 크롭 + 손 mask 제외 + CAM 분석
     """
     raw_orig = await _read_and_validate_image(image)
+
+    # Stage 1: binary waste/non-waste 판정
+    try:
+        is_waste, waste_prob = get_stage1_classifier().predict(raw_orig)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] stage1 failed: {exc}")
+        is_waste, waste_prob = True, 1.0
+
+    if not is_waste:
+        result = _force_non_object_result(f"stage1 waste_prob={waste_prob:.3f} < 0.50")
+        upload_id_n: str | None = None
+        if config.COLLECT_USER_UPLOADS:
+            try:
+                upload_id_n = get_recorder().record_prediction(
+                    image_bytes=raw_orig,
+                    content_type=image.content_type or "application/octet-stream",
+                    prediction=result,
+                )
+            except Exception as exc:  # noqa: BLE001
+                print(f"[warn] upload collection failed: {exc}")
+        return PredictionWithRegionsResponse(
+            **result, upload_id=upload_id_n,
+            overlay_base64=None, regions=[], grid_h=0, grid_w=0,
+        )
+
     raw = _auto_crop_to_object(raw_orig)
 
     classifier = get_classifier()
