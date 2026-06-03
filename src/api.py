@@ -541,7 +541,9 @@ async def predict_with_regions(
 
     파이프라인:
       Stage 1 (binary): waste 아니면 → non_object 응답 (regions 분석 skip)
-      Stage 2 (regions): waste 면 객체 크롭 + 손 mask 제외 + CAM 분석
+      Stage 2 (regions): waste 면 전체 이미지에 대해 CAM/u2netp 마스크/손 제외
+                        후 셀별 argmax 로 재질 영역 추출. /predict-with-cam 과
+                        같은 원본 입력 사용 — 둘의 영역 표시가 일치하도록.
     """
     raw_orig = await _read_and_validate_image(image)
 
@@ -569,7 +571,10 @@ async def predict_with_regions(
             overlay_base64=None, regions=[], grid_h=0, grid_w=0,
         )
 
-    raw = _auto_crop_to_object(raw_orig)
+    # auto_crop 제거 — /predict-with-cam 과 같은 원본 입력으로 일관성 확보.
+    # 다중재질 분석은 전체 이미지가 본래 목적에 부합하고, region overlay 좌표가
+    # cropped 좌표계로 떠서 CAM 과 시각적으로 어긋나는 문제도 해결됨.
+    raw = raw_orig
 
     classifier = get_classifier()
     try:
