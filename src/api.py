@@ -621,6 +621,14 @@ async def predict_with_regions(
         except Exception as exc:  # noqa: BLE001
             print(f"[warn] region analysis failed: {exc}")
 
+    # regions 의 dominant class 가 top-1 (ensemble 결과) 과 다르면 region overlay 제거.
+    # ResNet18 CAM argmax 는 ensemble 미반영이라 두 값이 어긋날 수 있고, 사용자에게는
+    # 메인 카드와 이미지 위 라벨이 다르게 보여 혼란 → top-1 일치 케이스만 표시.
+    if regions_out and regions_out[0].slug != result["predicted_class"]:
+        regions_out = []
+        overlay_b64 = None
+        grid_h = grid_w = 0
+
     # upload 기록은 원본 이미지 (사용자 피드백·재학습 일관성)
     upload_id: str | None = None
     if config.COLLECT_USER_UPLOADS:
