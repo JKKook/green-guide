@@ -28,6 +28,7 @@ from src.schemas import (
 from src.hand_detector import get_hand_detector
 from src.regions import extract_regions, render_hatching
 from src.segment import get_segmenter
+from src.dinov2_classifier import get_dinov2_classifier
 from src.stage1_classifier import get_stage1_classifier
 from src.uploads import get_recorder, reset_recorder
 
@@ -51,6 +52,10 @@ async def lifespan(app: FastAPI):
           f"({len(ClassRegistry.trained_slugs())} trained)")
     print(f"[startup] user upload collection: "
           f"{'ENABLED' if config.COLLECT_USER_UPLOADS else 'disabled'}")
+    # DINOv2 미리 로드 (첫 요청 지연 회피)
+    dino = get_dinov2_classifier()
+    print(f"[startup] dinov2 classifier: "
+          f"{'ENABLED' if dino.available else 'disabled (model 없음)'}")
     yield
     reset_classifier()
     reset_recorder()
@@ -250,6 +255,56 @@ def _auto_crop_to_object(raw: bytes, expand: float = 0.10) -> bytes:
         return raw
 
 
+def _ensemble_with_dinov2(
+    resnet_result: dict, raw: bytes, w_dino: float = 0.7,
+) -> dict:
+    """ResNet18 결과 + DINOv2 확률 weighted average.
+
+    ResNet18 이 OOD 입력 (예: 손 안의 객체) 에 confident-wrong 인 케이스를 보정.
+    DINOv2 가 더 robust 한 표현이라 더 큰 가중치 (0.7) 부여. DINOv2 가 없거나
+    실패하면 원본 resnet_result 그대로 반환.
+    """
+    dino_cls = get_dinov2_classifier()
+    if not dino_cls.available:
+        return resnet_result
+    dino_out = dino_cls.predict(raw)
+    if dino_out is None:
+        return resnet_result
+
+    resnet_probs = resnet_result.get("all_probabilities") or {}
+    dino_probs = dino_out["confidences"]
+
+    # 두 모델 라벨 union — non_object 가 ClassRegistry 에 없을 수 있어
+    # ClassRegistry 만 쓰면 누락. 학습 라벨(manifest) 이 정본.
+    all_labels = sorted(set(resnet_probs.keys()) | set(dino_probs.keys()))
+    fused = {}
+    for lbl in all_labels:
+        r = float(resnet_probs.get(lbl, 0.0))
+        d = float(dino_probs.get(lbl, 0.0))
+        fused[lbl] = (1.0 - w_dino) * r + w_dino * d
+
+    s = sum(fused.values())
+    if s > 0:
+        fused = {l: p / s for l, p in fused.items()}
+
+    top_label = max(fused, key=fused.get)
+    # predicted_index: ResNet 의 인덱스 체계 유지 (없으면 기존값)
+    reg_labels = list(ClassRegistry.all_slugs())
+    top_idx = (
+        reg_labels.index(top_label) if top_label in reg_labels
+        else resnet_result.get("predicted_index", 0)
+    )
+
+    return {
+        **resnet_result,
+        "predicted_class": top_label,
+        "predicted_index": top_idx,
+        "confidence": float(fused[top_label]),
+        "all_probabilities": fused,
+        "model_arch": f"{resnet_result.get('model_arch', '')}+dinov2-w{w_dino:.1f}",
+    }
+
+
 def _force_non_object_result(reason: str) -> dict:
     """모델 호출 없이 non_object 결과 dict 반환 (손 지배 등 OOD 강제 분기).
 
@@ -345,6 +400,12 @@ async def predict_centered(
         ) from exc
 
     result = classifier.predict(color_input, edge_input)
+
+    # ─ Stage 2.5: DINOv2 ensemble — confident-wrong 보정 ─
+    try:
+        result = _ensemble_with_dinov2(result, cropped_raw)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] dinov2 ensemble failed: {exc}")
 
     # upload 기록 (원본 이미지 — 사용자 피드백·재학습은 원본 기준)
     upload_id = None
@@ -519,6 +580,12 @@ async def predict_with_regions(
         ) from exc
 
     result, cam = classifier.region_cam(color_input)
+
+    # DINOv2 ensemble — confident-wrong 보정 (regions 분석은 ResNet18 CAM 그대로)
+    try:
+        result = _ensemble_with_dinov2(result, raw)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] dinov2 ensemble failed: {exc}")
 
     overlay_b64: str | None = None
     regions_out: list[MaterialRegion] = []
