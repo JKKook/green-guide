@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, status
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from src import config
@@ -18,12 +18,16 @@ from src.schemas import (
     LabelsResponse,
     MaterialRegion,
     ModelVersionResponse,
+    ObjectCandidate,
+    PredictionHierResponse,
     PredictionResponse,
+    PredictObjectsResponse,
     PredictionWithCamResponse,
     PredictionWithMaskResponse,
     PredictionWithRegionsResponse,
     ReloadModelResponse,
     ServiceInfo,
+    TaxonomyResponse,
 )
 from src.hand_detector import get_hand_detector
 from src.regions import extract_regions, render_hatching
@@ -37,7 +41,12 @@ from src.uploads import get_recorder, reset_recorder
 async def lifespan(app: FastAPI):
     classifier = get_classifier()
     meta = get_active_meta()
-    ClassRegistry.load()
+    # Supabase 불가 시에도 부팅은 계속 — 레지스트리는 요청 시 재시도됨.
+    # (설계 원칙: "API 는 항상 부팅한다" — model_loader 와 동일한 강건성)
+    try:
+        ClassRegistry.load()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[startup][warn] class registry 로드 실패 (Supabase 미접속?): {exc}")
     print(f"[startup] color model: {classifier.model_path}")
     print(f"[startup] edge model: {classifier.edge_model_path or '(disabled)'}")
     print(f"[startup] inference mode: "
@@ -47,9 +56,12 @@ async def lifespan(app: FastAPI):
               f"(accuracy={meta.test_accuracy}, feedback={meta.feedback_count})")
     else:
         print("[startup] remote model version: (fallback — Supabase 에 active row 없음)")
-    print(f"[startup] class registry: "
-          f"{len(ClassRegistry.all_slugs())} total "
-          f"({len(ClassRegistry.trained_slugs())} trained)")
+    try:
+        print(f"[startup] class registry: "
+              f"{len(ClassRegistry.all_slugs())} total "
+              f"({len(ClassRegistry.trained_slugs())} trained)")
+    except Exception:  # noqa: BLE001
+        print("[startup] class registry: (미로드 — 요청 시 재시도)")
     print(f"[startup] user upload collection: "
           f"{'ENABLED' if config.COLLECT_USER_UPLOADS else 'disabled'}")
     # DINOv2 미리 로드 (첫 요청 지연 회피)
@@ -102,6 +114,202 @@ def labels() -> LabelsResponse:
         labels=[c.slug for c in classes],
         count=len(classes),
         classes=[c.to_api_dict() for c in classes],
+    )
+
+
+@app.get("/taxonomy", response_model=TaxonomyResponse, tags=["meta"])
+def taxonomy() -> TaxonomyResponse:
+    """계층 taxonomy 메타 — 대분류/세부 라벨, 롤업 매핑, 게이트 임계.
+
+    계층 모델 미배치 시 404 (앱은 flat 모드로 fallback).
+    """
+    from src.hier_inference import get_hier_classifier  # noqa: PLC0415
+    try:
+        clf = get_hier_classifier()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    t = clf.taxonomy
+    return TaxonomyResponse(
+        version=t.get("version", "?"),
+        fine_labels=t["fine_labels"],
+        coarse_labels=t["coarse_labels"],
+        fine_to_coarse=t["fine_to_coarse"],
+        gate=t["gate"],
+    )
+
+
+@app.post("/predict-hier", response_model=PredictionHierResponse, tags=["inference"])
+async def predict_hier(
+    image: UploadFile = File(..., description="분류할 폐기물 이미지"),
+    tap_x: float | None = Form(default=None, ge=0.0, le=1.0),
+    tap_y: float | None = Form(default=None, ge=0.0, le=1.0),
+) -> PredictionHierResponse:
+    """계층 분류 — 대분류(항상) + 세부(신뢰도 게이트 통과 시).
+
+    기존 /predict 와 독립적인 추가 엔드포인트 (하위호환 유지).
+    display_level 로 표시 깊이 판단: fine → 세부 카드, coarse → 대분류만,
+    reject → 재촬영/etc 안내.
+
+    tap_x/tap_y (정규화 0~1, EXIF 적용 후 이미지 기준): 탭-투-셀렉트.
+    혼재 장면에서 사용자가 지목한 객체의 saliency 성분만 크롭해 분류.
+    """
+    from src.hier_inference import get_hier_classifier  # noqa: PLC0415
+
+    raw = await _read_and_validate_image(image)
+    try:
+        clf = get_hier_classifier()
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"계층 모델 미배치: {exc}",
+        ) from exc
+
+    # ─ 검증된 캐스케이드 방어선 재사용 (predict-centered 와 동일) ─
+    # Stage 0: 손 dominance / Stage 1: waste 이진 게이트 — 실물 비폐기물
+    # (손바닥·마우스 등) 이 confident-wrong 으로 통과하는 것을 차단.
+    forced_reason: str | None = None
+    try:
+        hand_area = get_hand_detector().hand_area_ratio(raw)
+        if hand_area >= 0.50:
+            forced_reason = f"hand area {hand_area:.2f} >= 0.50"
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] hand detection failed: {exc}")
+    if forced_reason is None:
+        try:
+            is_waste, waste_prob = get_stage1_classifier().predict(raw)
+            if not is_waste:
+                forced_reason = f"stage1 waste_prob={waste_prob:.3f} < 0.50"
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] stage1 failed: {exc}")  # fail-open
+
+    if forced_reason is not None:
+        result = {
+            "display_level": "reject",
+            "display_class": "non_object",
+            "coarse_class": "non_object",
+            "coarse_confidence": 1.0,
+            "fine_class": None,
+            "fine_confidence": 0.0,
+            "fine_margin": 0.0,
+            "coarse_probabilities": {"non_object": 1.0},
+            "fine_top5": [],
+            "model_arch": f"cascade-gate: {forced_reason}",
+            "inference_ms": 0.0,
+        }
+        return PredictionHierResponse(**result)
+
+    # u2netp 객체-인지 크롭 — 고정 사각형 대신 실제 객체 경계에 맞춰 자름.
+    # (앱은 풀프레임 전송; 가이드박스는 시각 안내로만. 실측: 풀 39.2% vs
+    #  u2crop 41.2%, 하드 중앙크롭은 27~31% 로 오히려 악화)
+    # 탭 좌표가 오면 탭 지점의 saliency 성분을 우선 크롭 (탭-투-셀렉트).
+    # 실패/미검출 시 안전 fallback (탭: window-crop → 전역: 원본 그대로).
+    if tap_x is not None and tap_y is not None:
+        cropped_raw = _crop_at_tap(raw, tap_x, tap_y)
+    else:
+        cropped_raw = _auto_crop_to_object(raw)
+
+    try:
+        color_input, _ = preprocess_both(cropped_raw)
+    except ImageDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc),
+        ) from exc
+
+    # 게이트를 통과했다 = stage1 이 '폐기물'로 판정 (또는 fail-open)
+    # → 분류기의 non_object 는 모순된 답이므로 마스킹 (실측 +5.9pp)
+    result = clf.predict(color_input, mask_non_object=True)
+
+    upload_id: str | None = None
+    if config.COLLECT_USER_UPLOADS:
+        try:
+            # user_uploads 스키마와 호환되는 형태로 기록 (게이트 적용 결과 기준)
+            upload_id = get_recorder().record_prediction(
+                image_bytes=raw,
+                content_type=image.content_type or "application/octet-stream",
+                prediction={
+                    "predicted_class": result["display_class"],
+                    "confidence": (
+                        result["fine_confidence"]
+                        if result["display_level"] == "fine"
+                        else result["coarse_confidence"]
+                    ),
+                    "all_probabilities": result["coarse_probabilities"],
+                    "model_arch": result["model_arch"],
+                    "inference_ms": result["inference_ms"],
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] upload collection failed: {exc}")
+
+    return PredictionHierResponse(**result, upload_id=upload_id)
+
+
+@app.post("/predict-objects", response_model=PredictObjectsResponse, tags=["inference"])
+async def predict_objects(
+    image: UploadFile = File(..., description="혼재 장면 이미지"),
+) -> PredictObjectsResponse:
+    """탐지-후-분류 — 장면의 객체 후보들을 각각 계층 분류해 반환.
+
+    u2netp saliency 연결 성분으로 객체 후보를 분리(면적 내림차순, 최대 5개),
+    각 후보를 bbox+12% 크롭해 계층 분류. 혼재 장면에서 "단일 오답" 대신
+    "보이는 물건 N개" 를 제시하는 근거 데이터.
+    성분 미검출 시 전체 이미지 1개 후보로 fallback.
+    """
+    import io as _io  # noqa: PLC0415
+    import time as _time  # noqa: PLC0415
+    from PIL import Image as _Image  # noqa: PLC0415
+    from src.hier_inference import get_hier_classifier  # noqa: PLC0415
+    from src.segment import all_component_bboxes  # noqa: PLC0415
+
+    raw = await _read_and_validate_image(image)
+    try:
+        clf = get_hier_classifier()
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"계층 모델 미배치: {exc}",
+        ) from exc
+
+    t0 = _time.perf_counter()
+    try:
+        bboxes = all_component_bboxes(raw)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] component split failed: {exc}")
+        bboxes = []
+    if not bboxes:
+        bboxes = [[0.0, 0.0, 1.0, 1.0]]
+
+    img = _Image.open(_io.BytesIO(raw)).convert("RGB")
+    w, h = img.size
+    objects: list[ObjectCandidate] = []
+    for bb in bboxes:
+        x0, y0, x1, y1 = bb
+        px, py = (x1 - x0) * 0.12, (y1 - y0) * 0.12
+        box = (max(0, int((x0 - px) * w)), max(0, int((y0 - py) * h)),
+               min(w, int((x1 + px) * w)), min(h, int((y1 + py) * h)))
+        if box[2] - box[0] < 48 or box[3] - box[1] < 48:
+            continue
+        buf = _io.BytesIO()
+        img.crop(box).save(buf, format="JPEG", quality=92)
+        try:
+            color_input, _ = preprocess_both(buf.getvalue())
+        except ImageDecodeError:
+            continue
+        r = clf.predict(color_input, mask_non_object=True)
+        objects.append(ObjectCandidate(
+            bbox_norm=bb,
+            display_level=r["display_level"],
+            display_class=r["display_class"],
+            coarse_class=r["coarse_class"],
+            coarse_confidence=r["coarse_confidence"],
+            fine_class=r["fine_class"],
+            fine_confidence=r["fine_confidence"],
+            coarse_probabilities=r["coarse_probabilities"],
+        ))
+
+    elapsed = (_time.perf_counter() - t0) * 1000
+    return PredictObjectsResponse(
+        objects=objects, count=len(objects), inference_ms=round(elapsed, 2),
     )
 
 
@@ -252,6 +460,91 @@ def _auto_crop_to_object(raw: bytes, expand: float = 0.10) -> bytes:
         return buf.getvalue()
     except Exception as exc:  # noqa: BLE001
         print(f"[warn] bbox crop failed: {exc}")
+        return raw
+
+
+def _verify_regions(raw: bytes, regions: list[dict], hier_clf) -> list[dict]:
+    """CAM 제안 영역을 크롭 재분류로 확정 (zoom-and-verify, Stage 1-4).
+
+    - reject(불확신) 영역 → 폐기 (스퓨리어스 차단)
+    - CAM slug 와 재분류 slug 불일치 → 재분류 결과 채택 (분류기가 심판)
+    - avg_conf 는 재분류 확신으로 교체 (검증된 수치)
+    """
+    import io as _io  # noqa: PLC0415
+    from PIL import Image as _Image  # noqa: PLC0415
+    from src.preprocess import preprocess_both as _pb  # noqa: PLC0415
+
+    try:
+        img = _Image.open(_io.BytesIO(raw)).convert("RGB")
+    except Exception:  # noqa: BLE001
+        return regions
+    W, H = img.size
+    verified: list[dict] = []
+    for reg in regions[:4]:  # 상위 4개만 (비용 상한)
+        x0, y0, x1, y1 = reg["bbox_norm"]
+        pw, ph = (x1 - x0) * 0.15, (y1 - y0) * 0.15
+        box = (max(0, int((x0 - pw) * W)), max(0, int((y0 - ph) * H)),
+               min(W, int((x1 + pw) * W)), min(H, int((y1 + ph) * H)))
+        if box[2] - box[0] < 40 or box[3] - box[1] < 40:
+            continue
+        buf = _io.BytesIO()
+        img.crop(box).save(buf, format="JPEG", quality=90)
+        try:
+            ci, _ = _pb(buf.getvalue())
+            r = hier_clf.predict(ci, mask_non_object=True)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] region verify failed: {exc}")
+            verified.append(reg)
+            continue
+        if r["display_level"] == "reject":
+            continue  # CAM 헛제안 폐기
+        slug = r["fine_class"] or r["coarse_class"]
+        conf = (r["fine_confidence"] if r["fine_class"]
+                else r["coarse_confidence"])
+        if slug != reg["slug"]:
+            reg = {**reg, "slug": slug}
+        reg["avg_conf"] = round(float(conf), 3)
+        verified.append(reg)
+    # 재검증 후 같은 slug 로 수렴한 영역 병합은 하지 않음 — 시각적으로
+    # 분리된 영역은 분리 표시가 자연스러움 (동일 slug 2개 = 같은 재질 2곳)
+    return verified
+
+
+def _crop_at_tap(raw: bytes, tap_x: float, tap_y: float,
+                 expand: float = 0.12) -> bytes:
+    """탭 지점의 saliency 연결 성분 bbox 로 크롭 (탭-투-셀렉트).
+
+    성분 미검출 시 탭 중심 window-crop (shortestSide 50%) fallback —
+    사용자가 지목했다는 사실 자체가 '그 근처에 객체가 있다'는 신호이므로
+    전역 크롭보다 탭 중심이 낫다.
+    """
+    import io  # noqa: PLC0415
+    from PIL import Image  # noqa: PLC0415
+    from src.segment import component_bbox_at  # noqa: PLC0415
+
+    try:
+        img = Image.open(io.BytesIO(raw)).convert("RGB")
+        w, h = img.size
+        bbox = component_bbox_at(raw, tap_x, tap_y)
+        if bbox is not None:
+            x0, y0, x1, y1 = bbox
+            px, py = (x1 - x0) * expand, (y1 - y0) * expand
+            box = (max(0, int((x0 - px) * w)), max(0, int((y0 - py) * h)),
+                   min(w, int((x1 + px) * w)), min(h, int((y1 + py) * h)))
+        else:
+            # window fallback: 탭 중심 정사각 (shortestSide 50%)
+            side = int(min(w, h) * 0.5)
+            cx, cy = int(tap_x * w), int(tap_y * h)
+            x0 = min(max(0, cx - side // 2), w - side)
+            y0 = min(max(0, cy - side // 2), h - side)
+            box = (x0, y0, x0 + side, y0 + side)
+        if box[2] - box[0] < 48 or box[3] - box[1] < 48:
+            return raw
+        buf = io.BytesIO()
+        img.crop(box).save(buf, format="JPEG", quality=92)
+        return buf.getvalue()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] tap crop failed: {exc}")
         return raw
 
 
@@ -592,6 +885,26 @@ async def predict_with_regions(
     except Exception as exc:  # noqa: BLE001
         print(f"[warn] dinov2 ensemble failed: {exc}")
 
+    # ── 계층 고해상 CAM 우선 (CAM_MATERIAL_UPGRADE_PLAN Stage 1) ─────────
+    # 448² forward → CAM (25,14,14): 셀 16px, 세부 25클래스 재질 어휘.
+    # 실패/구 ONNX 시 flat 7×7 CAM fallback (하위호환).
+    labels = list(classifier.labels)
+    allowed_indices: list[int] | None = None
+    hier_clf = None
+    try:
+        from src.hier_inference import get_hier_classifier  # noqa: PLC0415
+        from src.preprocess import color_tensor_at  # noqa: PLC0415
+        hier_clf = get_hier_classifier()
+        cam_hi = hier_clf.cam_hires(color_tensor_at(raw, 448))
+        if cam_hi is not None:
+            cam = cam_hi
+            labels = list(hier_clf.fine_labels)
+            allowed_indices = hier_clf.material_class_indices()
+    except FileNotFoundError:
+        pass  # 계층 모델 미배치 — flat CAM 유지
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] hier hi-res cam failed: {exc}")
+
     overlay_b64: str | None = None
     regions_out: list[MaterialRegion] = []
     grid_h = grid_w = 0
@@ -605,8 +918,14 @@ async def predict_with_regions(
                 mask_grid = mask_grid * (1.0 - hand_grid).clip(0.0, 1.0)
             except Exception as exc:  # noqa: BLE001
                 print(f"[warn] hand mask grid failed: {exc}")
-            labels = list(classifier.labels)
-            regions = extract_regions(cam, mask_grid, labels)
+            regions = extract_regions(cam, mask_grid, labels,
+                                      allowed_indices=allowed_indices)
+
+            # ── 영역 재검증 (Stage 1-4, zoom-and-verify) ────────────────
+            # CAM 은 제안자, 분류기가 심판: 각 영역을 크롭해 풀 분류로 확정.
+            # reject 영역은 폐기, 불일치 시 재분류 slug 채택.
+            if hier_clf is not None and regions:
+                regions = _verify_regions(raw, regions, hier_clf)
             if regions:
                 overlay_b64 = render_hatching(
                     raw, regions, grid_h, grid_w, ClassRegistry.color_map(),
@@ -621,10 +940,11 @@ async def predict_with_regions(
         except Exception as exc:  # noqa: BLE001
             print(f"[warn] region analysis failed: {exc}")
 
-    # regions 의 dominant class 가 top-1 (ensemble 결과) 과 다르면 region overlay 제거.
-    # ResNet18 CAM argmax 는 ensemble 미반영이라 두 값이 어긋날 수 있고, 사용자에게는
-    # 메인 카드와 이미지 위 라벨이 다르게 보여 혼란 → top-1 일치 케이스만 표시.
-    if regions_out and regions_out[0].slug != result["predicted_class"]:
+    # [flat 폴백 전용 가드] regions dominant 가 flat top-1 과 다르면 overlay 제거.
+    # 계층 경로(hier_clf)에서는 영역이 zoom-verify(크롭 재분류)를 이미 통과했고
+    # slug 공간도 세부(25)라 flat top-1 과의 문자열 비교가 무의미 — 가드 제외.
+    if hier_clf is None and regions_out \
+            and regions_out[0].slug != result["predicted_class"]:
         regions_out = []
         overlay_b64 = None
         grid_h = grid_w = 0

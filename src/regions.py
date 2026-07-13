@@ -42,11 +42,18 @@ def extract_regions(
     cam_all: np.ndarray,            # (C, h, w)
     mask_grid: np.ndarray,          # (h, w) 0~1 객체 점유
     labels: list[str],
+    allowed_indices: list[int] | None = None,   # 재질 후보 제한 (Stage 1-3)
 ) -> list[dict]:
     """확실히 다른 재질 영역만 추출.
 
     Returns: [{class_index, slug, cells:[[r,c],...], bbox_norm, avg_conf}], 큰 영역 순.
+    avg_conf 는 saliency(객체 점유) 가중 평균 (Stage 1-5) — 경계 셀 과대평가 억제.
     """
+    if allowed_indices is not None:
+        # 비후보 클래스는 셀 경쟁에서 제외 (−inf)
+        masked = np.full_like(cam_all, -1e9)
+        masked[allowed_indices] = cam_all[allowed_indices]
+        cam_all = masked
     probs = _softmax0(cam_all)          # (C, h, w)
     cls = probs.argmax(axis=0)          # (h, w)
     conf = probs.max(axis=0)            # (h, w)
@@ -56,7 +63,9 @@ def extract_regions(
     for r in range(h):
         for c in range(w):
             if mask_grid[r, c] >= _MASK_THRESHOLD and conf[r, c] >= _CONF_THRESHOLD:
-                by_class[int(cls[r, c])].append((r, c, float(conf[r, c])))
+                # saliency 가중 확신 (Stage 1-5)
+                by_class[int(cls[r, c])].append(
+                    (r, c, float(conf[r, c] * mask_grid[r, c])))
 
     regions = []
     for ci, cells in by_class.items():

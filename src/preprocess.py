@@ -135,3 +135,15 @@ def preprocess_both(raw: bytes) -> tuple[np.ndarray, np.ndarray]:
     color_input = to_model_input(arr, "cnn")
     edge_input = to_edge_input(arr)
     return color_input, edge_input
+
+
+def color_tensor_at(raw: bytes, size: int) -> np.ndarray:
+    """임의 해상도 color 텐서 — 고해상 CAM 용 (예: 448 → CAM 14×14).
+
+    변환은 224 경로와 동일(RGB→resize→[0,1]→ImageNet 정규화), 크기만 다름.
+    """
+    img = decode_image(raw).resize((size, size), Image.BILINEAR)
+    arr = np.asarray(img, dtype=np.float32) / 255.0
+    arr = (arr - _MEAN) / _STD
+    chw = np.ascontiguousarray(arr.transpose(2, 0, 1))[np.newaxis, ...]
+    return chw.astype(np.float32)

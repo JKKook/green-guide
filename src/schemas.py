@@ -153,3 +153,74 @@ class PredictionWithMaskResponse(PredictionResponse):
         default=0.0,
         description="객체가 프레임에서 차지하는 면적 비율 (0~1).",
     )
+
+
+class FineTopEntry(BaseModel):
+    """세부 클래스 확률 상위 항목."""
+
+    slug: str
+    prob: float
+
+
+class PredictionHierResponse(BaseModel):
+    """`/predict-hier` 응답 — 계층(대분류→세부) 분류.
+
+    display_level 로 표시 깊이를 알린다:
+    - "fine":   세부까지 확신 (fine_class 사용)
+    - "coarse": 대분류만 확신 (coarse_class 사용, fine_class 는 null)
+    - "reject": 대분류도 불확실 → display_class="etc" (재촬영/캐치올)
+    """
+
+    display_level: str = Field(description='"fine" | "coarse" | "reject"')
+    display_class: str = Field(description="사용자에게 표시할 클래스 slug (게이트 적용 결과)")
+    coarse_class: str = Field(description="대분류 slug (롤업 top1) — 항상 존재")
+    coarse_confidence: float = Field(description="대분류 확신도 (children 확률 합)")
+    fine_class: str | None = Field(default=None, description="세부 slug — 게이트 통과 시에만")
+    fine_confidence: float = Field(description="세부 top1 확률 (게이트 무관 참고값)")
+    fine_margin: float = Field(description="세부 top1-top2 격차")
+    coarse_probabilities: dict[str, float] = Field(description="대분류 전체 확률 분포")
+    fine_top5: list[FineTopEntry] = Field(description="세부 상위 5개 (참고용)")
+    model_arch: str
+    inference_ms: float
+    upload_id: str | None = Field(default=None, description="user_uploads 기록 id")
+    ood_distance: float | None = Field(
+        default=None,
+        description="최근접 prototype 임베딩 cosine 거리 (낮을수록 in-distribution)")
+    ood_reject: bool = Field(
+        default=False,
+        description="임베딩이 학습 분포 밖 → softmax 무관 reject 처리됨")
+
+
+class TaxonomyResponse(BaseModel):
+    """`/taxonomy` 응답 — 계층 구조 메타 (앱이 롤업·표시에 사용)."""
+
+    version: str
+    fine_labels: list[str]
+    coarse_labels: list[str]
+    fine_to_coarse: dict[str, str]
+    gate: dict[str, float]
+
+
+class ObjectCandidate(BaseModel):
+    """`/predict-objects` 의 객체 후보 하나 — 계층 분류 결과 포함."""
+
+    bbox_norm: list[float] = Field(description="[x0,y0,x1,y1] 0~1 정규화")
+    display_level: str = Field(description='"fine" | "coarse" | "reject"')
+    display_class: str
+    coarse_class: str
+    coarse_confidence: float
+    fine_class: str | None = None
+    fine_confidence: float = 0.0
+    coarse_probabilities: dict[str, float] = Field(default_factory=dict)
+
+
+class PredictObjectsResponse(BaseModel):
+    """`/predict-objects` 응답 — 혼재 장면의 객체 후보들 (면적 내림차순).
+
+    saliency 성분 기반이라 붙은 객체는 병합될 수 있음 — 탭-투-셀렉트 병용.
+    후보가 1개면 단일 객체 장면.
+    """
+
+    objects: list[ObjectCandidate]
+    count: int
+    inference_ms: float

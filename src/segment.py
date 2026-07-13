@@ -135,3 +135,118 @@ def get_segmenter() -> Segmenter:
     if _segmenter is None:
         _segmenter = Segmenter()
     return _segmenter
+
+
+def component_bbox_at(
+    image_bytes: bytes, tap_x: float, tap_y: float,
+    threshold: float = 0.4, search_radius_frac: float = 0.08,
+) -> list[float] | None:
+    """탭 지점(정규화 0~1)이 속한 saliency 연결 성분의 bbox_norm 반환.
+
+    탭-투-셀렉트용: 혼재 장면에서 사용자가 지목한 객체만 분리.
+    1) u2netp 마스크(320²) → threshold 이진화
+    2) 탭 지점이 배경이면 주변 반경에서 가장 가까운 객체 픽셀 탐색
+    3) BFS flood-fill 로 해당 연결 성분 추출 → bbox 정규화
+    실패(마스크 없음/성분 없음) 시 None — 호출부가 window-crop fallback.
+    """
+    seg = get_segmenter()
+    if not seg.available or seg.session is None:
+        return None
+    orig = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    inp = seg._preprocess(orig)
+    out = seg.session.run(None, {seg.input_name: inp})[0][0, 0]
+    mi, ma = float(out.min()), float(out.max())
+    if ma - mi < 1e-8:
+        return None
+    binary = ((out - mi) / (ma - mi)) > threshold
+
+    tx = min(max(int(tap_x * _SIZE), 0), _SIZE - 1)
+    ty = min(max(int(tap_y * _SIZE), 0), _SIZE - 1)
+
+    # 탭 지점이 배경이면 반경 내 최근접 객체 픽셀로 스냅
+    if not binary[ty, tx]:
+        r = max(1, int(_SIZE * search_radius_frac))
+        ys, xs = np.where(
+            binary[max(0, ty - r):ty + r + 1, max(0, tx - r):tx + r + 1])
+        if len(xs) == 0:
+            return None
+        d2 = (ys - min(ty, r)) ** 2 + (xs - min(tx, r)) ** 2
+        k = int(d2.argmin())
+        ty = max(0, ty - r) + int(ys[k])
+        tx = max(0, tx - r) + int(xs[k])
+
+    # BFS flood fill (scipy 없이 — 320² 는 충분히 가벼움)
+    from collections import deque
+    visited = np.zeros_like(binary, dtype=bool)
+    q = deque([(ty, tx)])
+    visited[ty, tx] = True
+    x0, y0, x1, y1 = tx, ty, tx, ty
+    while q:
+        cy, cx = q.popleft()
+        x0, x1 = min(x0, cx), max(x1, cx)
+        y0, y1 = min(y0, cy), max(y1, cy)
+        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            ny, nx = cy + dy, cx + dx
+            if (0 <= ny < _SIZE and 0 <= nx < _SIZE
+                    and binary[ny, nx] and not visited[ny, nx]):
+                visited[ny, nx] = True
+                q.append((ny, nx))
+
+    # 너무 작은 성분(노이즈)은 무시
+    if (x1 - x0) < _SIZE * 0.03 or (y1 - y0) < _SIZE * 0.03:
+        return None
+    return [x0 / _SIZE, y0 / _SIZE, (x1 + 1) / _SIZE, (y1 + 1) / _SIZE]
+
+
+def all_component_bboxes(
+    image_bytes: bytes, threshold: float = 0.4,
+    min_side_frac: float = 0.06, max_n: int = 5,
+) -> list[list[float]]:
+    """u2netp saliency 의 모든 연결 성분 bbox_norm 목록 (면적 내림차순, 최대 max_n).
+
+    탐지-후-분류용: 혼재 장면의 각 객체 후보를 분리한다.
+    saliency 는 인스턴스 세그가 아니므로 붙어있는 객체는 병합될 수 있음 —
+    그 한계는 탭-투-셀렉트가 보완.
+    """
+    seg = get_segmenter()
+    if not seg.available or seg.session is None:
+        return []
+    orig = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    inp = seg._preprocess(orig)
+    out = seg.session.run(None, {seg.input_name: inp})[0][0, 0]
+    mi, ma = float(out.min()), float(out.max())
+    if ma - mi < 1e-8:
+        return []
+    binary = ((out - mi) / (ma - mi)) > threshold
+
+    from collections import deque
+    visited = np.zeros_like(binary, dtype=bool)
+    comps: list[tuple[int, list[float]]] = []
+    min_side = _SIZE * min_side_frac
+
+    for sy in range(_SIZE):
+        for sx in range(_SIZE):
+            if not binary[sy, sx] or visited[sy, sx]:
+                continue
+            # BFS
+            q = deque([(sy, sx)])
+            visited[sy, sx] = True
+            x0, y0, x1, y1 = sx, sy, sx, sy
+            area = 0
+            while q:
+                cy, cx = q.popleft()
+                area += 1
+                x0, x1 = min(x0, cx), max(x1, cx)
+                y0, y1 = min(y0, cy), max(y1, cy)
+                for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    ny, nx = cy + dy, cx + dx
+                    if (0 <= ny < _SIZE and 0 <= nx < _SIZE
+                            and binary[ny, nx] and not visited[ny, nx]):
+                        visited[ny, nx] = True
+                        q.append((ny, nx))
+            if (x1 - x0) >= min_side and (y1 - y0) >= min_side:
+                comps.append((area, [x0 / _SIZE, y0 / _SIZE,
+                                     (x1 + 1) / _SIZE, (y1 + 1) / _SIZE]))
+
+    comps.sort(key=lambda t: -t[0])
+    return [bb for _, bb in comps[:max_n]]

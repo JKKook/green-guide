@@ -23,6 +23,10 @@ class WasteClass:
     icon_name: str | None
     trained_in_model: bool
     active: bool
+    # 계층 (migration 008) — 구 스키마 행에는 없을 수 있어 기본값 유지
+    level: int = 1
+    parent_slug: str | None = None
+    is_negative_guidance: bool = False
 
     @classmethod
     def from_row(cls, row: dict[str, Any]) -> "WasteClass":
@@ -38,6 +42,9 @@ class WasteClass:
             icon_name=row.get("icon_name"),
             trained_in_model=bool(row.get("trained_in_model")),
             active=bool(row.get("active", True)),
+            level=int(row.get("level") or 1),
+            parent_slug=row.get("parent_slug"),
+            is_negative_guidance=bool(row.get("is_negative_guidance")),
         )
 
     def to_api_dict(self) -> dict[str, Any]:
@@ -52,6 +59,9 @@ class WasteClass:
             "color_hex": self.color_hex,
             "icon_name": self.icon_name,
             "trained_in_model": self.trained_in_model,
+            "level": self.level,
+            "parent_slug": self.parent_slug,
+            "is_negative_guidance": self.is_negative_guidance,
         }
 
 
