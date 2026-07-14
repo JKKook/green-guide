@@ -68,9 +68,9 @@ class HierWasteClassifier:
         )
 
         # DINOv2 계층 앙상블 (선택) — build_dinov2_hier_head.py 산출물.
-        # 실측: frozen +0.8pp, 실사용 52.9→60.8% (+7.8pp, confident-wrong 보정).
+        # 실측(v6 기준): 실사용 68.6→70.6%. 백본이 강해질수록 최적 가중치는 낮아짐(v5 땐 0.5).
         self.dino_session: ort.InferenceSession | None = None
-        self.dino_weight = 0.5   # frozen 그리드 탐색 최적값
+        self.dino_weight = 0.3   # v6(ResNet50) 기준 실사용 그리드 최적 (68.6→70.6%)
         for cand in (model_path.parent / "dinov2_hier.onnx",
                      Path(__file__).resolve().parent.parent / "models" / "dinov2_hier.onnx"):
             if cand.exists():
