@@ -67,6 +67,21 @@ class HierWasteClassifier:
             str(model_path), providers=["CPUExecutionProvider"],
         )
 
+        # DINOv2 계층 앙상블 (선택) — build_dinov2_hier_head.py 산출물.
+        # 실측: frozen +0.8pp, 실사용 52.9→60.8% (+7.8pp, confident-wrong 보정).
+        self.dino_session: ort.InferenceSession | None = None
+        self.dino_weight = 0.5   # frozen 그리드 탐색 최적값
+        for cand in (model_path.parent / "dinov2_hier.onnx",
+                     Path(__file__).resolve().parent.parent / "models" / "dinov2_hier.onnx"):
+            if cand.exists():
+                try:
+                    self.dino_session = ort.InferenceSession(
+                        str(cand), providers=["CPUExecutionProvider"])
+                    print(f"[hier] dinov2 앙상블 활성: {cand.name} (w={self.dino_weight})")
+                except Exception as exc:  # noqa: BLE001
+                    print(f"[hier] dinov2 로드 실패(단독 모드): {exc}")
+                break
+
         # OOD 프로토타입 (선택) — build_hier_prototypes.py 산출물.
         # softmax 는 OOD 에 과신하므로 임베딩 거리로 '학습된 무엇과도 안 닮음'을 잡는다.
         self.ood_protos: np.ndarray | None = None   # (C, 512) L2-normalized
@@ -128,9 +143,24 @@ class HierWasteClassifier:
             outputs.append("embedding")
         res = self.session.run(outputs, {"image": color_input})
         logits = res[0]
+
+        # DINOv2 앙상블 — softmax 확률 가중합 (마스킹 전 단계에서 결합)
+        dino_probs: np.ndarray | None = None
+        if self.dino_session is not None:
+            try:
+                (dl,) = self.dino_session.run(["logits"], {"image": color_input})
+                e = np.exp(dl - dl.max(axis=1, keepdims=True))
+                dino_probs = e / e.sum(axis=1, keepdims=True)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[hier] dinov2 추론 실패(단독 진행): {exc}")
         if mask_non_object and "non_object" in self.fine_labels:
             logits = logits.copy()
             logits[:, self.fine_labels.index("non_object")] = -1e9
+            if dino_probs is not None:
+                # dino 확률에도 동일 마스킹 후 재정규화
+                dino_probs = dino_probs.copy()
+                dino_probs[:, self.fine_labels.index("non_object")] = 0.0
+                dino_probs = dino_probs / dino_probs.sum(axis=1, keepdims=True)
 
         # OOD 거리 — 최근접 prototype cosine distance (2단 판정)
         ood_distance: float | None = None
@@ -143,6 +173,9 @@ class HierWasteClassifier:
             ood_soft = ood_distance > self.ood_tau_soft
             ood_reject = ood_distance > self.ood_tau_hard
         fine_probs = _softmax(logits)[0]                     # (C_fine,)
+        if dino_probs is not None:
+            w = self.dino_weight
+            fine_probs = (1.0 - w) * fine_probs + w * dino_probs[0]
         coarse_probs = self._rollup(fine_probs)              # (C_coarse,)
         elapsed_ms = (time.perf_counter() - t0) * 1000
 
