@@ -54,6 +54,10 @@ class ClipIdentity:
             data = np.load(npz_path, allow_pickle=False)
             self.concept_embs: np.ndarray = data["embeddings"]      # (K,512) L2 정규화
             self.phrases: list[str] = [str(p) for p in data["phrases"]]
+            # 한국어 표시명 (앱 증거 배지용) — 구버전 npz 는 영문 fallback
+            self.phrases_ko: list[str] = (
+                [str(p) for p in data["phrases_ko"]]
+                if "phrases_ko" in data else list(self.phrases))
             self.slugs: list[str] = [str(s) for s in data["slugs"]]
             self.logit_scale = float(data["logit_scale"])
             self.available = True
@@ -127,13 +131,13 @@ class ClipIdentity:
                 if ratio > 1.0:
                     prior[i] = ratio ** w
 
-        # 설명용 — top1 컨셉 (임계 이상일 때만)
+        # 설명용 — top1 컨셉 (임계 이상일 때만). token 은 앱 배지용 한국어.
         evidence: list[dict[str, Any]] = []
         top = int(np.argmax(probs))
         if float(probs[top]) >= 0.25:
             evidence.append({
                 "type": "identity",
-                "token": self.phrases[top],
+                "token": self.phrases_ko[top],
                 "matched_text": self.phrases[top],
                 "mapped_class": self.slugs[top],
                 "score": round(float(probs[top]), 3),
