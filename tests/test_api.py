@@ -12,9 +12,8 @@ def test_root_returns_service_info(client: TestClient) -> None:
     assert res.status_code == 200
     data = res.json()
     assert "name" in data and "model_arch" in data
-    assert data["class_labels"] == [
-        "cardboard", "glass", "metal", "paper", "plastic", "trash",
-    ]
+    # 계층 레지스트리 기반 — 고정 목록 대신 구조만 검증 (플랫 fallback 라벨 포함)
+    assert isinstance(data["class_labels"], list) and len(data["class_labels"]) >= 6
 
 
 def test_health_returns_ok(client: TestClient) -> None:
@@ -23,11 +22,12 @@ def test_health_returns_ok(client: TestClient) -> None:
     assert res.json() == {"status": "ok"}
 
 
-def test_labels_returns_six_classes(client: TestClient) -> None:
+def test_labels_returns_hierarchy(client: TestClient) -> None:
     res = client.get("/labels")
     assert res.status_code == 200
     data = res.json()
-    assert data["count"] == 6
+    # 계층 taxonomy(대분류+세부) — 레지스트리 오프라인 fallback 도 6개는 넘는다
+    assert data["count"] >= 6
     assert "plastic" in data["labels"]
 
 
@@ -38,9 +38,7 @@ def test_predict_with_random_image(client: TestClient, sample_image_bytes: bytes
     )
     assert res.status_code == 200, res.text
     data = res.json()
-    assert data["predicted_class"] in {
-        "cardboard", "glass", "metal", "paper", "plastic", "trash",
-    }
+    assert isinstance(data["predicted_class"], str) and data["predicted_class"]
     assert 0.0 <= data["confidence"] <= 1.0
     assert abs(sum(data["all_probabilities"].values()) - 1.0) < 1e-4
     assert data["inference_ms"] > 0
