@@ -137,6 +137,26 @@ def preprocess_both(raw: bytes) -> tuple[np.ndarray, np.ndarray]:
     return color_input, edge_input
 
 
+def color_tensor_rotations(
+    raw: bytes, degs: tuple[int, ...] = (0, 90, 270),
+) -> list[tuple[int, np.ndarray]]:
+    """원본 bytes → [(회전각, (1,3,224,224) 텐서)] — 회전 TTA 용.
+
+    배경: AI-Hub 학습 크롭은 센서 방향(EXIF 미적용) 좌표로 잘려 있어 모델이
+    '눕힌' 객체 통계를 학습함. 서빙은 탭/CAM 정합을 위해 EXIF 를 세우므로
+    (normalize_orientation) 분포가 어긋난다 — 실측: 세움 26/51 vs 회전 TTA 37/51.
+    각 회전을 원본 해상도에서 수행 후 리사이즈 (squash 왜곡이 방향별로 다르므로
+    224 텐서 회전으로 대체 불가).
+    """
+    img = decode_image(raw)
+    out = []
+    for deg in degs:
+        rot = img.rotate(deg, expand=True) if deg else img
+        arr = to_normalized_array(rot)
+        out.append((deg, to_model_input(arr, "cnn")))
+    return out
+
+
 def color_tensor_at(raw: bytes, size: int) -> np.ndarray:
     """임의 해상도 color 텐서 — 고해상 CAM 용 (예: 448 → CAM 14×14).
 

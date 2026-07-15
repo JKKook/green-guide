@@ -127,12 +127,16 @@ class HierWasteClassifier:
         color_input: np.ndarray,
         want_cam: bool = False,
         mask_non_object: bool = False,
+        fine_prior: np.ndarray | None = None,
     ) -> dict[str, Any]:
         """(1,3,224,224) 입력 → 계층 예측 dict.
 
         mask_non_object: Stage1 이진 게이트가 이미 '폐기물'로 판정한 경우 True.
         non_object 는 게이트와 모순되는 답이므로 로짓에서 제외 — 실사용 잡배경
         사진이 non_object 로 새는 것을 차단 (실측 대분류 +5.9pp).
+        fine_prior: (C_fine,) 시맨틱 증거 승수 (semantic_evidence.evidence_prior).
+        log-linear 융합 — 앙상블 확률에 곱한 뒤 재정규화. 게이트 이전에 적용되므로
+        강한 텍스트 증거는 자연히 reject 를 푼다 (SEMANTIC_FUSION_PLAN §3).
         """
         t0 = time.perf_counter()
         need_emb = self.ood_protos is not None
@@ -176,6 +180,9 @@ class HierWasteClassifier:
         if dino_probs is not None:
             w = self.dino_weight
             fine_probs = (1.0 - w) * fine_probs + w * dino_probs[0]
+        if fine_prior is not None:
+            fine_probs = fine_probs * fine_prior.astype(fine_probs.dtype)
+            fine_probs = fine_probs / max(float(fine_probs.sum()), 1e-12)
         coarse_probs = self._rollup(fine_probs)              # (C_coarse,)
         elapsed_ms = (time.perf_counter() - t0) * 1000
 
@@ -229,6 +236,34 @@ class HierWasteClassifier:
             cam_all = res[1]  # (1, C_fine, 7, 7)
             result["cam"] = cam_all[0, fi]
         return result
+
+
+def predict_best_rotation(
+    clf: HierWasteClassifier,
+    raw: bytes,
+    mask_non_object: bool = False,
+    fine_prior: np.ndarray | None = None,
+    degs: tuple[int, ...] = (0, 90, 270),
+) -> dict[str, Any]:
+    """회전 TTA — 각 회전으로 분류 후 세부 확신이 가장 높은 결과 채택.
+
+    학습 크롭(센서 방향)과 서빙 입력(EXIF 세움)의 방향 분포 어긋남을 서빙에서
+    흡수한다 (근본 해결은 v7 회전 증강 재학습 — preprocess.color_tensor_rotations 참고).
+    실측(실사용 51장): 세움 26 → 3방향 TTA 37 (+11건). inference_ms 는 합산.
+    """
+    from src.preprocess import color_tensor_rotations  # noqa: PLC0415
+
+    best: dict[str, Any] | None = None
+    total_ms = 0.0
+    for deg, ci in color_tensor_rotations(raw, degs):
+        r = clf.predict(ci, mask_non_object=mask_non_object, fine_prior=fine_prior)
+        total_ms += r["inference_ms"]
+        r["tta_rotation"] = deg
+        if best is None or r["fine_confidence"] > best["fine_confidence"]:
+            best = r
+    assert best is not None
+    best["inference_ms"] = round(total_ms, 2)
+    return best
 
 
 _hier: HierWasteClassifier | None = None

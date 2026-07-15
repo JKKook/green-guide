@@ -16,3 +16,7 @@ python-dotenv==1.0.1
 # MediaPipe Hands — predict-centered, predict-with-regions 에서 손 영역 검출 후 제외
 mediapipe==0.10.18
 opencv-python==4.10.0.84
+
+# 시맨틱 증거 — 이미지 텍스트(분리배출 마크·정체어) OCR (SEMANTIC_FUSION_PLAN 신호①)
+# onnxruntime 엔진만 사용 (torch 불요). 모델은 models/ocr/ 에 번들 — 런타임 다운로드 없음
+rapidocr==3.9.1

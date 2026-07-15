@@ -189,6 +189,19 @@ class PredictionHierResponse(BaseModel):
     ood_reject: bool = Field(
         default=False,
         description="임베딩이 학습 분포 밖 → softmax 무관 reject 처리됨")
+    evidence: list["EvidenceItem"] | None = Field(
+        default=None,
+        description="시맨틱 증거 — 이미지 텍스트에서 인식된 재질/정체 단서 (융합 반영됨)")
+
+
+class EvidenceItem(BaseModel):
+    """OCR 기반 시맨틱 증거 한 건 (SEMANTIC_FUSION_PLAN 신호①)."""
+
+    type: str = Field(description='"mark"=분리배출표시/재질어, "text"=정체어')
+    token: str = Field(description="매칭된 어휘 토큰 (예: 무색페트)")
+    matched_text: str = Field(description="OCR 이 읽은 원문")
+    mapped_class: str = Field(description="증거가 가리키는 클래스 slug")
+    score: float = Field(description="OCR 인식 확신도")
 
 
 class TaxonomyResponse(BaseModel):

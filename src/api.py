@@ -153,7 +153,9 @@ async def predict_hier(
     tap_x/tap_y (정규화 0~1, EXIF 적용 후 이미지 기준): 탭-투-셀렉트.
     혼재 장면에서 사용자가 지목한 객체의 saliency 성분만 크롭해 분류.
     """
-    from src.hier_inference import get_hier_classifier  # noqa: PLC0415
+    from src.hier_inference import (  # noqa: PLC0415
+        get_hier_classifier, predict_best_rotation,
+    )
 
     raw = await _read_and_validate_image(image)
     try:
@@ -198,26 +200,48 @@ async def predict_hier(
         }
         return PredictionHierResponse(**result)
 
-    # u2netp 객체-인지 크롭 — 고정 사각형 대신 실제 객체 경계에 맞춰 자름.
-    # (앱은 풀프레임 전송; 가이드박스는 시각 안내로만. 실측: 풀 39.2% vs
-    #  u2crop 41.2%, 하드 중앙크롭은 27~31% 로 오히려 악화)
-    # 탭 좌표가 오면 탭 지점의 saliency 성분을 우선 크롭 (탭-투-셀렉트).
-    # 실패/미검출 시 안전 fallback (탭: window-crop → 전역: 원본 그대로).
+    # 장면 분류는 풀프레임 — v2 시절엔 u2 자동크롭이 +2pp 였으나 v6+회전TTA
+    # 에선 역전 (실측 실사용 51장: TTA+풀 39 vs TTA+u2크롭 25). 크롭은 문맥을
+    # 잃고 saliency 오검출 시 엉뚱한 영역을 자르는 위험이 TTA 이득을 상쇄함.
+    # 탭 좌표가 오면 탭 지점의 saliency 성분만 크롭 (탭-투-셀렉트 — 기능상 필수).
     if tap_x is not None and tap_y is not None:
         cropped_raw = _crop_at_tap(raw, tap_x, tap_y)
     else:
-        cropped_raw = _auto_crop_to_object(raw)
+        cropped_raw = raw
 
+    # 시맨틱 증거 (신호① 텍스트) — 분류 대상 crop 의 OCR 텍스트를 어휘 매칭해
+    # fine prior 로 융합. crop 에 직접 실행하므로 증거 귀속이 구조적으로 보장됨.
+    # 실패는 격리 — 증거 없이 기존 경로 그대로 (SEMANTIC_FUSION_PLAN §1·§3).
+    from src.semantic_evidence import (  # noqa: PLC0415
+        evidence_prior, get_evidence_engine, match_evidence,
+    )
+    evidence: list[dict] = []
+    prior = None
     try:
-        color_input, _ = preprocess_both(cropped_raw)
+        texts = get_evidence_engine().read_texts(cropped_raw)
+        evidence = match_evidence(texts)
+        prior = evidence_prior(
+            evidence, clf.fine_labels, clf.taxonomy["fine_to_coarse"])
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] semantic evidence failed: {exc}")
+
+    # 게이트를 통과했다 = stage1 이 '폐기물'로 판정 (또는 fail-open)
+    # → 분류기의 non_object 는 모순된 답이므로 마스킹 (실측 +5.9pp)
+    # 회전 TTA: 학습 크롭(센서 방향) vs 서빙(EXIF 세움) 분포 어긋남 흡수
+    # (실측 실사용 51장: 26 → 37. hier_inference.predict_best_rotation 참고)
+    try:
+        result = predict_best_rotation(
+            clf, cropped_raw, mask_non_object=True, fine_prior=prior)
     except ImageDecodeError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc),
         ) from exc
-
-    # 게이트를 통과했다 = stage1 이 '폐기물'로 판정 (또는 fail-open)
-    # → 분류기의 non_object 는 모순된 답이므로 마스킹 (실측 +5.9pp)
-    result = clf.predict(color_input, mask_non_object=True)
+    if evidence:
+        result["evidence"] = [
+            {k: ev[k] for k in ("type", "token", "matched_text",
+                                "mapped_class", "score")}
+            for ev in evidence
+        ]
 
     upload_id: str | None = None
     if config.COLLECT_USER_UPLOADS:
@@ -258,7 +282,9 @@ async def predict_objects(
     import io as _io  # noqa: PLC0415
     import time as _time  # noqa: PLC0415
     from PIL import Image as _Image  # noqa: PLC0415
-    from src.hier_inference import get_hier_classifier  # noqa: PLC0415
+    from src.hier_inference import (  # noqa: PLC0415
+        get_hier_classifier, predict_best_rotation,
+    )
     from src.segment import all_component_bboxes  # noqa: PLC0415
 
     raw = await _read_and_validate_image(image)
@@ -279,6 +305,17 @@ async def predict_objects(
     if not bboxes:
         bboxes = [[0.0, 0.0, 1.0, 1.0]]
 
+    # 시맨틱 증거 — 전체 프레임 OCR 1회 후 텍스트 위치로 후보별 귀속
+    # (후보마다 OCR 재실행 금지 — 비용. SEMANTIC_FUSION_PLAN §1 공간 귀속)
+    from src.semantic_evidence import (  # noqa: PLC0415
+        evidence_prior, get_evidence_engine, match_evidence,
+    )
+    scene_evidence: list[dict] = []
+    try:
+        scene_evidence = match_evidence(get_evidence_engine().read_texts(raw))
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] semantic evidence failed: {exc}")
+
     img = _Image.open(_io.BytesIO(raw)).convert("RGB")
     w, h = img.size
     objects: list[ObjectCandidate] = []
@@ -291,11 +328,15 @@ async def predict_objects(
             continue
         buf = _io.BytesIO()
         img.crop(box).save(buf, format="JPEG", quality=92)
+        prior = evidence_prior(
+            scene_evidence, clf.fine_labels,
+            clf.taxonomy["fine_to_coarse"], region=bb,
+        ) if scene_evidence else None
         try:
-            color_input, _ = preprocess_both(buf.getvalue())
+            r = predict_best_rotation(
+                clf, buf.getvalue(), mask_non_object=True, fine_prior=prior)
         except ImageDecodeError:
             continue
-        r = clf.predict(color_input, mask_non_object=True)
         objects.append(ObjectCandidate(
             bbox_norm=bb,
             display_level=r["display_level"],
