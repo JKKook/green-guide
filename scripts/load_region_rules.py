@@ -25,51 +25,43 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(PROJECT_ROOT / ".env")
 
-# 표준 조회서비스 엔드포인트 — 활용신청 페이지의 상세기능 명세 기준.
-# (승인 후 실제 요청 URL/파라미터 명세가 마이페이지에 표시됨 — 상이하면 여기 수정)
-BASE_URL = "http://apis.data.go.kr/1741000/HouseholdWasteDischargeInfo"
-LIST_OP = "getHouseholdWasteDischargeInfoList"
+# 실측 확인된 엔드포인트 (2026-07-15, https 필수 — http 는 401)
+BASE_URL = "https://apis.data.go.kr/1741000/household_waste_info"
+LIST_OP = "info"
 
-# 표준데이터 필드 → 테이블 컬럼 매핑
+# 실측 응답 필드 → 테이블 컬럼 매핑 (totalCount 10,175 / 2026-07 기준)
 FIELD_MAP = {
-    "ctprvnNm": "sido",
-    "signguNm": "sigungu",
-    "mngZoneNm": "district",
-    "emsnPlcType": "emit_place_type",
-    "emsnPlc": "emit_place",
-    "lifeWasteEmsnMthd": "method_general",
-    "foodWasteEmsnMthd": "method_food",
-    "rcyclEmsnMthd": "method_recycle",
-    "tmprLqtyWasteEmsnMthd": "method_bulk",
-    "lifeWasteEmsnDow": "days_general",
-    "foodWasteEmsnDow": "days_food",
-    "rcyclEmsnDow": "days_recycle",
-    "emsnTime": "emit_time",
-    "uncollectDay": "no_collect_day",
-    "mngDeptNm": "managing_dept",
-    "phoneNumber": "phone",
-    "referenceDate": "data_date",
+    "CTPV_NM": "sido",
+    "SGG_NM": "sigungu",
+    "MNG_ZONE_NM": "district",
+    "EMSN_PLC_TYPE": "emit_place_type",
+    "EMSN_PLC": "emit_place",
+    "LF_WST_EMSN_MTHD": "method_general",
+    "FOD_WST_EMSN_MTHD": "method_food",
+    "RCYCL_EMSN_MTHD": "method_recycle",
+    "TMPRY_BULK_WASTE_EMSN_MTHD": "method_bulk",
+    "LF_WST_EMSN_DOW": "days_general",
+    "FOD_WST_EMSN_DOW": "days_food",
+    "RCYCL_EMSN_DOW": "days_recycle",
+    "UNCLLT_DAY": "no_collect_day",
+    "MNG_DEPT_NM": "managing_dept",
+    "MNG_DEPT_TELNO": "phone",
+    "DAT_CRTR_YMD": "data_date",
 }
 
 
-def fetch_rows(key: str, sido: str | None, page: int, rows: int = 500) -> list[dict]:
+def fetch_rows(key: str, sido: str | None, page: int, rows: int = 100) -> list[dict]:
     params = {
         "serviceKey": key,
         "pageNo": page,
         "numOfRows": rows,
         "type": "json",
     }
-    if sido:
-        params["ctprvnNm"] = sido
+    # (이 API 는 지역 필터 파라미터 미제공 — 전체 페이지네이션 후 적재)
+    del sido
     r = httpx.get(f"{BASE_URL}/{LIST_OP}", params=params, timeout=60)
     r.raise_for_status()
-    body = r.json()
-    # data.go.kr 표준 응답 구조 방어적 파싱
-    items = (
-        body.get("response", {}).get("body", {}).get("items")
-        or body.get("HouseholdWasteDischargeInfo", [{}, {}])[-1].get("row")
-        or []
-    )
+    items = r.json().get("response", {}).get("body", {}).get("items") or {}
     if isinstance(items, dict):
         items = items.get("item", [])
     return items if isinstance(items, list) else [items]
@@ -101,13 +93,18 @@ def main() -> None:
             row = {col: it.get(src) for src, col in FIELD_MAP.items()}
             if not (row.get("sido") and row.get("sigungu")):
                 continue
+            row["district"] = row.get("district") or ""
+            # 배출 시간대: 생활쓰레기 시작~종료 시각 합성 (품목별 시간이 대부분 동일)
+            bgn, end = it.get("LF_WST_EMSN_BGNG_TM"), it.get("LF_WST_EMSN_END_TM")
+            row["emit_time"] = f"{bgn}~{end}" if bgn and end else None
             payload.append(row)
         if payload and not args.dry_run:
             sb.table("region_waste_rules").upsert(
                 payload, on_conflict="sido,sigungu,district").execute()
         total += len(payload)
-        print(f"[region] page {page}: {len(payload)}행 (누적 {total})")
-        if len(items) < 500:
+        if page % 10 == 0 or len(items) < 100:
+            print(f"[region] page {page}: 누적 {total}행")
+        if len(items) < 100:   # 서버가 페이지당 100행 캡 — 미만이면 마지막 페이지
             break
         page += 1
     print(f"[region] 완료 — 총 {total:,}행 적재")
