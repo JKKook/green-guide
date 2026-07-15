@@ -389,6 +389,30 @@ async def predict_objects(
     )
 
 
+@app.get("/region-info", tags=["meta"])
+def region_info(sido: str, sigungu: str) -> dict:
+    """지역별 생활쓰레기 배출 규정 — 앱 지역 선택 시나리오의 데이터 소스.
+
+    Supabase region_waste_rules (공공데이터포털 전국생활쓰레기배출정보 표준데이터,
+    scripts/load_region_rules.py 적재) 조회. 데이터 미적재/오프라인이어도
+    빈 목록으로 응답 — 앱은 전국 공통 안내로 fallback.
+    """
+    try:
+        from src.uploads import _client as _supabase_client  # noqa: PLC0415
+        client = _supabase_client()
+        res = (client.table("region_waste_rules")
+               .select("*")
+               .eq("sido", sido)
+               .eq("sigungu", sigungu)
+               .limit(50)
+               .execute())
+        rules = res.data or []
+    except Exception as exc:  # noqa: BLE001
+        print(f"[warn] region-info 조회 실패 (빈 응답): {exc}")
+        rules = []
+    return {"sido": sido, "sigungu": sigungu, "count": len(rules), "rules": rules}
+
+
 @app.post("/reload-classes", tags=["admin"])
 def reload_classes() -> dict[str, int]:
     """레지스트리 강제 리로드 (관리자용)."""
