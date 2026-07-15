@@ -82,32 +82,36 @@ def main() -> None:
     from supabase import create_client  # noqa: PLC0415
     sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
 
-    total = 0
+    # 1) 전체 수집 + (sido,sigungu,district) 키 중복 제거 — 원천에 동일 관리구역명
+    #    행이 복수 존재 (배출장소별 분리 등). 앱은 시군구 대표 규정만 쓰므로 first-win.
+    dedup: dict[tuple, dict] = {}
     page = 1
     while True:
         items = fetch_rows(key, args.sido, page)
         if not items:
             break
-        payload = []
         for it in items:
             row = {col: it.get(src) for src, col in FIELD_MAP.items()}
             if not (row.get("sido") and row.get("sigungu")):
                 continue
             row["district"] = row.get("district") or ""
-            # 배출 시간대: 생활쓰레기 시작~종료 시각 합성 (품목별 시간이 대부분 동일)
             bgn, end = it.get("LF_WST_EMSN_BGNG_TM"), it.get("LF_WST_EMSN_END_TM")
             row["emit_time"] = f"{bgn}~{end}" if bgn and end else None
-            payload.append(row)
-        if payload and not args.dry_run:
-            sb.table("region_waste_rules").upsert(
-                payload, on_conflict="sido,sigungu,district").execute()
-        total += len(payload)
-        if page % 10 == 0 or len(items) < 100:
-            print(f"[region] page {page}: 누적 {total}행")
+            k = (row["sido"], row["sigungu"], row["district"])
+            dedup.setdefault(k, row)
+        if page % 20 == 0 or len(items) < 100:
+            print(f"[region] page {page}: 고유 {len(dedup)}행")
         if len(items) < 100:   # 서버가 페이지당 100행 캡 — 미만이면 마지막 페이지
             break
         page += 1
-    print(f"[region] 완료 — 총 {total:,}행 적재")
+
+    # 2) 청크 업서트
+    rows = list(dedup.values())
+    if not args.dry_run:
+        for i in range(0, len(rows), 500):
+            sb.table("region_waste_rules").upsert(
+                rows[i:i + 500], on_conflict="sido,sigungu,district").execute()
+    print(f"[region] 완료 — 고유 {len(rows):,}행 적재 (원천 중복 제거)")
 
 
 if __name__ == "__main__":
