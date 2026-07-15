@@ -238,6 +238,58 @@ class HierWasteClassifier:
         return result
 
 
+# 탭 경로 CAM 융합 가중 — 실사용 51장(크롭 대리) 실측: 0.15 는 무해(29 유지),
+# 0.2+ 부터 자기강화로 -1~-4. 같은 CNN 파생 신호라 보조 역할에 한정 (env 조정 가능).
+CAM_PRIOR_WEIGHT = float(os.getenv("WASTE_API_CAM_W", "0.15"))
+
+
+def cam_region_prior(
+    clf: HierWasteClassifier,
+    raw: bytes,
+    region: list[float],
+    weight: float = CAM_PRIOR_WEIGHT,
+    min_share: float = 0.08,
+) -> np.ndarray | None:
+    """탭 영역의 hi-res CAM 재질 증거 → fine prior (신호④, 탭 경로 전용).
+
+    사용자가 지목한 영역에 대해 "전체 프레임 문맥에서 그 영역이 어떤 재질
+    증거를 갖는가"를 crop 재분류(주 신호)에 보조로 곱한다. 같은 CNN 의 파생
+    신호(자기강화 위험)이므로 부스트 전용 + 약한 가중으로 제한
+    (SEMANTIC_FUSION_PLAN §2-1).
+
+    region: [x0,y0,x1,y1] 정규화 bbox. 실패/미지원 시 None.
+    """
+    from src.preprocess import color_tensor_at  # noqa: PLC0415
+
+    try:
+        cam = clf.cam_hires(color_tensor_at(raw, 448))
+        if cam is None:
+            return None
+        n_cls, gh, gw = cam.shape
+        x0 = min(max(int(region[0] * gw), 0), gw - 1)
+        x1 = min(max(int(region[2] * gw) + 1, x0 + 1), gw)
+        y0 = min(max(int(region[1] * gh), 0), gh - 1)
+        y1 = min(max(int(region[3] * gh) + 1, y0 + 1), gh)
+        patch = cam[:, y0:y1, x0:x1].reshape(n_cls, -1).mean(axis=1)  # (C,)
+
+        idxs = clf.material_class_indices()
+        z = patch[idxs]
+        z = z - z.max()
+        p = np.exp(z)
+        p = p / p.sum()                          # 재질 후보들 위의 분포
+
+        prior = np.ones(n_cls, dtype=np.float64)
+        uniform = 1.0 / len(idxs)
+        for local_i, cls_i in enumerate(idxs):
+            share = float(p[local_i])
+            if share >= min_share and share > uniform:
+                prior[cls_i] = min(share / uniform, 6.0) ** weight
+        return prior
+    except Exception as exc:  # noqa: BLE001
+        print(f"[hier] cam region prior 실패 (증거 없이 진행): {exc}")
+        return None
+
+
 def predict_best_rotation(
     clf: HierWasteClassifier,
     raw: bytes,

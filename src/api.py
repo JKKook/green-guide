@@ -204,26 +204,51 @@ async def predict_hier(
     # 에선 역전 (실측 실사용 51장: TTA+풀 39 vs TTA+u2크롭 25). 크롭은 문맥을
     # 잃고 saliency 오검출 시 엉뚱한 영역을 자르는 위험이 TTA 이득을 상쇄함.
     # 탭 좌표가 오면 탭 지점의 saliency 성분만 크롭 (탭-투-셀렉트 — 기능상 필수).
+    tap_region: list[float] | None = None
     if tap_x is not None and tap_y is not None:
-        cropped_raw = _crop_at_tap(raw, tap_x, tap_y)
+        cropped_raw, tap_region = _crop_at_tap(raw, tap_x, tap_y)
     else:
         cropped_raw = raw
 
-    # 시맨틱 증거 (신호① 텍스트) — 분류 대상 crop 의 OCR 텍스트를 어휘 매칭해
-    # fine prior 로 융합. crop 에 직접 실행하므로 증거 귀속이 구조적으로 보장됨.
-    # 실패는 격리 — 증거 없이 기존 경로 그대로 (SEMANTIC_FUSION_PLAN §1·§3).
+    # 시맨틱 증거 융합 (SEMANTIC_FUSION_PLAN §3) — 경로별 신호 구성 (51장 실측 근거):
+    #   장면(풀프레임): OCR 만 — CLIP 은 혼재 장면 center-crop 정체 오인으로 역효과
+    #   탭(고립 crop):  OCR × CLIP 정체(w0.5, 25→29) × CAM 영역 재질(w0.15, 신호④)
+    # 실패는 각각 격리 — 증거 없으면 기존 경로와 완전 동일.
+    from src.clip_identity import get_clip_identity  # noqa: PLC0415
     from src.semantic_evidence import (  # noqa: PLC0415
         evidence_prior, get_evidence_engine, match_evidence,
     )
     evidence: list[dict] = []
     prior = None
+
+    def _mul(a, b):
+        if b is None:
+            return a
+        return b if a is None else a * b
+
     try:
         texts = get_evidence_engine().read_texts(cropped_raw)
         evidence = match_evidence(texts)
-        prior = evidence_prior(
-            evidence, clf.fine_labels, clf.taxonomy["fine_to_coarse"])
+        prior = _mul(prior, evidence_prior(
+            evidence, clf.fine_labels, clf.taxonomy["fine_to_coarse"]))
     except Exception as exc:  # noqa: BLE001
         print(f"[warn] semantic evidence failed: {exc}")
+    if tap_region is not None:
+        try:
+            clip_eng = get_clip_identity()
+            probs = clip_eng.identity_probs(cropped_raw)
+            if probs is not None:
+                clip_prior, clip_ev = clip_eng.evidence_prior(
+                    probs, clf.fine_labels)
+                prior = _mul(prior, clip_prior)
+                evidence.extend(clip_ev)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] clip identity failed: {exc}")
+        try:
+            from src.hier_inference import cam_region_prior  # noqa: PLC0415
+            prior = _mul(prior, cam_region_prior(clf, raw, tap_region))
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] cam region prior failed: {exc}")
 
     # 게이트를 통과했다 = stage1 이 '폐기물'로 판정 (또는 fail-open)
     # → 분류기의 non_object 는 모순된 답이므로 마스킹 (실측 +5.9pp)
@@ -307,6 +332,7 @@ async def predict_objects(
 
     # 시맨틱 증거 — 전체 프레임 OCR 1회 후 텍스트 위치로 후보별 귀속
     # (후보마다 OCR 재실행 금지 — 비용. SEMANTIC_FUSION_PLAN §1 공간 귀속)
+    from src.clip_identity import get_clip_identity  # noqa: PLC0415
     from src.semantic_evidence import (  # noqa: PLC0415
         evidence_prior, get_evidence_engine, match_evidence,
     )
@@ -332,6 +358,15 @@ async def predict_objects(
             scene_evidence, clf.fine_labels,
             clf.taxonomy["fine_to_coarse"], region=bb,
         ) if scene_evidence else None
+        # CLIP 정체 — 고립 crop 에서만 유효 (장면 전체는 실측 역효과)
+        try:
+            probs = get_clip_identity().identity_probs(buf.getvalue())
+            if probs is not None:
+                clip_prior, _ = get_clip_identity().evidence_prior(
+                    probs, clf.fine_labels)
+                prior = clip_prior if prior is None else prior * clip_prior
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] clip identity failed: {exc}")
         try:
             r = predict_best_rotation(
                 clf, buf.getvalue(), mask_non_object=True, fine_prior=prior)
@@ -552,12 +587,13 @@ def _verify_regions(raw: bytes, regions: list[dict], hier_clf) -> list[dict]:
 
 
 def _crop_at_tap(raw: bytes, tap_x: float, tap_y: float,
-                 expand: float = 0.12) -> bytes:
+                 expand: float = 0.12) -> tuple[bytes, list[float] | None]:
     """탭 지점의 saliency 연결 성분 bbox 로 크롭 (탭-투-셀렉트).
 
     성분 미검출 시 탭 중심 window-crop (shortestSide 50%) fallback —
     사용자가 지목했다는 사실 자체가 '그 근처에 객체가 있다'는 신호이므로
     전역 크롭보다 탭 중심이 낫다.
+    반환: (crop bytes, region bbox_norm|None) — bbox 는 CAM 재질 융합용.
     """
     import io  # noqa: PLC0415
     from PIL import Image  # noqa: PLC0415
@@ -572,6 +608,7 @@ def _crop_at_tap(raw: bytes, tap_x: float, tap_y: float,
             px, py = (x1 - x0) * expand, (y1 - y0) * expand
             box = (max(0, int((x0 - px) * w)), max(0, int((y0 - py) * h)),
                    min(w, int((x1 + px) * w)), min(h, int((y1 + py) * h)))
+            region = list(bbox)
         else:
             # window fallback: 탭 중심 정사각 (shortestSide 50%)
             side = int(min(w, h) * 0.5)
@@ -579,14 +616,15 @@ def _crop_at_tap(raw: bytes, tap_x: float, tap_y: float,
             x0 = min(max(0, cx - side // 2), w - side)
             y0 = min(max(0, cy - side // 2), h - side)
             box = (x0, y0, x0 + side, y0 + side)
+            region = [box[0] / w, box[1] / h, box[2] / w, box[3] / h]
         if box[2] - box[0] < 48 or box[3] - box[1] < 48:
-            return raw
+            return raw, None
         buf = io.BytesIO()
         img.crop(box).save(buf, format="JPEG", quality=92)
-        return buf.getvalue()
+        return buf.getvalue(), region
     except Exception as exc:  # noqa: BLE001
         print(f"[warn] tap crop failed: {exc}")
-        return raw
+        return raw, None
 
 
 def _ensemble_with_dinov2(
