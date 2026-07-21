@@ -275,6 +275,35 @@ async def predict_hier(
         refined["inference_ms"] = round(
             result["inference_ms"] + refined["inference_ms"], 2)
         result = refined
+
+    # ── VLM 폴백 (트랙 A2) — 융합 후에도 저확신이면 Claude 에 최종 판정 위임 ──
+    # 키 미설정/한도초과/실패 시 자동 무시 (fail-open). 결과는 evidence 로 표면화.
+    if result["display_level"] == "reject" or result["coarse_confidence"] < 0.55:
+        try:
+            from src.vlm_fallback import get_vlm_fallback  # noqa: PLC0415
+            v = get_vlm_fallback().classify(
+                cropped_raw, clf.fine_labels, clf.taxonomy["fine_to_coarse"])
+            if v is not None and v["confidence"] >= 0.5:
+                slug = v["slug"]
+                coarse = clf.taxonomy["fine_to_coarse"].get(slug, slug)
+                if slug == "non_object":
+                    result["display_level"] = "reject"
+                    result["display_class"] = "non_object"
+                else:
+                    result["display_level"] = "fine" if slug != "etc" else "coarse"
+                    result["display_class"] = slug if slug != "etc" else "etc"
+                    result["fine_class"] = slug if slug != "etc" else None
+                    result["coarse_class"] = coarse
+                result["model_arch"] = result["model_arch"] + "+vlm"
+                evidence.append({
+                    "type": "vlm",
+                    "token": v["reason"] or "AI 정밀 분석",
+                    "matched_text": v["reason"],
+                    "mapped_class": slug,
+                    "score": v["confidence"],
+                })
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] vlm fallback failed: {exc}")
     if evidence:
         result["evidence"] = [
             {k: ev[k] for k in ("type", "token", "matched_text",

@@ -1,0 +1,153 @@
+"""Claude VLM 폴백 — 저확신 케이스만 위임하는 최후 판정자 (청사진 v2 트랙 A2).
+
+설계 (사용자 승인 구조):
+- 발동 조건: 계층 게이트 reject 또는 대분류 확신 < FALLBACK_CONF (호출부 판단)
+- 모델: Haiku 4.5 (분류 태스크 충분 + 저비용 — 장당 ~1원)
+- 이미지 768px 리사이즈 (비전 토큰 ~800), 프롬프트 캐싱으로 taxonomy 반복분 절감
+- 비용 가드: 일일 호출 상한 (기본 200회, VLM_DAILY_CAP env) — 카운터 파일 영속
+- 키 없으면 자동 비활성 (available=False) — 기존 경로 무영향
+- 결과는 evidence(type='vlm') 로 표면화 + 자동 라벨 축적용 로그 기록
+"""
+from __future__ import annotations
+
+import base64
+import io
+import json
+import os
+import time
+from datetime import date
+from pathlib import Path
+from typing import Any
+
+from PIL import Image
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_COUNTER_PATH = _PROJECT_ROOT / "local_feedback" / "vlm_calls.json"
+_LOG_PATH = _PROJECT_ROOT / "local_feedback" / "vlm_labels.jsonl"
+
+MODEL = os.getenv("VLM_MODEL", "claude-haiku-4-5-20251001")
+DAILY_CAP = int(os.getenv("VLM_DAILY_CAP", "200"))
+MAX_SIDE = 768
+
+
+class VlmFallback:
+    """Anthropic Messages API 로 재질 분류 — 실패·한도초과 시 None (fail-open)."""
+
+    def __init__(self) -> None:
+        self.available = False
+        self._client = None
+        key = os.getenv("ANTHROPIC_API_KEY")
+        if not key:
+            print("[vlm] ANTHROPIC_API_KEY 미설정 — 폴백 비활성")
+            return
+        try:
+            import anthropic
+            self._client = anthropic.Anthropic(api_key=key)
+            self.available = True
+            print(f"[vlm] 폴백 활성 (model={MODEL}, 일일 상한 {DAILY_CAP})")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[vlm] 초기화 실패 (비활성): {exc}")
+
+    # ── 비용 가드 ──────────────────────────────────────────────────────────
+    @staticmethod
+    def _calls_today() -> int:
+        try:
+            d = json.loads(_COUNTER_PATH.read_text())
+            return d.get(str(date.today()), 0)
+        except Exception:  # noqa: BLE001
+            return 0
+
+    @staticmethod
+    def _bump_calls() -> None:
+        today = str(date.today())
+        n = VlmFallback._calls_today() + 1
+        _COUNTER_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _COUNTER_PATH.write_text(json.dumps({today: n}))
+
+    # ── 프롬프트 ──────────────────────────────────────────────────────────
+    @staticmethod
+    def _taxonomy_prompt(fine_labels: list[str], fine_to_coarse: dict[str, str]) -> str:
+        pairs = [f"- {f} (대분류 {fine_to_coarse.get(f, '?')})"
+                 for f in fine_labels if f not in ("non_object",)]
+        return (
+            "당신은 한국 분리배출 전문가입니다. 사진 속 주 물체 하나의 재질 분류를 "
+            "판정하세요.\n\n선택 가능한 fine 슬러그 목록:\n" + "\n".join(pairs) +
+            "\n\n규칙:\n"
+            "1. 사진의 가장 주된 폐기물 하나만 판정\n"
+            "2. 확실하지 않으면 etc\n"
+            "3. 폐기물이 아예 없으면(손·배경만) non_object\n"
+            "4. 반드시 JSON 만 출력: "
+            '{"slug": "<fine 슬러그>", "confidence": 0.0~1.0, "reason": "<한 줄>"}'
+        )
+
+    def classify(
+        self,
+        image_bytes: bytes,
+        fine_labels: list[str],
+        fine_to_coarse: dict[str, str],
+    ) -> dict[str, Any] | None:
+        """사진 → {slug, confidence, reason} | None(비활성·한도·실패)."""
+        if not self.available:
+            return None
+        if self._calls_today() >= DAILY_CAP:
+            print(f"[vlm] 일일 상한({DAILY_CAP}) 도달 — 스킵")
+            return None
+        try:
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            img.thumbnail((MAX_SIDE, MAX_SIDE), Image.BILINEAR)
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=88)
+            b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+
+            t0 = time.perf_counter()
+            msg = self._client.messages.create(
+                model=MODEL,
+                max_tokens=200,
+                system=[{
+                    "type": "text",
+                    "text": self._taxonomy_prompt(fine_labels, fine_to_coarse),
+                    "cache_control": {"type": "ephemeral"},   # 프롬프트 캐싱
+                }],
+                messages=[{
+                    "role": "user",
+                    "content": [{
+                        "type": "image",
+                        "source": {"type": "base64", "media_type": "image/jpeg",
+                                   "data": b64},
+                    }],
+                }],
+            )
+            self._bump_calls()
+            text = "".join(b.text for b in msg.content if b.type == "text").strip()
+            if text.startswith("```"):
+                text = text.strip("`").lstrip("json").strip()
+            out = json.loads(text)
+            slug = out.get("slug")
+            if slug not in fine_labels:
+                print(f"[vlm] 미지 슬러그 {slug!r} — 무시")
+                return None
+            result = {
+                "slug": slug,
+                "confidence": float(out.get("confidence", 0.5)),
+                "reason": str(out.get("reason", ""))[:120],
+                "latency_ms": round((time.perf_counter() - t0) * 1000, 1),
+            }
+            # 자동 라벨 축적 (검토용 — 학습 반영은 별도 판단)
+            _LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with _LOG_PATH.open("a", encoding="utf-8") as f:
+                f.write(json.dumps({"ts": time.time(), **result},
+                                   ensure_ascii=False) + "\n")
+            return result
+        except Exception as exc:  # noqa: BLE001
+            print(f"[vlm] 호출 실패 (fail-open): {str(exc)[:100]}")
+            return None
+
+
+_vlm: VlmFallback | None = None
+
+
+def get_vlm_fallback() -> VlmFallback:
+    global _vlm
+    if _vlm is None:
+        _vlm = VlmFallback()
+    return _vlm

@@ -20,3 +20,6 @@ opencv-python==4.10.0.84
 # 시맨틱 증거 — 이미지 텍스트(분리배출 마크·정체어) OCR (SEMANTIC_FUSION_PLAN 신호①)
 # onnxruntime 엔진만 사용 (torch 불요). 모델은 models/ocr/ 에 번들 — 런타임 다운로드 없음
 rapidocr==3.9.1
+
+# VLM 폴백 (트랙 A2) — 저확신 케이스 Claude 위임 (키 없으면 자동 비활성)
+anthropic==0.117.0
