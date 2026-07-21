@@ -67,20 +67,23 @@ class HierWasteClassifier:
             str(model_path), providers=["CPUExecutionProvider"],
         )
 
-        # DINOv2 계층 앙상블 (선택) — build_dinov2_hier_head.py 산출물.
-        # 실측(v6 기준): 실사용 68.6→70.6%. 백본이 강해질수록 최적 가중치는 낮아짐(v5 땐 0.5).
+        # DINOv2 계층 앙상블 — 기본 비활성 (청사진 v2 트랙 B4, 2026-07-21).
+        # 순수 홀드아웃 20장 실측: 기여 0 (solo 11/20 = 앙상블 11/20; 이전 +2는
+        # 오염 표본 암기 효과). 원칙 "실측 이득 없으면 제거" — 추론 ~2× 단축.
+        # 재활성: env WASTE_API_DINO_W=0.3 (홀드아웃 커지면 트랙 A3 재스윕)
         self.dino_session: ort.InferenceSession | None = None
-        self.dino_weight = 0.3   # v6(ResNet50) 기준 실사용 그리드 최적 (68.6→70.6%)
-        for cand in (model_path.parent / "dinov2_hier.onnx",
-                     Path(__file__).resolve().parent.parent / "models" / "dinov2_hier.onnx"):
-            if cand.exists():
-                try:
-                    self.dino_session = ort.InferenceSession(
-                        str(cand), providers=["CPUExecutionProvider"])
-                    print(f"[hier] dinov2 앙상블 활성: {cand.name} (w={self.dino_weight})")
-                except Exception as exc:  # noqa: BLE001
-                    print(f"[hier] dinov2 로드 실패(단독 모드): {exc}")
-                break
+        self.dino_weight = float(os.getenv("WASTE_API_DINO_W", "0"))
+        if self.dino_weight > 0:
+            for cand in (model_path.parent / "dinov2_hier.onnx",
+                         Path(__file__).resolve().parent.parent / "models" / "dinov2_hier.onnx"):
+                if cand.exists():
+                    try:
+                        self.dino_session = ort.InferenceSession(
+                            str(cand), providers=["CPUExecutionProvider"])
+                        print(f"[hier] dinov2 앙상블 활성: {cand.name} (w={self.dino_weight})")
+                    except Exception as exc:  # noqa: BLE001
+                        print(f"[hier] dinov2 로드 실패(단독 모드): {exc}")
+                    break
 
         # OOD 프로토타입 (선택) — build_hier_prototypes.py 산출물.
         # softmax 는 OOD 에 과신하므로 임베딩 거리로 '학습된 무엇과도 안 닮음'을 잡는다.
