@@ -79,15 +79,51 @@ class ClassRegistry:
 
     @classmethod
     def reload(cls) -> None:
-        client = _supabase_client()
-        res = (
-            client.table("waste_classes")
-            .select("*")
-            .eq("active", True)
-            .order("sort_order")
-            .execute()
-        )
-        cls._classes = [WasteClass.from_row(r) for r in (res.data or [])]
+        try:
+            client = _supabase_client()
+            res = (
+                client.table("waste_classes")
+                .select("*")
+                .eq("active", True)
+                .order("sort_order")
+                .execute()
+            )
+            cls._classes = [WasteClass.from_row(r) for r in (res.data or [])]
+        except Exception as exc:  # noqa: BLE001
+            # Supabase 불가(쿼터 제한·네트워크 등) — taxonomy 사이드카 기반
+            # 오프라인 폴백. 피드백 라벨 검증·/labels 가 인프라 장애에 죽지
+            # 않게 한다 (2026-07-21 제한 사태 중 도입).
+            print(f"[classes] Supabase 불가 → taxonomy 폴백: {str(exc)[:80]}")
+            cls._classes = cls._fallback_classes()
+
+    @classmethod
+    def _fallback_classes(cls) -> list[WasteClass]:
+        """오프라인 폴백 — 서빙 taxonomy.json 의 대분류+세부를 최소 메타로."""
+        import json
+        from pathlib import Path
+        sidecar = Path(__file__).resolve().parent.parent / "models" / "taxonomy.json"
+        out: list[WasteClass] = []
+        try:
+            tax = json.loads(sidecar.read_text(encoding="utf-8"))
+            f2c = tax.get("fine_to_coarse", {})
+            for i, slug in enumerate(tax.get("coarse_labels", [])):
+                if slug == "non_object":
+                    continue
+                out.append(WasteClass.from_row({
+                    "slug": slug, "sort_order": i * 10,
+                    "display_name": slug, "trained_in_model": True,
+                    "active": True, "level": 1}))
+            for i, slug in enumerate(tax.get("fine_labels", [])):
+                if slug in ("non_object", "etc"):
+                    continue
+                out.append(WasteClass.from_row({
+                    "slug": slug, "sort_order": 500 + i,
+                    "display_name": slug, "trained_in_model": True,
+                    "active": True, "level": 2,
+                    "parent_slug": f2c.get(slug)}))
+        except Exception as exc:  # noqa: BLE001
+            print(f"[classes] 폴백 로드 실패: {exc}")
+        return out
 
     @classmethod
     def all_slugs(cls) -> list[str]:

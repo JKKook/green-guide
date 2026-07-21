@@ -1,6 +1,7 @@
 """사용자 업로드 이미지 + 메타데이터를 Supabase 에 저장 + 피드백 기록."""
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -44,11 +45,64 @@ _EXT_BY_CT = {
 }
 
 
+# Supabase 불가 시 로컬 폴백 저장소 — A1(피드백 축적)이 인프라 장애에 멈추지
+# 않게 한다 (2026-07-21 쿼터 제한 사태 중 도입). 로컬 서버(개발 모드)에서 유효;
+# 운영 컨테이너 디스크는 휘발성이므로 어디까지나 보조 수단.
+# 복구 후 scripts/sync_local_feedback.py 로 Supabase 에 승격.
+_LOCAL_DIR = Path(__file__).resolve().parent.parent / "local_feedback"
+
+
 class UploadRecorder:
-    """추론 결과를 user_uploads 에 기록하고 이미지를 Storage 에 업로드."""
+    """추론 결과를 user_uploads 에 기록하고 이미지를 Storage 에 업로드.
+
+    Supabase 실패 시 로컬 폴백(_LOCAL_DIR)에 이미지+메타를 저장하고
+    "local-" 접두 upload_id 를 반환 — 피드백도 같은 경로로 이어진다.
+    """
 
     def __init__(self, client: Client | None = None) -> None:
         self.client = client or _client()
+
+    # ── 로컬 폴백 ────────────────────────────────────────────────────────
+    @staticmethod
+    def _local_record(image_bytes: bytes, ext: str, prediction: dict[str, Any]) -> str:
+        upload_id = "local-" + uuid.uuid4().hex[:12]
+        _LOCAL_DIR.mkdir(parents=True, exist_ok=True)
+        (_LOCAL_DIR / f"{upload_id}{ext}").write_bytes(image_bytes)
+        meta = {
+            "id": upload_id,
+            "predicted_class": prediction["predicted_class"],
+            "predicted_confidence": prediction.get("confidence"),
+            "model_arch": prediction.get("model_arch"),
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            "ext": ext,
+            "feedback_status": "pending",
+        }
+        with (_LOCAL_DIR / "meta.jsonl").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(meta, ensure_ascii=False) + "\n")
+        return upload_id
+
+    @staticmethod
+    def _local_feedback(upload_id: str, confirmed: bool,
+                        corrected_label: str | None) -> dict[str, Any]:
+        rows = []
+        meta_p = _LOCAL_DIR / "meta.jsonl"
+        found = None
+        for line in meta_p.read_text(encoding="utf-8").splitlines():
+            r = json.loads(line)
+            if r["id"] == upload_id:
+                status = "confirmed" if confirmed else "corrected"
+                r["feedback_status"] = status
+                r["feedback_label"] = (r["predicted_class"] if confirmed
+                                        else corrected_label)
+                r["feedback_at"] = datetime.now(timezone.utc).isoformat()
+                found = r
+            rows.append(r)
+        if found is None:
+            raise LookupError(f"upload_id 없음: {upload_id!r}")
+        meta_p.write_text(
+            "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n",
+            encoding="utf-8")
+        return found
 
     def record_prediction(
         self,
@@ -65,6 +119,17 @@ class UploadRecorder:
         label = prediction["predicted_class"]
         storage_path = f"{label}/{upload_id}{ext}"
 
+        try:
+            return self._remote_record(
+                upload_id, ext, storage_path, image_bytes, content_type, prediction)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[uploads] Supabase 실패 → 로컬 폴백: {str(exc)[:80]}")
+            return self._local_record(image_bytes, ext, prediction)
+
+    def _remote_record(
+        self, upload_id: str, ext: str, storage_path: str,
+        image_bytes: bytes, content_type: str, prediction: dict[str, Any],
+    ) -> str:
         # 1) Storage 업로드
         self.client.storage.from_(_UPLOAD_BUCKET).upload(
             path=storage_path,
@@ -103,6 +168,9 @@ class UploadRecorder:
             raise ValueError("confirmed=True 면 corrected_label 은 None 이어야 함")
         if not confirmed and corrected_label is None:
             raise ValueError("confirmed=False 면 corrected_label 필수")
+
+        if upload_id.startswith("local-"):
+            return self._local_feedback(upload_id, confirmed, corrected_label)
 
         # 현재 row 조회 — predicted_class 가 정답일 경우 feedback_label 로 그대로 저장
         existing = (

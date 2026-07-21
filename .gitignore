@@ -28,3 +28,4 @@ venv/
 # models/classifier.onnx 는 Docker 이미지에 번들되므로 git 에 commit 합니다 (43MB)
 # 너무 큰 모델이면 git-lfs 또는 Supabase Storage 다운로드로 변경하세요
 cache/
+local_feedback/
