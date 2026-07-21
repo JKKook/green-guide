@@ -1,6 +1,7 @@
 """FastAPI app 정의."""
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
@@ -72,6 +73,9 @@ async def lifespan(app: FastAPI):
     reset_classifier()
     reset_recorder()
 
+
+# 트랙 B1 — 1차 확신이 이 값 이상이면 장면 경로 OCR 스킵 (운영 지연 -2~4s)
+OCR_SKIP_CONFIDENCE = float(os.getenv("WASTE_API_OCR_SKIP_CONF", "0.75"))
 
 app = FastAPI(
     title=config.API_TITLE,
@@ -154,10 +158,10 @@ async def predict_hier(
     혼재 장면에서 사용자가 지목한 객체의 saliency 성분만 크롭해 분류.
     """
     from src.hier_inference import (  # noqa: PLC0415
-        get_hier_classifier, predict_best_rotation,
+        degs_for_orientation, get_hier_classifier, predict_rotations,
     )
 
-    raw = await _read_and_validate_image(image)
+    raw, exif_tag = await _read_validate_with_orientation(image)
     try:
         clf = get_hier_classifier()
     except FileNotFoundError as exc:
@@ -210,10 +214,22 @@ async def predict_hier(
     else:
         cropped_raw = raw
 
-    # 시맨틱 증거 융합 (SEMANTIC_FUSION_PLAN §3) — 경로별 신호 구성 (51장 실측 근거):
-    #   장면(풀프레임): OCR 만 — CLIP 은 혼재 장면 center-crop 정체 오인으로 역효과
-    #   탭(고립 crop):  OCR × CLIP 정체(w0.5, 25→29) × CAM 영역 재질(w0.15, 신호④)
-    # 실패는 각각 격리 — 증거 없으면 기존 경로와 완전 동일.
+    # ── 1차 패스: EXIF 태그 기반 축소 TTA (트랙 B2 — 3×→평균 1.7×) ──────────
+    # 게이트를 통과했다 = stage1 이 '폐기물'로 판정 (또는 fail-open)
+    # → 분류기의 non_object 는 모순된 답이므로 마스킹 (실측 +5.9pp)
+    try:
+        result, best_tensor = predict_rotations(
+            clf, cropped_raw, degs_for_orientation(exif_tag),
+            mask_non_object=True)
+    except ImageDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc),
+        ) from exc
+
+    # ── 시맨틱 증거 융합 (SEMANTIC_FUSION_PLAN §3 + 청사진 v2 트랙 B1) ──────
+    #   OCR: 탭이거나 1차 확신이 낮을 때만 (고확신 장면은 스킵 — 운영 -2~4s)
+    #   CLIP·CAM: 탭(고립 crop)에서만 (장면 적용은 51장 실측 역효과)
+    # prior 가 생기면 베스트 회전 텐서 1장만 재예측 — TTA 전체 재실행 없음.
     from src.clip_identity import get_clip_identity  # noqa: PLC0415
     from src.semantic_evidence import (  # noqa: PLC0415
         evidence_prior, get_evidence_engine, match_evidence,
@@ -226,13 +242,16 @@ async def predict_hier(
             return a
         return b if a is None else a * b
 
-    try:
-        texts = get_evidence_engine().read_texts(cropped_raw)
-        evidence = match_evidence(texts)
-        prior = _mul(prior, evidence_prior(
-            evidence, clf.fine_labels, clf.taxonomy["fine_to_coarse"]))
-    except Exception as exc:  # noqa: BLE001
-        print(f"[warn] semantic evidence failed: {exc}")
+    need_ocr = (tap_region is not None) or (
+        result["fine_confidence"] < OCR_SKIP_CONFIDENCE)
+    if need_ocr:
+        try:
+            texts = get_evidence_engine().read_texts(cropped_raw)
+            evidence = match_evidence(texts)
+            prior = _mul(prior, evidence_prior(
+                evidence, clf.fine_labels, clf.taxonomy["fine_to_coarse"]))
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] semantic evidence failed: {exc}")
     if tap_region is not None:
         try:
             clip_eng = get_clip_identity()
@@ -250,17 +269,12 @@ async def predict_hier(
         except Exception as exc:  # noqa: BLE001
             print(f"[warn] cam region prior failed: {exc}")
 
-    # 게이트를 통과했다 = stage1 이 '폐기물'로 판정 (또는 fail-open)
-    # → 분류기의 non_object 는 모순된 답이므로 마스킹 (실측 +5.9pp)
-    # 회전 TTA: 학습 크롭(센서 방향) vs 서빙(EXIF 세움) 분포 어긋남 흡수
-    # (실측 실사용 51장: 26 → 37. hier_inference.predict_best_rotation 참고)
-    try:
-        result = predict_best_rotation(
-            clf, cropped_raw, mask_non_object=True, fine_prior=prior)
-    except ImageDecodeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc),
-        ) from exc
+    if prior is not None:
+        refined = clf.predict(best_tensor, mask_non_object=True, fine_prior=prior)
+        refined["tta_rotation"] = result.get("tta_rotation", 0)
+        refined["inference_ms"] = round(
+            result["inference_ms"] + refined["inference_ms"], 2)
+        result = refined
     if evidence:
         result["evidence"] = [
             {k: ev[k] for k in ("type", "token", "matched_text",
@@ -308,11 +322,11 @@ async def predict_objects(
     import time as _time  # noqa: PLC0415
     from PIL import Image as _Image  # noqa: PLC0415
     from src.hier_inference import (  # noqa: PLC0415
-        get_hier_classifier, predict_best_rotation,
+        degs_for_orientation, get_hier_classifier, predict_best_rotation,
     )
     from src.segment import all_component_bboxes  # noqa: PLC0415
 
-    raw = await _read_and_validate_image(image)
+    raw, exif_tag = await _read_validate_with_orientation(image)
     try:
         clf = get_hier_classifier()
     except FileNotFoundError as exc:
@@ -369,7 +383,8 @@ async def predict_objects(
             print(f"[warn] clip identity failed: {exc}")
         try:
             r = predict_best_rotation(
-                clf, buf.getvalue(), mask_non_object=True, fine_prior=prior)
+                clf, buf.getvalue(), mask_non_object=True, fine_prior=prior,
+                degs=degs_for_orientation(exif_tag))
         except ImageDecodeError:
             continue
         objects.append(ObjectCandidate(
@@ -470,8 +485,12 @@ def reload_model() -> ReloadModelResponse:
     )
 
 
-async def _read_and_validate_image(image: UploadFile) -> bytes:
-    """공통 헬퍼 — 업로드 검증 + bytes 반환."""
+async def _read_validate_with_orientation(image: UploadFile) -> tuple[bytes, int]:
+    """업로드 검증 + (EXIF 정규화 bytes, 원본 Orientation 태그) 반환.
+
+    태그는 회전 TTA 축소(청사진 v2 트랙 B2)에 사용 — 학습 데이터가 센서
+    방향이므로 "어느 회전이 유효 후보인지"를 태그가 알려준다.
+    """
     if image.content_type not in config.SUPPORTED_CONTENT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -490,9 +509,22 @@ async def _read_and_validate_image(image: UploadFile) -> bytes:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="빈 파일이 업로드됨",
         )
+    orientation = 1
+    try:
+        import io as _io  # noqa: PLC0415
+        from PIL import Image as _Image  # noqa: PLC0415
+        orientation = int(_Image.open(_io.BytesIO(raw)).getexif().get(274, 1))
+    except Exception:  # noqa: BLE001
+        pass
     # EXIF 회전 태그를 픽셀에 적용 — Flutter 표시(태그 적용)와 서버 처리
     # (분류·CAM·빗금·누끼) 의 방향을 일치시킴.
-    return normalize_orientation(raw)
+    return normalize_orientation(raw), orientation
+
+
+async def _read_and_validate_image(image: UploadFile) -> bytes:
+    """공통 헬퍼 — 업로드 검증 + EXIF 정규화 bytes 반환."""
+    raw, _ = await _read_validate_with_orientation(image)
+    return raw
 
 
 @app.post("/predict", response_model=PredictionResponse, tags=["inference"])

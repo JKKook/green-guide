@@ -290,6 +290,45 @@ def cam_region_prior(
         return None
 
 
+def degs_for_orientation(tag: int) -> tuple[int, ...]:
+    """EXIF Orientation → 회전 TTA 후보 (청사진 v2 트랙 B2).
+
+    학습 크롭이 센서 방향이라, 세워진 서빙 입력의 유효 후보는
+    "원래 센서 방향으로 되돌린 회전"뿐이다. 태그가 방향을 알려줄 때만
+    (정방향, 되돌림) 2개로 축소하고, 태그 없음(tag=1)은 정보가 없으므로
+    전수 3방향 유지 — 실측: tag=1 을 1회로 줄이면 51장서 -3건 회귀.
+    """
+    return {6: (0, 90), 8: (0, 270), 3: (0, 180)}.get(tag, (0, 90, 270))
+
+
+def predict_rotations(
+    clf: HierWasteClassifier,
+    raw: bytes,
+    degs: tuple[int, ...],
+    mask_non_object: bool = True,
+) -> tuple[dict[str, Any], "np.ndarray"]:
+    """prior 없는 1차 패스 — 회전 후보 중 최고 확신 결과와 그 입력 텐서 반환.
+
+    호출부가 (조건부 OCR/CLIP/CAM) prior 를 계산한 뒤, 반환된 텐서 1장만
+    재예측하면 되므로 융합 비용이 TTA 전체 재실행에서 1회로 줄어든다 (트랙 B1).
+    """
+    from src.preprocess import color_tensor_rotations  # noqa: PLC0415
+
+    best: dict[str, Any] | None = None
+    best_tensor = None
+    total_ms = 0.0
+    for deg, ci in color_tensor_rotations(raw, degs):
+        r = clf.predict(ci, mask_non_object=mask_non_object)
+        total_ms += r["inference_ms"]
+        r["tta_rotation"] = deg
+        if best is None or r["fine_confidence"] > best["fine_confidence"]:
+            best = r
+            best_tensor = ci
+    assert best is not None and best_tensor is not None
+    best["inference_ms"] = round(total_ms, 2)
+    return best, best_tensor
+
+
 def predict_best_rotation(
     clf: HierWasteClassifier,
     raw: bytes,
