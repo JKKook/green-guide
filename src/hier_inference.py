@@ -131,8 +131,15 @@ class HierWasteClassifier:
         want_cam: bool = False,
         mask_non_object: bool = False,
         fine_prior: np.ndarray | None = None,
+        ood_relax: bool = False,
     ) -> dict[str, Any]:
         """(1,3,224,224) 입력 → 계층 예측 dict.
+
+        ood_relax: 탭-투-셀렉트 경로 True. 탭 크롭은 물체 외곽이 잘려 텍스처만
+        남기 쉬워 OOD 거리가 전체 장면 대비 크게 튄다 (실측 0.25→0.54, tau_hard
+        0.40 초과 → 과잉 하드 reject). 사용자가 지목했다 = '여기에 물체가 있다'
+        신호이므로 하드 reject 를 소프트 억제(대분류 표시)로 완화. non_object
+        최종 판정은 VLM 폴백이 담당.
 
         mask_non_object: Stage1 이진 게이트가 이미 '폐기물'로 판정한 경우 True.
         non_object 는 게이트와 모순되는 답이므로 로짓에서 제외 — 실사용 잡배경
@@ -178,7 +185,7 @@ class HierWasteClassifier:
             emb = emb / max(float(np.linalg.norm(emb)), 1e-9)
             ood_distance = float(1.0 - (self.ood_protos @ emb).max())
             ood_soft = ood_distance > self.ood_tau_soft
-            ood_reject = ood_distance > self.ood_tau_hard
+            ood_reject = (not ood_relax) and ood_distance > self.ood_tau_hard
         fine_probs = _softmax(logits)[0]                     # (C_fine,)
         if dino_probs is not None:
             w = self.dino_weight
@@ -309,6 +316,7 @@ def predict_rotations(
     raw: bytes,
     degs: tuple[int, ...],
     mask_non_object: bool = True,
+    ood_relax: bool = False,
 ) -> tuple[dict[str, Any], "np.ndarray"]:
     """prior 없는 1차 패스 — 회전 후보 중 최고 확신 결과와 그 입력 텐서 반환.
 
@@ -321,7 +329,7 @@ def predict_rotations(
     best_tensor = None
     total_ms = 0.0
     for deg, ci in color_tensor_rotations(raw, degs):
-        r = clf.predict(ci, mask_non_object=mask_non_object)
+        r = clf.predict(ci, mask_non_object=mask_non_object, ood_relax=ood_relax)
         total_ms += r["inference_ms"]
         r["tta_rotation"] = deg
         if best is None or r["fine_confidence"] > best["fine_confidence"]:

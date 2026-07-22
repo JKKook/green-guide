@@ -220,7 +220,7 @@ async def predict_hier(
     try:
         result, best_tensor = predict_rotations(
             clf, cropped_raw, degs_for_orientation(exif_tag),
-            mask_non_object=True)
+            mask_non_object=True, ood_relax=tap_x is not None)
     except ImageDecodeError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc),
@@ -270,7 +270,8 @@ async def predict_hier(
             print(f"[warn] cam region prior failed: {exc}")
 
     if prior is not None:
-        refined = clf.predict(best_tensor, mask_non_object=True, fine_prior=prior)
+        refined = clf.predict(best_tensor, mask_non_object=True, fine_prior=prior,
+                              ood_relax=tap_x is not None)
         refined["tta_rotation"] = result.get("tta_rotation", 0)
         refined["inference_ms"] = round(
             result["inference_ms"] + refined["inference_ms"], 2)
