@@ -283,7 +283,11 @@ async def predict_hier(
             from src.vlm_fallback import get_vlm_fallback  # noqa: PLC0415
             v = get_vlm_fallback().classify(
                 cropped_raw, clf.fine_labels, clf.taxonomy["fine_to_coarse"])
-            if v is not None and v["confidence"] >= 0.5:
+            # 과신 가드: 재질 교체는 강한 확신만 (0.8) — etc 잡동사니에 재질을
+            # 부여하는 오버라이드가 홀드아웃 실측서 4건 중 2건 오답이었음.
+            # non_object(재촬영 신호)는 0.5 유지 — 보수적 방향이라 저위험.
+            min_conf = 0.5 if (v and v["slug"] == "non_object") else                 float(os.getenv("VLM_MIN_CONF", "0.8"))
+            if v is not None and v["confidence"] >= min_conf:
                 slug = v["slug"]
                 coarse = clf.taxonomy["fine_to_coarse"].get(slug, slug)
                 if slug == "non_object":
