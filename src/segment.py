@@ -372,3 +372,60 @@ def all_component_bboxes(
 
     out.sort(key=lambda t: -t[0])
     return [bb for _, bb in out[:max_n]]
+
+
+def grabcut_object_at(
+    image_bytes: bytes, tap_x: float, tap_y: float, grid: int,
+    max_side: int = 480,
+) -> tuple[np.ndarray | None, list[float] | None]:
+    """탭 지점 물건의 GrabCut 전경 실루엣 → (grid×grid 점유, bbox_norm).
+
+    u2netp saliency 는 '시선 지도'라 책상 경계·이웃 물체까지 밝아져 탭 실루엣이
+    번지고(빗금 어긋남 리포트), 맞닿은 물체는 성분이 붙어버린다. GrabCut 은
+    탭 중심 창을 전경 후보로 색 모델을 학습해 물건 경계를 픽셀 수준으로 분리.
+    실패(전경 없음·탭이 배경 판정) 시 (None, None) — 호출부 saliency fallback.
+    """
+    import cv2  # noqa: PLC0415
+
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    w, h = img.size
+    scale = min(1.0, max_side / max(w, h))
+    sw, sh = max(1, int(w * scale)), max(1, int(h * scale))
+    arr = cv2.cvtColor(
+        np.array(img.resize((sw, sh), Image.BILINEAR)), cv2.COLOR_RGB2BGR)
+
+    half = int(0.35 * min(sw, sh))
+    cx, cy = int(tap_x * sw), int(tap_y * sh)
+    x0, y0 = max(0, cx - half), max(0, cy - half)
+    x1, y1 = min(sw, cx + half), min(sh, cy + half)
+    if x1 - x0 < 20 or y1 - y0 < 20:
+        return None, None
+    mask = np.zeros((sh, sw), np.uint8)
+    bgd = np.zeros((1, 65), np.float64)
+    fgd = np.zeros((1, 65), np.float64)
+    try:
+        cv2.grabCut(arr, mask, (x0, y0, x1 - x0, y1 - y0), bgd, fgd,
+                    4, cv2.GC_INIT_WITH_RECT)
+    except Exception:  # noqa: BLE001
+        return None, None
+    fg = ((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD)).astype(np.uint8)
+    if fg.sum() == 0:
+        return None, None
+
+    # 탭 픽셀 포함 연결 성분만 (이웃 물체 유입 차단)
+    _, lab = cv2.connectedComponents(fg)
+    ty, tx = min(sh - 1, cy), min(sw - 1, cx)
+    tl = lab[ty, tx]
+    if tl == 0:
+        ys, xs = np.nonzero(fg)
+        d2 = (xs - cx) ** 2 + (ys - cy) ** 2
+        i = int(d2.argmin())
+        if d2[i] > (0.06 * min(sw, sh)) ** 2:
+            return None, None  # 탭 근방에 전경 없음
+        tl = lab[ys[i], xs[i]]
+    comp = (lab == tl).astype(np.float32)
+    ys, xs = np.nonzero(comp)
+    bbox = [float(xs.min()) / sw, float(ys.min()) / sh,
+            float(xs.max() + 1) / sw, float(ys.max() + 1) / sh]
+    grid_occ = cv2.resize(comp, (grid, grid), interpolation=cv2.INTER_AREA)
+    return grid_occ.astype(np.float32), bbox

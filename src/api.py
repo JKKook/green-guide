@@ -629,6 +629,93 @@ def _auto_crop_to_object(raw: bytes, expand: float = 0.10) -> bytes:
         return raw
 
 
+def _tap_silhouette_regions(
+    cam_all, mask_grid, labels: list[str],
+    allowed_indices: list[int] | None,
+    tap_x: float, tap_y: float, grid_h: int, grid_w: int,
+    radius: int = 3,
+) -> list[dict]:
+    """탭 물건의 saliency 실루엣을 빗금 영역으로 (탭 경로 전용).
+
+    CAM argmax 셀은 '판별에 쓴 부위'만 밝혀 물건 형태와 어긋나고, 클래스별
+    묶음이라 이웃 물건의 같은 클래스 셀까지 섞임 → 빗금이 탭 지점과 달라 보임
+    (사용자 리포트). 대신: 탭 셀에서 saliency(점유≥0.35) 연결 성분을 그리드
+    flood-fill 로 잡고 탭 반경 radius 셀로 제한 — 빗금이 탭한 물건 실루엣을
+    따라감. 라벨은 그 셀들의 CAM argmax 를 클래스별로 묶어 부여 (≥2셀 클래스만
+    분리, 아니면 다수결 단일 영역 = 다중재질 표시 유지).
+    """
+    import numpy as _np  # noqa: PLC0415
+    from src.regions import _softmax0  # noqa: PLC0415
+
+    tr = min(grid_h - 1, max(0, int(tap_y * grid_h)))
+    tc = min(grid_w - 1, max(0, int(tap_x * grid_w)))
+    sal = mask_grid >= 0.35
+
+    # 시드: 탭 셀이 saliency 밖이면 반경 2 내 최근접 saliency 셀
+    seed = None
+    if sal[tr, tc]:
+        seed = (tr, tc)
+    else:
+        best_d = None
+        for r in range(max(0, tr - 2), min(grid_h, tr + 3)):
+            for c in range(max(0, tc - 2), min(grid_w, tc + 3)):
+                if sal[r, c]:
+                    d = max(abs(r - tr), abs(c - tc))
+                    if best_d is None or d < best_d:
+                        best_d, seed = d, (r, c)
+    if seed is None:
+        return []
+
+    # flood fill (4-이웃) + 탭 반경 제한
+    comp: list[tuple[int, int]] = []
+    seen = {seed}
+    stack = [seed]
+    while stack:
+        r, c = stack.pop()
+        comp.append((r, c))
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nr, nc = r + dr, c + dc
+            if (0 <= nr < grid_h and 0 <= nc < grid_w
+                    and (nr, nc) not in seen and sal[nr, nc]
+                    and max(abs(nr - tr), abs(nc - tc)) <= radius):
+                seen.add((nr, nc))
+                stack.append((nr, nc))
+    if not comp:
+        return []
+
+    # 셀 라벨: CAM argmax (재질 후보 제한)
+    if allowed_indices is not None:
+        masked = _np.full_like(cam_all, -1e9)
+        masked[allowed_indices] = cam_all[allowed_indices]
+        cam_all = masked
+    probs = _softmax0(cam_all)
+    cls = probs.argmax(axis=0)
+    conf = probs.max(axis=0)
+
+    by_class: dict[int, list[tuple[int, int]]] = {}
+    for (r, c) in comp:
+        by_class.setdefault(int(cls[r, c]), []).append((r, c))
+
+    def _mk(ci: int, cells: list[tuple[int, int]]) -> dict:
+        rs = [r for r, _ in cells]
+        cs = [c for _, c in cells]
+        return {
+            "class_index": ci,
+            "slug": labels[ci] if ci < len(labels) else "etc",
+            "cells": [[r, c] for r, c in cells],
+            "bbox_norm": [min(cs) / grid_w, min(rs) / grid_h,
+                          (max(cs) + 1) / grid_w, (max(rs) + 1) / grid_h],
+            "avg_conf": round(float(_np.mean([conf[r, c] for r, c in cells])), 3),
+        }
+
+    # 탭 경로는 실루엣 전체 = 단일 영역 (다수결 라벨) — CAM argmax 노이즈가
+    # 단일 물체를 유사-재질 조각으로 쪼개고 verify 가 조각을 떨궈 빗금이
+    # 누더기·부분 커버가 되는 문제 방지. (다중재질 분리 표시는 첫 분류의
+    # extract_regions 경로에 유지 — 탭의 목적은 '이 물건 선택' 피드백)
+    maj = max(by_class, key=lambda ci: len(by_class[ci]))
+    return [_mk(maj, comp)]
+
+
 def _verify_regions(raw: bytes, regions: list[dict], hier_clf,
                     ood_relax: bool = False) -> list[dict]:
     """CAM 제안 영역을 크롭 재분류로 확정 (zoom-and-verify, Stage 1-4).
@@ -690,12 +777,20 @@ def _crop_at_tap(raw: bytes, tap_x: float, tap_y: float,
     """
     import io  # noqa: PLC0415
     from PIL import Image  # noqa: PLC0415
-    from src.segment import component_bbox_at  # noqa: PLC0415
+    from src.segment import component_bbox_at, grabcut_object_at  # noqa: PLC0415
 
     try:
         img = Image.open(io.BytesIO(raw)).convert("RGB")
         w, h = img.size
-        bbox = component_bbox_at(raw, tap_x, tap_y)
+        # 1순위 GrabCut(픽셀 경계 실루엣) — 맞닿은 물체도 탭 물건만 크롭.
+        # 실패 시 saliency 성분 fallback.
+        bbox = None
+        try:
+            _, bbox = grabcut_object_at(raw, tap_x, tap_y, 14)
+        except Exception:  # noqa: BLE001
+            bbox = None
+        if bbox is None:
+            bbox = component_bbox_at(raw, tap_x, tap_y)
         if bbox is not None:
             x0, y0, x1, y1 = bbox
             # 파편 성분(하이라이트 조각 등) 보정 — 크롭 최소 변 35% 보장.
@@ -1103,7 +1198,22 @@ async def predict_with_regions(
             # 탭-투-셀렉트 재분석 — 탭한 성분 bbox 밖 셀을 마스킹해 빗금·영역
             # 추출을 그 물건에 집중 (좌표계는 원본 유지 → 오버레이 정합).
             # "마커는 이동하는데 빗금은 안 움직인다" 사용자 리포트의 처방.
+            tap_grabcut_ok = False
             if tap_x is not None and tap_y is not None:
+                try:
+                    # 1순위: GrabCut 전경 실루엣 — 탭한 물건의 픽셀 경계 점유.
+                    # saliency(시선 지도)는 책상 경계·이웃 물체까지 밝아 빗금이
+                    # 탭 지점과 어긋나던 문제의 처방.
+                    from src.segment import grabcut_object_at  # noqa: PLC0415
+                    gmask, gbox = grabcut_object_at(raw, tap_x, tap_y, grid_h)
+                    if gmask is not None and (gmask >= 0.35).sum() >= 1:
+                        mask_grid = gmask
+                        tap_grabcut_ok = True
+                        print(f"[tap-focus] grabcut bbox={[round(v,2) for v in gbox]} "
+                              f"cells={(gmask >= 0.35).sum()}")
+                except Exception as exc:  # noqa: BLE001
+                    print(f"[warn] tap grabcut failed: {exc}")
+            if tap_x is not None and tap_y is not None and not tap_grabcut_ok:
                 try:
                     from src.segment import component_bbox_at  # noqa: PLC0415
                     tb = component_bbox_at(raw, tap_x, tap_y)
@@ -1133,10 +1243,22 @@ async def predict_with_regions(
                     print(f"[tap-focus] bbox={[round(v,2) for v in tb]} grid=({r0}:{r1},{c0}:{c1})")
                 except Exception as exc:  # noqa: BLE001
                     print(f"[warn] tap focus mask failed: {exc}")
-            regions = extract_regions(cam, mask_grid, labels,
-                                      allowed_indices=allowed_indices)
-            if tap_x is not None:
-                print(f"[regions] extract={[(r['slug'], len(r['cells'])) for r in regions]}")
+            if tap_x is not None and tap_y is not None:
+                # 탭 경로: saliency 실루엣 기반 — 빗금이 탭한 물건 형태를 따라감
+                # GrabCut 실루엣은 이미 탭 물건 성분만이라 반경 제한 불필요;
+                # saliency fallback 은 번짐 방지 위해 반경 3 유지
+                regions = _tap_silhouette_regions(
+                    cam, mask_grid, labels, allowed_indices,
+                    tap_x, tap_y, grid_h, grid_w,
+                    radius=max(grid_h, grid_w) if tap_grabcut_ok else 3)
+                if not regions:  # 실루엣 실패 — 기존 CAM-argmax 방식 fallback
+                    regions = extract_regions(cam, mask_grid, labels,
+                                              allowed_indices=allowed_indices)
+                print(f"[regions] tap=({tap_x:.2f},{tap_y:.2f}) "
+                      f"extract={[(r['slug'], len(r['cells'])) for r in regions]}")
+            else:
+                regions = extract_regions(cam, mask_grid, labels,
+                                          allowed_indices=allowed_indices)
 
             # ── 영역 재검증 (Stage 1-4, zoom-and-verify) ────────────────
             # CAM 은 제안자, 분류기가 심판: 각 영역을 크롭해 풀 분류로 확정.
