@@ -997,6 +997,8 @@ async def predict_with_mask(
 )
 async def predict_with_regions(
     image: UploadFile = File(..., description="분류할 폐기물 이미지"),
+    tap_x: float | None = Form(default=None, ge=0.0, le=1.0),
+    tap_y: float | None = Form(default=None, ge=0.0, le=1.0),
 ) -> PredictionWithRegionsResponse:
     """`/predict` + 다중재질 영역 분석 (Cascade + CAM-argmax + u2netp + 손 제외).
 
@@ -1086,6 +1088,27 @@ async def predict_with_regions(
                 mask_grid = mask_grid * (1.0 - hand_grid).clip(0.0, 1.0)
             except Exception as exc:  # noqa: BLE001
                 print(f"[warn] hand mask grid failed: {exc}")
+
+            # 탭-투-셀렉트 재분석 — 탭한 성분 bbox 밖 셀을 마스킹해 빗금·영역
+            # 추출을 그 물건에 집중 (좌표계는 원본 유지 → 오버레이 정합).
+            # "마커는 이동하는데 빗금은 안 움직인다" 사용자 리포트의 처방.
+            if tap_x is not None and tap_y is not None:
+                try:
+                    from src.segment import component_bbox_at  # noqa: PLC0415
+                    tb = component_bbox_at(raw, tap_x, tap_y)
+                    if tb is None:
+                        s = 0.25  # 성분 미검출 — 탭 중심 50% 윈도우
+                        tb = [max(0.0, tap_x - s), max(0.0, tap_y - s),
+                              min(1.0, tap_x + s), min(1.0, tap_y + s)]
+                    import numpy as _np  # noqa: PLC0415
+                    focus = _np.zeros_like(mask_grid)
+                    r0 = max(0, int(tb[1] * grid_h)); r1 = min(grid_h, int(tb[3] * grid_h) + 1)
+                    c0 = max(0, int(tb[0] * grid_w)); c1 = min(grid_w, int(tb[2] * grid_w) + 1)
+                    focus[r0:r1, c0:c1] = 1.0
+                    mask_grid = mask_grid * focus
+                    print(f"[tap-focus] bbox={[round(v,2) for v in tb]} grid=({r0}:{r1},{c0}:{c1})")
+                except Exception as exc:  # noqa: BLE001
+                    print(f"[warn] tap focus mask failed: {exc}")
             regions = extract_regions(cam, mask_grid, labels,
                                       allowed_indices=allowed_indices)
 
