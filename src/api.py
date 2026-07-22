@@ -629,12 +629,15 @@ def _auto_crop_to_object(raw: bytes, expand: float = 0.10) -> bytes:
         return raw
 
 
-def _verify_regions(raw: bytes, regions: list[dict], hier_clf) -> list[dict]:
+def _verify_regions(raw: bytes, regions: list[dict], hier_clf,
+                    ood_relax: bool = False) -> list[dict]:
     """CAM 제안 영역을 크롭 재분류로 확정 (zoom-and-verify, Stage 1-4).
 
     - reject(불확신) 영역 → 폐기 (스퓨리어스 차단)
     - CAM slug 와 재분류 slug 불일치 → 재분류 결과 채택 (분류기가 심판)
     - avg_conf 는 재분류 확신으로 교체 (검증된 수치)
+    ood_relax: 탭-투-셀렉트 경로 True — 크롭은 OOD 거리가 튀어 하드 reject 로
+    영역이 전부 폐기되는 문제(빗금 미표시) 방지. 탭 없는 경로는 기존 가드 유지.
     """
     import io as _io  # noqa: PLC0415
     from PIL import Image as _Image  # noqa: PLC0415
@@ -657,7 +660,7 @@ def _verify_regions(raw: bytes, regions: list[dict], hier_clf) -> list[dict]:
         img.crop(box).save(buf, format="JPEG", quality=90)
         try:
             ci, _ = _pb(buf.getvalue())
-            r = hier_clf.predict(ci, mask_non_object=True)
+            r = hier_clf.predict(ci, mask_non_object=True, ood_relax=ood_relax)
         except Exception as exc:  # noqa: BLE001
             print(f"[warn] region verify failed: {exc}")
             verified.append(reg)
@@ -695,10 +698,17 @@ def _crop_at_tap(raw: bytes, tap_x: float, tap_y: float,
         bbox = component_bbox_at(raw, tap_x, tap_y)
         if bbox is not None:
             x0, y0, x1, y1 = bbox
+            # 파편 성분(하이라이트 조각 등) 보정 — 크롭 최소 변 35% 보장.
+            # 저대비 물체는 성분이 조각나 sliver 크롭이 되면 분류가 망가짐.
+            min_side = 0.35 * min(w, h)
+            cx, cy = (x0 + x1) / 2 * w, (y0 + y1) / 2 * h
+            bw, bh = max((x1 - x0) * w, min_side), max((y1 - y0) * h, min_side)
+            x0, y0 = (cx - bw / 2) / w, (cy - bh / 2) / h
+            x1, y1 = (cx + bw / 2) / w, (cy + bh / 2) / h
             px, py = (x1 - x0) * expand, (y1 - y0) * expand
             box = (max(0, int((x0 - px) * w)), max(0, int((y0 - py) * h)),
                    min(w, int((x1 + px) * w)), min(h, int((y1 + py) * h)))
-            region = list(bbox)
+            region = [max(0.0, x0), max(0.0, y0), min(1.0, x1), min(1.0, y1)]
         else:
             # window fallback: 탭 중심 정사각 (shortestSide 50%)
             side = int(min(w, h) * 0.5)
@@ -1101,23 +1111,47 @@ async def predict_with_regions(
                         s = 0.25  # 성분 미검출 — 탭 중심 50% 윈도우
                         tb = [max(0.0, tap_x - s), max(0.0, tap_y - s),
                               min(1.0, tap_x + s), min(1.0, tap_y + s)]
+                    else:
+                        # 성분이 파편(하이라이트 등)이면 최소 창 보장 — 저대비
+                        # 물체는 saliency 성분이 조각나 창이 셀 몇 개로 줄어듦
+                        _mh = 0.12
+                        _cx, _cy = (tb[0] + tb[2]) / 2, (tb[1] + tb[3]) / 2
+                        if tb[2] - tb[0] < 2 * _mh:
+                            tb[0], tb[2] = max(0.0, _cx - _mh), min(1.0, _cx + _mh)
+                        if tb[3] - tb[1] < 2 * _mh:
+                            tb[1], tb[3] = max(0.0, _cy - _mh), min(1.0, _cy + _mh)
                     import numpy as _np  # noqa: PLC0415
                     focus = _np.zeros_like(mask_grid)
                     r0 = max(0, int(tb[1] * grid_h)); r1 = min(grid_h, int(tb[3] * grid_h) + 1)
                     c0 = max(0, int(tb[0] * grid_w)); c1 = min(grid_w, int(tb[2] * grid_w) + 1)
                     focus[r0:r1, c0:c1] = 1.0
-                    mask_grid = mask_grid * focus
+                    # 탭 = 객체 존재 신호: 창 안 약한 saliency(≥0.12) 셀은 점유
+                    # 하한(0.35)을 보장 — 저대비 물체가 점유 필터에 전멸해 빗금이
+                    # 안 나오는 문제 방지. saliency 가 거의 없는 셀은 그대로 제외.
+                    mask_grid = _np.maximum(
+                        mask_grid, 0.35 * (mask_grid >= 0.12)) * focus
                     print(f"[tap-focus] bbox={[round(v,2) for v in tb]} grid=({r0}:{r1},{c0}:{c1})")
                 except Exception as exc:  # noqa: BLE001
                     print(f"[warn] tap focus mask failed: {exc}")
             regions = extract_regions(cam, mask_grid, labels,
                                       allowed_indices=allowed_indices)
+            if tap_x is not None:
+                print(f"[regions] extract={[(r['slug'], len(r['cells'])) for r in regions]}")
 
             # ── 영역 재검증 (Stage 1-4, zoom-and-verify) ────────────────
             # CAM 은 제안자, 분류기가 심판: 각 영역을 크롭해 풀 분류로 확정.
             # reject 영역은 폐기, 불일치 시 재분류 slug 채택.
             if hier_clf is not None and regions:
-                regions = _verify_regions(raw, regions, hier_clf)
+                pre_verify = regions
+                regions = _verify_regions(raw, regions, hier_clf,
+                                          ood_relax=tap_x is not None)
+                if tap_x is not None:
+                    print(f"[regions] verify={[(r['slug'], len(r['cells'])) for r in regions]}")
+                    # 탭 맥락 = 사용자가 지목한 물건 — 빗금(선택 피드백)이 우선.
+                    # 검증이 전멸시켜도 최상위 CAM 영역은 유지해 항상 표시.
+                    if not regions and pre_verify:
+                        regions = pre_verify[:1]
+                        print("[regions] verify 전멸 → 탭 최상위 영역 유지")
             if regions:
                 overlay_b64 = render_hatching(
                     raw, regions, grid_h, grid_w, ClassRegistry.color_map(),
