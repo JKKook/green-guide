@@ -18,6 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src ./src
 COPY main.py .
 COPY models ./models
+COPY design ./design
 
 # HF Spaces 기본 포트
 ENV PORT=7860
