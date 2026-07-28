@@ -110,6 +110,19 @@ def health() -> HealthResponse:
     return HealthResponse()
 
 
+@app.get("/design/tokens.json", tags=["meta"])
+def design_tokens() -> dict:
+    """디자인 토큰 (W3C Design Tokens draft) — 앱 실측값.
+
+    출처: waste_app app_theme.dart · confidence.dart · waste_info.dart.
+    디자인 도구(Figma Tokens/style-dictionary)·시안 문서가 URL 로 소비.
+    """
+    import json  # noqa: PLC0415
+    from pathlib import Path  # noqa: PLC0415
+    p = Path(__file__).resolve().parent.parent / "design" / "tokens.json"
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
 @app.get("/labels", response_model=LabelsResponse, tags=["meta"])
 def labels() -> LabelsResponse:
     """전체 클래스 목록 (학습된 것 + 신규 미학습) + 메타데이터."""
