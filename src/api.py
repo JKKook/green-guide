@@ -292,34 +292,69 @@ async def predict_hier(
 
     # ── VLM 폴백 (트랙 A2) — 융합 후에도 저확신이면 Claude 에 최종 판정 위임 ──
     # 키 미설정/한도초과/실패 시 자동 무시 (fail-open). 결과는 evidence 로 표면화.
-    if result["display_level"] == "reject" or result["coarse_confidence"] < 0.55:
+    # 증거-불일치 중재: 강한 CLIP 정체 증거(≥0.6)가 CNN 과 다른 대분류를
+    # 가리키면 확신도와 무관하게 중재 — 과확신 오답(confident-wrong)이 증거
+    # 칩과 모순된 채 그대로 노출되던 이격(실사용: 음식물 사진→의류 85.8%) 처방.
+    evidence_conflict = _evidence_conflicts(
+        evidence, result["coarse_class"], clf.taxonomy["fine_to_coarse"])
+    if evidence_conflict:
+        print(f"[vlm] 증거-불일치 중재 발동: CNN={result['coarse_class']}")
+    if (result["display_level"] == "reject"
+            or result["coarse_confidence"] < 0.55 or evidence_conflict):
         try:
             from src.vlm_fallback import get_vlm_fallback  # noqa: PLC0415
             v = get_vlm_fallback().classify(
                 cropped_raw, clf.fine_labels, clf.taxonomy["fine_to_coarse"])
-            # 과신 가드: 재질 교체는 강한 확신만 (0.8) — etc 잡동사니에 재질을
-            # 부여하는 오버라이드가 홀드아웃 실측서 4건 중 2건 오답이었음.
-            # non_object(재촬영 신호)는 0.5 유지 — 보수적 방향이라 저위험.
-            min_conf = 0.5 if (v and v["slug"] == "non_object") else                 float(os.getenv("VLM_MIN_CONF", "0.8"))
+            # 과신 가드 3단 — 재질 교체 0.8: etc 잡동사니에 재질을 부여하는
+            # 오버라이드가 홀드아웃 실측서 4건 중 2건 오답 / non_object 0.5:
+            # 재촬영 신호라 보수적 방향 / 품목 생성 0.6: 재질 필드 미변경
+            # + 스트림은 닫힌 목록이라 중위험.
+            if v is not None and v["slug"] is None:
+                min_conf = float(os.getenv("VLM_ITEM_MIN_CONF", "0.6"))
+            elif v is not None and v["slug"] == "non_object":
+                min_conf = 0.5
+            else:
+                min_conf = float(os.getenv("VLM_MIN_CONF", "0.8"))
             if v is not None and v["confidence"] >= min_conf:
                 slug = v["slug"]
-                coarse = clf.taxonomy["fine_to_coarse"].get(slug, slug)
-                if slug == "non_object":
-                    result["display_level"] = "reject"
-                    result["display_class"] = "non_object"
+                if slug is None:
+                    # 사전 밖 품목 생성 판정 — 재질 필드는 건드리지 않고
+                    # (기존 클라이언트 하위호환) 스트림 안내를 별도 표면화.
+                    from src.streams import to_api_dict  # noqa: PLC0415
+                    stream_info = to_api_dict(v["stream"])
+                    if stream_info is not None:
+                        result["generated_item"] = {
+                            "item_name": v["item_name"],
+                            "stream": stream_info,
+                            "condition": v["condition"],
+                            "confidence": v["confidence"],
+                        }
+                        result["model_arch"] = result["model_arch"] + "+vlm"
+                        evidence.append({
+                            "type": "vlm",
+                            "token": f'{v["item_name"]} → {stream_info["display_name"]}',
+                            "matched_text": v["reason"],
+                            "mapped_class": v["stream"],
+                            "score": v["confidence"],
+                        })
                 else:
-                    result["display_level"] = "fine" if slug != "etc" else "coarse"
-                    result["display_class"] = slug if slug != "etc" else "etc"
-                    result["fine_class"] = slug if slug != "etc" else None
-                    result["coarse_class"] = coarse
-                result["model_arch"] = result["model_arch"] + "+vlm"
-                evidence.append({
-                    "type": "vlm",
-                    "token": v["reason"] or "AI 정밀 분석",
-                    "matched_text": v["reason"],
-                    "mapped_class": slug,
-                    "score": v["confidence"],
-                })
+                    coarse = clf.taxonomy["fine_to_coarse"].get(slug, slug)
+                    if slug == "non_object":
+                        result["display_level"] = "reject"
+                        result["display_class"] = "non_object"
+                    else:
+                        result["display_level"] = "fine" if slug != "etc" else "coarse"
+                        result["display_class"] = slug if slug != "etc" else "etc"
+                        result["fine_class"] = slug if slug != "etc" else None
+                        result["coarse_class"] = coarse
+                    result["model_arch"] = result["model_arch"] + "+vlm"
+                    evidence.append({
+                        "type": "vlm",
+                        "token": v["reason"] or "AI 정밀 분석",
+                        "matched_text": v["reason"],
+                        "mapped_class": slug,
+                        "score": v["confidence"],
+                    })
         except Exception as exc:  # noqa: BLE001
             print(f"[warn] vlm fallback failed: {exc}")
     if evidence:
@@ -777,6 +812,29 @@ def _verify_regions(raw: bytes, regions: list[dict], hier_clf,
     # 재검증 후 같은 slug 로 수렴한 영역 병합은 하지 않음 — 시각적으로
     # 분리된 영역은 분리 표시가 자연스러움 (동일 slug 2개 = 같은 재질 2곳)
     return verified
+
+
+def _evidence_conflicts(
+    evidence: list[dict], coarse_class: str, fine_to_coarse: dict[str, str],
+    min_score: float = 0.6,
+) -> bool:
+    """강한 CLIP 정체 증거가 CNN 과 다른 대분류를 가리키는가.
+
+    과확신 오답(confident-wrong)이 증거 칩과 모순된 채 노출되던 이격의 검출자
+    — True 면 확신도와 무관하게 VLM 중재를 발동시킨다 (실사용 사례:
+    음식물 사진 → CNN 의류 85.8% 인데 정체 증거는 음식물).
+    identity(확률 0~1 스케일)만 대상 — OCR 계열 score 는 부스트 배수라 제외.
+    """
+    for ev in evidence:
+        if ev.get("type") != "identity":
+            continue
+        if float(ev.get("score", 0)) < min_score:
+            continue
+        mapped = ev.get("mapped_class")
+        ev_coarse = fine_to_coarse.get(mapped, mapped)
+        if ev_coarse and ev_coarse != coarse_class:
+            return True
+    return False
 
 
 def _crop_at_tap(raw: bytes, tap_x: float, tap_y: float,
