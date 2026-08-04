@@ -107,7 +107,14 @@ def root() -> ServiceInfo:
 
 @app.get("/health", response_model=HealthResponse, tags=["meta"])
 def health() -> HealthResponse:
-    return HealthResponse()
+    host = None
+    try:
+        from urllib.parse import urlparse  # noqa: PLC0415
+        u = os.getenv("SUPABASE_URL", "")
+        host = urlparse(u).hostname if u else None
+    except Exception:  # noqa: BLE001
+        host = None
+    return HealthResponse(supabase_host=host)
 
 
 @app.get("/design/tokens.json", tags=["meta"])

@@ -22,6 +22,8 @@ class ServiceInfo(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str = "ok"
+    # 진단용 — 어느 Supabase 프로젝트를 보는지 (호스트는 공개 정보, 키 아님)
+    supabase_host: str | None = None
 
 
 class LabelsResponse(BaseModel):
@@ -192,6 +194,29 @@ class PredictionHierResponse(BaseModel):
     evidence: list["EvidenceItem"] | None = Field(
         default=None,
         description="시맨틱 증거 — 이미지 텍스트에서 인식된 재질/정체 단서 (융합 반영됨)")
+    generated_item: "GeneratedItem | None" = Field(
+        default=None,
+        description="VLM 이 재질 taxonomy 밖에서 인식한 품목 — 재질 필드와 별개의 "
+                    "스트림 안내 (사전 밖 품목 자유 생성 + 닫힌 스트림)")
+
+
+class StreamInfo(BaseModel):
+    """배출 스트림(목적지) 안내 — src/streams.py 닫힌 목록의 한 항목."""
+
+    slug: str
+    display_name: str
+    summary: str
+    how_to: list[str]
+
+
+class GeneratedItem(BaseModel):
+    """VLM 자유 생성 품목 판정 (예: 소파 → 대형폐기물 신고)."""
+
+    item_name: str = Field(description="VLM 이 인식한 품목명 (자유 텍스트)")
+    stream: StreamInfo = Field(description="배출 스트림 안내 (닫힌 목록에서 선택됨)")
+    condition: str | None = Field(
+        default=None, description="안내가 갈리는 상태 조건 (재질·파손·오염 등)")
+    confidence: float
 
 
 class EvidenceItem(BaseModel):
