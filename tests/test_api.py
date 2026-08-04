@@ -19,7 +19,9 @@ def test_root_returns_service_info(client: TestClient) -> None:
 def test_health_returns_ok(client: TestClient) -> None:
     res = client.get("/health")
     assert res.status_code == 200
-    assert res.json() == {"status": "ok"}
+    body = res.json()
+    assert body["status"] == "ok"
+    assert "supabase_host" in body  # 진단 필드 (호스트는 공개 정보)
 
 
 def test_labels_returns_hierarchy(client: TestClient) -> None:
