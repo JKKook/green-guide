@@ -52,6 +52,65 @@ _EXT_BY_CT = {
 _LOCAL_DIR = Path(__file__).resolve().parent.parent / "local_feedback"
 
 
+_STORE_MAX_SIDE = 720
+_STORE_JPEG_QUALITY = 80
+
+
+def _recompress_for_storage(
+    image_bytes: bytes, content_type: str,
+) -> tuple[bytes, str]:
+    """저장용 재압축 — 긴 변 720px JPEG. 실패 시 원본 그대로 (fail-open)."""
+    try:
+        import io  # noqa: PLC0415
+        from PIL import Image, ImageOps  # noqa: PLC0415
+        img = Image.open(io.BytesIO(image_bytes))
+        img = ImageOps.exif_transpose(img).convert("RGB")
+        img.thumbnail((_STORE_MAX_SIDE, _STORE_MAX_SIDE), Image.BILINEAR)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=_STORE_JPEG_QUALITY)
+        out = buf.getvalue()
+        # 재압축이 오히려 커지는 극단 케이스(이미 작은 저화질)는 원본 유지
+        if len(out) < len(image_bytes):
+            return out, "image/jpeg"
+        return image_bytes, content_type
+    except Exception as exc:  # noqa: BLE001
+        print(f"[uploads] 재압축 실패(원본 저장): {str(exc)[:60]}")
+        return image_bytes, content_type
+
+
+def prune_stale_uploads(days: int = 7) -> int:
+    """피드백 없는 업로드를 N일 후 삭제 — 무료 쿼터 지속성 (수집 정책:
+    라벨 가치가 확정된 사진만 장기 보관, 나머지는 휘발).
+
+    대상: feedback_status 가 confirmed/corrected 가 아니고
+          uploaded_at < now - days 인 행 + 스토리지 파일.
+    반환: 삭제 건수. 실패는 개별 무시 (다음 주기 재시도).
+    """
+    from datetime import timedelta  # noqa: PLC0415
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    client = _client()
+    rows = (
+        client.table(_UPLOAD_TABLE)
+        .select("id,storage_path,feedback_status")
+        .lt("uploaded_at", cutoff)
+        .execute().data or [])
+    stale = [r for r in rows
+             if r.get("feedback_status") not in ("confirmed", "corrected")]
+    removed = 0
+    for r in stale:
+        try:
+            sp = r.get("storage_path")
+            if sp:
+                client.storage.from_(_UPLOAD_BUCKET).remove([sp])
+            client.table(_UPLOAD_TABLE).delete().eq("id", r["id"]).execute()
+            removed += 1
+        except Exception as exc:  # noqa: BLE001
+            print(f"[prune] {r.get('id')} 삭제 실패(무시): {str(exc)[:60]}")
+    if removed:
+        print(f"[prune] 피드백 없는 {days}일 경과 업로드 {removed}건 삭제")
+    return removed
+
+
 class UploadRecorder:
     """추론 결과를 user_uploads 에 기록하고 이미지를 Storage 에 업로드.
 
@@ -115,6 +174,10 @@ class UploadRecorder:
         prediction 은 inference.WasteClassifier.predict() 결과 dict.
         """
         upload_id = uuid.uuid4().hex[:16]
+        # 저장용 재압축 (무료 쿼터 지속성): 긴 변 720px·JPEG q80 → 장당
+        # ~220KB→~80KB. 재학습 입력(224/448)에 충분한 해상도.
+        image_bytes, content_type = _recompress_for_storage(
+            image_bytes, content_type)
         ext = _EXT_BY_CT.get(content_type, ".bin")
         label = prediction["predicted_class"]
         storage_path = f"{label}/{upload_id}{ext}"

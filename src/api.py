@@ -69,7 +69,26 @@ async def lifespan(app: FastAPI):
     dino = get_dinov2_classifier()
     print(f"[startup] dinov2 classifier: "
           f"{'ENABLED' if dino.available else 'disabled (model 없음)'}")
+
+    # 수집 정리 — 피드백 없는 업로드 7일 후 삭제 (무료 쿼터 지속성).
+    # 기동 직후 1회 + 24시간 주기. 실패해도 부팅·서빙 무영향.
+    async def _prune_loop() -> None:
+        import asyncio  # noqa: PLC0415
+        while True:
+            try:
+                from src.uploads import prune_stale_uploads  # noqa: PLC0415
+                await asyncio.to_thread(prune_stale_uploads, 7)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[prune][warn] 정리 실패(다음 주기 재시도): {str(exc)[:80]}")
+            await asyncio.sleep(24 * 3600)
+
+    prune_task = None
+    if config.COLLECT_USER_UPLOADS:
+        import asyncio  # noqa: PLC0415
+        prune_task = asyncio.create_task(_prune_loop())
     yield
+    if prune_task is not None:
+        prune_task.cancel()
     reset_classifier()
     reset_recorder()
 
