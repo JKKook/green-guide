@@ -52,14 +52,19 @@ _EXT_BY_CT = {
 _LOCAL_DIR = Path(__file__).resolve().parent.parent / "local_feedback"
 
 
-_STORE_MAX_SIDE = 720
-_STORE_JPEG_QUALITY = 80
+# 저장 포맷: WebP 640px q75 — JPEG 720 q80(~35KB) 대비 ~55% 절감(~15KB/장).
+# 재학습 입력(224~448px)에 충분한 해상도. 2026-08-29 전환, 기존 .jpg 행과 혼재 가능
+# (소비처는 storage_path 확장자를 그대로 따르므로 문제 없음).
+_STORE_MAX_SIDE = 640
+_STORE_FORMAT = "WEBP"
+_STORE_QUALITY = 75
+_STORE_CONTENT_TYPE = "image/webp"
 
 
 def _recompress_for_storage(
     image_bytes: bytes, content_type: str,
 ) -> tuple[bytes, str]:
-    """저장용 재압축 — 긴 변 720px JPEG. 실패 시 원본 그대로 (fail-open)."""
+    """저장용 재압축 — 긴 변 640px WebP q75. 실패 시 원본 그대로 (fail-open)."""
     try:
         import io  # noqa: PLC0415
         from PIL import Image, ImageOps  # noqa: PLC0415
@@ -67,11 +72,11 @@ def _recompress_for_storage(
         img = ImageOps.exif_transpose(img).convert("RGB")
         img.thumbnail((_STORE_MAX_SIDE, _STORE_MAX_SIDE), Image.BILINEAR)
         buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=_STORE_JPEG_QUALITY)
+        img.save(buf, format=_STORE_FORMAT, quality=_STORE_QUALITY, method=4)
         out = buf.getvalue()
         # 재압축이 오히려 커지는 극단 케이스(이미 작은 저화질)는 원본 유지
         if len(out) < len(image_bytes):
-            return out, "image/jpeg"
+            return out, _STORE_CONTENT_TYPE
         return image_bytes, content_type
     except Exception as exc:  # noqa: BLE001
         print(f"[uploads] 재압축 실패(원본 저장): {str(exc)[:60]}")
@@ -174,8 +179,8 @@ class UploadRecorder:
         prediction 은 inference.WasteClassifier.predict() 결과 dict.
         """
         upload_id = uuid.uuid4().hex[:16]
-        # 저장용 재압축 (무료 쿼터 지속성): 긴 변 720px·JPEG q80 → 장당
-        # ~220KB→~80KB. 재학습 입력(224/448)에 충분한 해상도.
+        # 저장용 재압축 (무료 쿼터 지속성): 긴 변 640px·WebP q75 → 장당
+        # ~220KB→~15KB. 재학습 입력(224/448)에 충분한 해상도.
         image_bytes, content_type = _recompress_for_storage(
             image_bytes, content_type)
         ext = _EXT_BY_CT.get(content_type, ".bin")
