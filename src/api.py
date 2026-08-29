@@ -1222,18 +1222,11 @@ async def predict_with_regions(
 
     if not is_waste:
         result = _force_non_object_result(f"stage1 waste_prob={waste_prob:.3f} < 0.50")
-        upload_id_n: str | None = None
-        if config.COLLECT_USER_UPLOADS:
-            try:
-                upload_id_n = get_recorder().record_prediction(
-                    image_bytes=raw_orig,
-                    content_type=image.content_type or "application/octet-stream",
-                    prediction=result,
-                )
-            except Exception as exc:  # noqa: BLE001
-                print(f"[warn] upload collection failed: {exc}")
+        # 업로드 기록 없음 — 앱은 같은 사진으로 /predict-hier 를 함께 호출하고
+        # 그쪽 upload_id 로 피드백한다. 여기서도 저장하면 분석 1회당 사진이
+        # 2장씩 쌓였음(2026-08-29 실기기 검증에서 확인).
         return PredictionWithRegionsResponse(
-            **result, upload_id=upload_id_n,
+            **result, upload_id=None,
             overlay_base64=None, regions=[], grid_h=0, grid_w=0,
         )
 
@@ -1394,17 +1387,9 @@ async def predict_with_regions(
         overlay_b64 = None
         grid_h = grid_w = 0
 
-    # upload 기록은 원본 이미지 (사용자 피드백·재학습 일관성)
+    # 업로드 기록 없음 — /predict-hier 가 같은 사진을 이미 저장·피드백 대상으로
+    # 삼는다(중복 저장 방지, 2026-08-29).
     upload_id: str | None = None
-    if config.COLLECT_USER_UPLOADS:
-        try:
-            upload_id = get_recorder().record_prediction(
-                image_bytes=raw_orig,
-                content_type=image.content_type or "application/octet-stream",
-                prediction=result,
-            )
-        except Exception as exc:  # noqa: BLE001
-            print(f"[warn] upload collection failed: {exc}")
 
     return PredictionWithRegionsResponse(
         **result,
