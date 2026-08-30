@@ -75,6 +75,32 @@ values
    '#9E9E9E', 'delete', true, true)
 on conflict (slug) do nothing;
 
+-- ── [0c] 13클래스 시대 추가분 시드 (대시보드 생성분 복원 — 008 의 parent 참조 대상) ──
+insert into public.waste_classes
+  (slug, sort_order, display_name, summary, bin, how_to, caution,
+   color_hex, icon_name, trained_in_model, active)
+values
+  ('vinyl', 55, '비닐류', '비닐봉지·포장 필름류는 비닐 수거함으로 배출합니다.',
+   '비닐 수거함',
+   '["이물질 없이 모아서 배출","오염된 비닐은 일반쓰레기"]'::jsonb,
+   '["음식물 묻은 비닐 혼입 시 전체 재활용 불가"]'::jsonb,
+   '#7E57C2', 'shopping_bag', true, true),
+  ('styrofoam', 58, '스티로폼', '흰색 스티로폼은 전용 수거함으로 배출합니다.',
+   '스티로폼 전용 수거함',
+   '["테이프·스티커·이물질 제거","흰색만 재활용 (색상·오염은 지역 규정 확인)"]'::jsonb,
+   '["오염 스티로폼은 일반쓰레기"]'::jsonb,
+   '#ECEFF1', 'inventory_2', true, true),
+  ('clothes', 70, '의류·원단', '옷·이불 등 원단류는 의류수거함으로 배출합니다.',
+   '의류수거함',
+   '["세탁 후 배출 권장","젖지 않게 배출"]'::jsonb,
+   '["오염·훼손 심한 원단은 일반쓰레기"]'::jsonb,
+   '#EC407A', 'checkroom', true, true),
+  ('food_waste', 75, '음식물쓰레기', '음식물은 물기를 제거하고 음식물 수거함으로 배출합니다.',
+   '음식물쓰레기 수거함/봉투',
+   '["물기 최대한 제거","이물질(비닐·이쑤시개) 혼입 금지"]'::jsonb,
+   '["뼈·조개껍데기·달걀껍질은 일반쓰레기"]'::jsonb,
+   '#8BC34A', 'restaurant', true, true)
+on conflict (slug) do nothing;
 
 
 -- ═══ 재생: 001_model_versions.sql ═══
