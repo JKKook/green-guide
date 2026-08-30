@@ -18,6 +18,7 @@ import torch
 from greenguide_common.taxonomy import FINE_LABELS
 
 from greenguide_classifier import config
+from greenguide_classifier.infer import load_session
 
 CLIP_NAME = "openai/clip-vit-base-patch32"
 OUT_DIR = config.MODELS_DIR / "clip"
@@ -177,8 +178,7 @@ def main() -> None:
     )
 
     # 등가성 검증
-    import onnxruntime as ort
-    sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
+    sess = load_session(onnx_path)
     x = np.random.default_rng(0).standard_normal((2, 3, 224, 224)).astype(np.float32)
     with torch.no_grad():
         ref = enc(torch.from_numpy(x)).numpy()

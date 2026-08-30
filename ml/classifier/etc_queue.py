@@ -40,6 +40,7 @@ from supabase import Client
 
 from greenguide_classifier import config
 from greenguide_classifier.dataset import load_manifest
+from greenguide_classifier.infer import softmax
 from greenguide_classifier.model import build_model
 from greenguide_classifier.train import model_kind, pick_device
 
@@ -111,14 +112,8 @@ def _embed_batch(
     emb = feat(x).flatten(1).cpu().numpy()
     emb = emb / (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-8)
     logits = model(x).cpu().numpy()
-    probs = _softmax_rows(logits)
+    probs = softmax(logits, axis=1)
     return emb, probs
-
-
-def _softmax_rows(logits: np.ndarray) -> np.ndarray:
-    z = logits - logits.max(axis=1, keepdims=True)
-    e = np.exp(z)
-    return e / e.sum(axis=1, keepdims=True)
 
 
 def _download_image(url: str) -> Image.Image | None:

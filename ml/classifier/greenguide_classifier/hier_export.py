@@ -14,7 +14,6 @@ from pathlib import Path
 
 import numpy as np
 import onnx
-import onnxruntime as ort
 import torch
 from greenguide_common.logging import get_logger
 from greenguide_common.taxonomy import (
@@ -27,6 +26,7 @@ from greenguide_common.taxonomy import (
 
 from greenguide_classifier import config
 from greenguide_classifier.hier_train import CKPT_DIR
+from greenguide_classifier.infer import load_session
 from greenguide_classifier.model import build_hier_cam_wrapper, build_hier_model
 
 log = get_logger(__name__)
@@ -88,7 +88,7 @@ def export_hier_onnx(opset: int = 17) -> Path:
     ).astype(np.float32)
     with torch.no_grad():
         torch_logits = export_model(torch.from_numpy(batch))[0].numpy()
-    sess = ort.InferenceSession(str(out_path), providers=["CPUExecutionProvider"])
+    sess = load_session(out_path)
     onnx_logits, onnx_cam, onnx_emb = sess.run(
         ["logits", "cam", "embedding"], {"image": batch},
     )

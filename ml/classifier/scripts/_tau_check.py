@@ -4,14 +4,14 @@
 
 import _base  # noqa: F401 — sys.path 설정
 import numpy as np
-import onnxruntime as ort
 
 from greenguide_classifier.hier_dataset import build_hier_items, load_or_build_hier_splits
+from greenguide_classifier.infer import load_session
 from scripts.build_hier_prototypes import ONNX_PATH, OOD_PATH, _extract_embeddings
 
 
 def main() -> None:
-    sess = ort.InferenceSession(str(ONNX_PATH), providers=["CPUExecutionProvider"])
+    sess = load_session(ONNX_PATH)
     P = np.load(OOD_PATH, allow_pickle=False)["prototypes"]
 
     items = build_hier_items()

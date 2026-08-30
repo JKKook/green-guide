@@ -25,6 +25,7 @@ from tqdm import tqdm
 from greenguide_classifier import config
 from greenguide_classifier.dataset import build_dataset, load_manifest
 from greenguide_classifier.frozen_test import build_splits
+from greenguide_classifier.infer import pick_device
 from greenguide_classifier.model import build_model, count_parameters
 from greenguide_classifier.split import load_splits, save_splits, subset_items
 
@@ -111,14 +112,6 @@ def set_seed(seed: int = config.RANDOM_SEED) -> None:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
-
-
-def pick_device() -> torch.device:
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
 
 
 def run_epoch(

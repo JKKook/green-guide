@@ -30,6 +30,8 @@ from _base import PREPROCESSOR_ROOT, RAW_DIR, make_parser
 from greenguide_common import imaging, settings
 from PIL import Image
 
+from greenguide_classifier.infer import load_session
+
 SYNTH_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "synthetic_indoor"
 AUX_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "_aux"
 U2NETP_PATH = settings.API_ROOT / "models" / "u2netp.onnx"
@@ -58,7 +60,7 @@ SYNTHESIS_AUGMENT = A.Compose([
 def load_u2netp() -> ort.InferenceSession:
     if not U2NETP_PATH.exists():
         sys.exit(f"u2netp 없음: {U2NETP_PATH}")
-    return ort.InferenceSession(str(U2NETP_PATH), providers=["CPUExecutionProvider"])
+    return load_session(U2NETP_PATH)
 
 
 def extract_alpha(sess: ort.InferenceSession, img: Image.Image) -> np.ndarray:

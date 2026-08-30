@@ -40,6 +40,8 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as T
 from transformers import AutoModel
 
+from greenguide_classifier.infer import pick_device
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 MANIFEST_PATH = PREPROCESSOR_ROOT / "data" / "processed" / "manifest.json"
@@ -258,7 +260,7 @@ def main() -> int:
     label_to_idx = {n: i for i, n in enumerate(label_names)}
     print(f"[main] {len(label_names)} classes: {label_names}")
 
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = pick_device()
     print(f"[main] device: {device}")
 
     # 1. Embedding 추출

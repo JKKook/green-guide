@@ -8,13 +8,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import onnxruntime as ort
 from greenguide_common.logging import get_logger
 from sklearn.metrics import precision_recall_fscore_support
 from torch.utils.data import DataLoader
 
 from greenguide_classifier import config
 from greenguide_classifier.dataset import build_dataset, load_manifest
+from greenguide_classifier.infer import load_session, softmax
 from greenguide_classifier.split import load_splits, subset_items
 
 log = get_logger(__name__)
@@ -24,15 +24,9 @@ COLOR_ONNX = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx"
 EDGE_ONNX = PROJECT_ROOT / "outputs" / "models" / "cnn_edge" / "classifier.onnx"
 
 
-def _softmax(logits):
-    shifted = logits - logits.max(axis=1, keepdims=True)
-    exp = np.exp(shifted)
-    return exp / exp.sum(axis=1, keepdims=True)
-
-
 def collect_probs():
-    sc = ort.InferenceSession(str(COLOR_ONNX), providers=["CPUExecutionProvider"])
-    se = ort.InferenceSession(str(EDGE_ONNX), providers=["CPUExecutionProvider"])
+    sc = load_session(COLOR_ONNX)
+    se = load_session(EDGE_ONNX)
     color_in, edge_in = sc.get_inputs()[0].name, se.get_inputs()[0].name
 
     items = load_manifest()
@@ -47,8 +41,8 @@ def collect_probs():
     for (xc, yc), (xe, _) in zip(color_loader, edge_loader):
         logits_c = sc.run(["logits"], {color_in: xc.numpy()})[0]
         logits_e = se.run(["logits"], {edge_in: xe.numpy()})[0]
-        color_probs.append(_softmax(logits_c))
-        edge_probs.append(_softmax(logits_e))
+        color_probs.append(softmax(logits_c, axis=1))
+        edge_probs.append(softmax(logits_e, axis=1))
         ys.append(yc.numpy())
     return (
         np.concatenate(ys),

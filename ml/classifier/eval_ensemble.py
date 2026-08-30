@@ -11,13 +11,13 @@ import json
 from pathlib import Path
 
 import numpy as np
-import onnxruntime as ort
 from greenguide_common.logging import get_logger
 from sklearn.metrics import precision_recall_fscore_support
 from torch.utils.data import DataLoader
 
 from greenguide_classifier import config
 from greenguide_classifier.dataset import build_dataset, load_manifest
+from greenguide_classifier.infer import load_session, softmax
 from greenguide_classifier.split import load_splits, subset_items
 
 log = get_logger(__name__)
@@ -27,18 +27,12 @@ COLOR_ONNX = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx"
 EDGE_ONNX = PROJECT_ROOT / "outputs" / "models" / "cnn_edge" / "classifier.onnx"
 
 
-def _softmax(logits: np.ndarray) -> np.ndarray:
-    shifted = logits - logits.max(axis=1, keepdims=True)
-    exp = np.exp(shifted)
-    return exp / exp.sum(axis=1, keepdims=True)
-
-
 def evaluate_ensemble():
     log.info(f"color model: {COLOR_ONNX}")
     log.info(f"edge  model: {EDGE_ONNX}")
 
-    sess_color = ort.InferenceSession(str(COLOR_ONNX), providers=["CPUExecutionProvider"])
-    sess_edge = ort.InferenceSession(str(EDGE_ONNX), providers=["CPUExecutionProvider"])
+    sess_color = load_session(COLOR_ONNX)
+    sess_edge = load_session(EDGE_ONNX)
     color_input = sess_color.get_inputs()[0].name
     edge_input = sess_edge.get_inputs()[0].name
 
@@ -62,8 +56,8 @@ def evaluate_ensemble():
         logits_c = sess_color.run(["logits"], {color_input: xc_np})[0]
         logits_e = sess_edge.run(["logits"], {edge_input: xe_np})[0]
 
-        probs_c = _softmax(logits_c)
-        probs_e = _softmax(logits_e)
+        probs_c = softmax(logits_c, axis=1)
+        probs_e = softmax(logits_e, axis=1)
         probs_avg = (probs_c + probs_e) / 2.0
 
         y_true.extend(yc.tolist())

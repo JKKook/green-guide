@@ -38,6 +38,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from greenguide_classifier import config
 from greenguide_classifier.hier_dataset import build_hier_items, load_or_build_hier_splits
+from greenguide_classifier.infer import load_session, pick_device, softmax
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -69,12 +70,6 @@ class _ImgSet(Dataset):
         x = torch.from_numpy(
             np.asarray(im, dtype=np.float32).transpose(2, 0, 1) / 255.0)
         return (x - self.MEAN) / self.STD, it["sup_idx"]
-
-
-def _device():
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
 
 
 def _subsample(items, splits, split_name, rng):
@@ -128,7 +123,7 @@ def main() -> None:
     torch.manual_seed(SEED)
 
     from transformers import AutoModel
-    device = _device()
+    device = pick_device()
     print(f"device={device}")
     # eager attention — torch 2.4 의 SDPA ONNX export 버그 회피
     dinov2 = AutoModel.from_pretrained(
@@ -181,21 +176,16 @@ def main() -> None:
     dino_acc = float((dino_logits.argmax(1) == Yte).mean())
     print(f"\nDINOv2 단독 fine acc(test): {dino_acc:.4f}")
 
-    import onnxruntime as ort
-    sess = ort.InferenceSession(
-        str(config.MODELS_DIR / "cnn_hier" / "classifier.onnx"),
-        providers=["CPUExecutionProvider"])
+    sess = load_session(config.MODELS_DIR / "cnn_hier" / "classifier.onnx")
     ld = DataLoader(_ImgSet(te), batch_size=64, num_workers=6)
     res_logits = []
     for x, _ in ld:
         (lg,) = sess.run(["logits"], {"image": x.numpy()})
         res_logits.append(lg)
     R = np.concatenate(res_logits)
-    def _sm(z):
-        e = np.exp(z - z.max(1, keepdims=True)); return e / e.sum(1, keepdims=True)
     res_acc = float((R.argmax(1) == Yte).mean())
     for wd in (0.3, 0.4, 0.5, 0.6):
-        ens = (1 - wd) * _sm(R) + wd * _sm(dino_logits)
+        ens = (1 - wd) * softmax(R, axis=1) + wd * softmax(dino_logits, axis=1)
         acc = float((ens.argmax(1) == Yte).mean())
         print(f"ResNet {res_acc:.4f} | 앙상블(w_dino={wd}): {acc:.4f}")
 
@@ -223,7 +213,7 @@ def main() -> None:
     x = torch.randn(2, 3, INPUT_SIZE, INPUT_SIZE)
     with torch.no_grad():
         t_out = comb(x).numpy()
-    s = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
+    s = load_session(onnx_path)
     (o_out,) = s.run(["logits"], {"image": x.numpy()})
     diff = float(np.abs(t_out - o_out).max())
     print(f"\nONNX export → {onnx_path} (diff {diff:.2e})")

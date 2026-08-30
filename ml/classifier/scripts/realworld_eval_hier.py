@@ -19,7 +19,6 @@ from collections import Counter
 
 import _base  # noqa: F401 — sys.path 설정
 import numpy as np
-import onnxruntime as ort
 import requests
 from greenguide_common import imaging
 from greenguide_common.taxonomy import (
@@ -34,6 +33,7 @@ from PIL import Image
 
 from greenguide_classifier import config
 from greenguide_classifier.hier_train import LOG_DIR
+from greenguide_classifier.infer import load_session, softmax
 from retrain import fetch_feedback_rows
 
 ONNX_PATH = config.MODELS_DIR / "cnn_hier" / "classifier.onnx"
@@ -62,7 +62,7 @@ def _truth_supervision(label: str) -> tuple[str, str] | None:
 
 
 def main() -> None:
-    sess = ort.InferenceSession(str(ONNX_PATH), providers=["CPUExecutionProvider"])
+    sess = load_session(ONNX_PATH)
     rows = fetch_feedback_rows()
     print(f"피드백 ground truth: {len(rows)}건")
 
@@ -93,8 +93,7 @@ def main() -> None:
         fi = int(logits[0].argmax())
         pred_fine = FINE_LABELS[fi]
         # coarse 롤업 (확률 합산 argmax)
-        e = np.exp(logits[0] - logits[0].max())
-        probs = e / e.sum()
+        probs = softmax(logits[0])
         coarse_probs = np.zeros(max(FINE_IDX_TO_COARSE_IDX) + 1)
         for f_idx, c_idx in enumerate(FINE_IDX_TO_COARSE_IDX):
             coarse_probs[c_idx] += probs[f_idx]
