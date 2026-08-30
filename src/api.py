@@ -33,11 +33,13 @@ from src.schemas import (
 from src.hand_detector import get_hand_detector
 from src.regions import extract_regions, render_hatching
 from src.segment import get_segmenter
-from src.services.image_io import auto_crop_to_object, crop_at_tap, read_and_validate_image, read_validate_with_orientation
+from src.services.cascade import (
+    ensemble_with_dinov2, force_non_object_result, non_object_gate, run_cascade, stage1_gate,
+)
+from src.services.image_io import crop_at_tap, read_and_validate_image, read_validate_with_orientation
 from src.services.recording import record_safely
 from src.services.regions_service import evidence_conflicts, tap_silhouette_regions, verify_regions
 from src.dinov2_classifier import get_dinov2_classifier
-from src.stage1_classifier import get_stage1_classifier
 from src.uploads import get_recorder
 from src.core.log import get_logger
 
@@ -219,20 +221,7 @@ async def predict_hier(
     # ─ 검증된 캐스케이드 방어선 재사용 (predict-centered 와 동일) ─
     # Stage 0: 손 dominance / Stage 1: waste 이진 게이트 — 실물 비폐기물
     # (손바닥·마우스 등) 이 confident-wrong 으로 통과하는 것을 차단.
-    forced_reason: str | None = None
-    try:
-        hand_area = get_hand_detector().hand_area_ratio(raw)
-        if hand_area >= 0.50:
-            forced_reason = f"hand area {hand_area:.2f} >= 0.50"
-    except Exception as exc:  # noqa: BLE001
-        log.warning(f"hand detection failed: {exc}")
-    if forced_reason is None:
-        try:
-            is_waste, waste_prob = get_stage1_classifier().predict(raw)
-            if not is_waste:
-                forced_reason = f"stage1 waste_prob={waste_prob:.3f} < 0.50"
-        except Exception as exc:  # noqa: BLE001
-            log.warning(f"stage1 failed: {exc}")  # fail-open
+    forced_reason = non_object_gate(raw)
 
     if forced_reason is not None:
         result = {
@@ -602,84 +591,6 @@ async def predict(
     return PredictionResponse(**result, upload_id=upload_id)
 
 
-def _ensemble_with_dinov2(
-    resnet_result: dict, raw: bytes, w_dino: float = 0.7,
-) -> dict:
-    """ResNet18 결과 + DINOv2 확률 weighted average.
-
-    ResNet18 이 OOD 입력 (예: 손 안의 객체) 에 confident-wrong 인 케이스를 보정.
-    DINOv2 가 더 robust 한 표현이라 더 큰 가중치 (0.7) 부여. DINOv2 가 없거나
-    실패하면 원본 resnet_result 그대로 반환.
-    """
-    dino_cls = get_dinov2_classifier()
-    if not dino_cls.available:
-        return resnet_result
-    dino_out = dino_cls.predict(raw)
-    if dino_out is None:
-        return resnet_result
-
-    resnet_probs = resnet_result.get("all_probabilities") or {}
-    dino_probs = dino_out["confidences"]
-
-    # 두 모델 라벨 union — non_object 가 ClassRegistry 에 없을 수 있어
-    # ClassRegistry 만 쓰면 누락. 학습 라벨(manifest) 이 정본.
-    all_labels = sorted(set(resnet_probs.keys()) | set(dino_probs.keys()))
-    fused = {}
-    for lbl in all_labels:
-        r = float(resnet_probs.get(lbl, 0.0))
-        d = float(dino_probs.get(lbl, 0.0))
-        fused[lbl] = (1.0 - w_dino) * r + w_dino * d
-
-    s = sum(fused.values())
-    if s > 0:
-        fused = {l: p / s for l, p in fused.items()}
-
-    top_label = max(fused, key=fused.get)
-    # predicted_index: ResNet 의 인덱스 체계 유지 (없으면 기존값)
-    reg_labels = list(ClassRegistry.all_slugs())
-    top_idx = (
-        reg_labels.index(top_label) if top_label in reg_labels
-        else resnet_result.get("predicted_index", 0)
-    )
-
-    return {
-        **resnet_result,
-        "predicted_class": top_label,
-        "predicted_index": top_idx,
-        "confidence": float(fused[top_label]),
-        "all_probabilities": fused,
-        "model_arch": f"{resnet_result.get('model_arch', '')}+dinov2-w{w_dino:.1f}",
-    }
-
-
-def _force_non_object_result(reason: str) -> dict:
-    """모델 호출 없이 non_object 결과 dict 반환 (손 지배 등 OOD 강제 분기).
-
-    [classifier.predict 와 동일 schema] — predicted_class/index/confidence/
-    all_probabilities/model_arch/inference_ms.
-    """
-    from src.classes import ClassRegistry  # noqa: PLC0415
-    labels = list(ClassRegistry.all_slugs())
-    probs = {l: 0.0 for l in labels}
-    if "non_object" in labels:
-        non_idx = labels.index("non_object")
-        probs["non_object"] = 1.0
-        cls = "non_object"
-    else:
-        # fallback — non_object 가 DB 에 없으면 etc 로
-        non_idx = labels.index("etc") if "etc" in labels else 0
-        probs[labels[non_idx]] = 1.0
-        cls = labels[non_idx]
-    return {
-        "predicted_class": cls,
-        "predicted_index": non_idx,
-        "confidence": 1.0,
-        "all_probabilities": probs,
-        "model_arch": f"hand-detected: {reason}",
-        "inference_ms": 0.0,
-    }
-
-
 @app.post("/predict-centered", response_model=PredictionResponse, tags=["inference"])
 async def predict_centered(
     image: UploadFile = File(..., description="분류할 폐기물 이미지 (객체 자동 크롭 후 분류)"),
@@ -692,48 +603,9 @@ async def predict_centered(
       Stage 2 (ResNet18 13-class): waste 면 정밀 분류
     """
     raw = await read_and_validate_image(image)
-
-    # ─ Stage 0: 손 dominance 체크 ──────────────────────
-    try:
-        hand_area = get_hand_detector().hand_area_ratio(raw)
-    except Exception as exc:  # noqa: BLE001
-        log.warning(f"hand detection failed: {exc}")
-        hand_area = 0.0
-
-    if hand_area >= 0.50:
-        result = _force_non_object_result(f"hand area {hand_area:.2f} >= 0.50")
-        upload_id = record_safely(raw, image, result)
-        return PredictionResponse(**result, upload_id=upload_id)
-
-    # ─ Stage 1: binary classifier — waste/non-waste 판정 ─
-    try:
-        is_waste, waste_prob = get_stage1_classifier().predict(raw)
-    except Exception as exc:  # noqa: BLE001
-        log.warning(f"stage1 failed: {exc}")
-        is_waste, waste_prob = True, 1.0   # fail-open: stage2 로 위임
-
-    if not is_waste:
-        result = _force_non_object_result(f"stage1 waste_prob={waste_prob:.3f} < 0.50")
-        upload_id = record_safely(raw, image, result)
-        return PredictionResponse(**result, upload_id=upload_id)
-
-    # ─ Stage 2: 자동 크롭 + 13-class 분류 ─────────────
-    cropped_raw = auto_crop_to_object(raw)
-
-    classifier = get_classifier()
-    color_input, edge_input = preprocess_both(cropped_raw)
-
-    result = classifier.predict(color_input, edge_input)
-
-    # ─ Stage 2.5: DINOv2 ensemble — confident-wrong 보정 ─
-    try:
-        result = _ensemble_with_dinov2(result, cropped_raw)
-    except Exception as exc:  # noqa: BLE001
-        log.warning(f"dinov2 ensemble failed: {exc}")
-
+    result = run_cascade(raw)
     # upload 기록 (원본 이미지 — 사용자 피드백·재학습은 원본 기준)
     upload_id = record_safely(raw, image, result)
-
     return PredictionResponse(**result, upload_id=upload_id)
 
 
@@ -835,14 +707,9 @@ async def predict_with_regions(
     raw_orig = await read_and_validate_image(image)
 
     # Stage 1: binary waste/non-waste 판정
-    try:
-        is_waste, waste_prob = get_stage1_classifier().predict(raw_orig)
-    except Exception as exc:  # noqa: BLE001
-        log.warning(f"stage1 failed: {exc}")
-        is_waste, waste_prob = True, 1.0
-
-    if not is_waste:
-        result = _force_non_object_result(f"stage1 waste_prob={waste_prob:.3f} < 0.50")
+    reason = stage1_gate(raw_orig)
+    if reason is not None:
+        result = force_non_object_result(reason)
         # 업로드 기록 없음 — 앱은 같은 사진으로 /predict-hier 를 함께 호출하고
         # 그쪽 upload_id 로 피드백한다. 여기서도 저장하면 분석 1회당 사진이
         # 2장씩 쌓였음(2026-08-29 실기기 검증에서 확인).
@@ -863,7 +730,7 @@ async def predict_with_regions(
 
     # DINOv2 ensemble — confident-wrong 보정 (regions 분석은 ResNet18 CAM 그대로)
     try:
-        result = _ensemble_with_dinov2(result, raw)
+        result = ensemble_with_dinov2(result, raw)
     except Exception as exc:  # noqa: BLE001
         log.warning(f"dinov2 ensemble failed: {exc}")
 
