@@ -26,7 +26,7 @@ import numpy as np
 import onnxruntime as ort
 from _base import make_parser
 from PIL import Image, ImageFilter
-from waste_common import imaging, settings
+from greenguide_common import imaging, settings
 
 STAGING_CROPS = settings.WASTE_ROOT / "ml" / "data" / "raw" / "aihub_71385" / "crops"
 BACKGROUNDS = (settings.PREPROCESSOR_ROOT / "data" / "raw"

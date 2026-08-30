@@ -1,4 +1,4 @@
-# waste-classifier 리팩토링 작업 가이드
+# greenguide-classifier 리팩토링 작업 가이드
 
 초점: **코드 품질 최적화 + 공통단(common layer) 구성**.
 동작 변경 없음(behavior-preserving)이 대전제 — 모델 정확도·산출물 경로·CLI 인터페이스는 리팩토링 전후 동일해야 한다.
@@ -11,11 +11,11 @@
 |---|---|---|
 | `sys.path.insert(...)` 경로 해킹 | 15 파일 | `scripts/*` 거의 전부, `retrain_hier.py` |
 | `ort.InferenceSession(x, providers=["CPUExecutionProvider"])` | 18 파일 / 25회 | `revalidate.py`, `eval_ensemble*.py`, `scripts/build_*`, `scripts/synthesize_*` |
-| ImageNet mean/std 상수 직접 기술 | 16 파일 | `src/dataset.py`, `src/ood.py`, `visualize_*.py`, `scripts/*` |
+| ImageNet mean/std 상수 직접 기술 | 16 파일 | `greenguide_classifier/dataset.py`, `greenguide_classifier/ood.py`, `visualize_*.py`, `scripts/*` |
 | `_softmax` 자체 구현 | 5곳 | `revalidate`, `eval_ensemble`, `eval_ensemble_weighted`, `etc_queue`, `visualize_multimaterial` |
 | `create_client(os.getenv("SUPABASE_URL"), ...)` | 8곳 | `retrain.py`(4회), `revalidate`, `realworld_eval`, `retrain_hier`, `etc_queue` |
 | PIL 이미지 로드/URL 다운로드 | 24 파일 | `etc_queue._download_image`, `scripts/integrate_taco.download_image` 등 |
-| device 선택(cuda/mps/cpu) | 7 파일 | `src/train.py`, `visualize_cam.py`, `scripts/build_dinov2_*` |
+| device 선택(cuda/mps/cpu) | 7 파일 | `greenguide_classifier/train.py`, `visualize_cam.py`, `scripts/build_dinov2_*` |
 | 진입점 스크립트 (각자 argparse) | 루트 13 + scripts/ 27 = 40개 | — |
 | 테스트 커버리지 | `src/` 5개 모듈만 (dataset/split/model/hierarchy) | 루트·scripts 는 0 |
 | git | **83 파일 untracked** | baseline 없음 |
@@ -63,7 +63,7 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 각 단계는 `[작업] → verify: [확인 방법]` 형식. 순서는 의존성 순.
 
 ### Phase 0 — Baseline & 도구 (0.5일) ✅ 2026-08-30 완료
-- [x] baseline 커밋 `634025c` — waste-classifier/ 디렉터리만(89 파일). monorepo 의 waste_app·waste-api·wiki 는 범위 밖이라 untracked 유지
+- [x] baseline 커밋 `634025c` — greenguide-classifier/ 디렉터리만(89 파일). monorepo 의 waste_app·waste-api·wiki 는 범위 밖이라 untracked 유지
 - [x] `pyproject.toml` + `pip install -e .` (`5cfc193`) — `scripts/__init__.py` 추가, ruff 규칙 `E,F,I,B,UP` (E501 은 ignore)
 - [x] `ruff --fix` 안전 수정 97건 적용 (147 → 50건 잔여). 잔여 50건 내역: E702 14 / B905 12 / E402 9(sys.path 해킹 → 2-1 에서 해소) / B007 6 / E741 5 / F841 3 / E701 1
 - [x] pytest 32 passed, **pyright 기준선: 205 errors, 9 warnings** (`pyright src scripts *.py tests`)
@@ -84,18 +84,18 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 - [x] `tests/test_golden_inference.py` + `tests/fixtures/golden_logits.json` — seed 고정 난수 입력 3장 → `cnn`(13 logits)·`cnn_hier`(25 logits) 출력 고정, `rtol/atol=1e-4`. 모델 파일 없으면 skip. 재생성 `python -m tests.test_golden_inference --update`
   (worktree 처럼 `outputs/` 가 없는 체크아웃은 `WASTE_GOLDEN_MODELS_DIR=<main tree>/ml/classifier/outputs/models` 지정)
 - [x] `_softmax` 5벌 비교 — 전부 max-shift 방식으로 수치 동일, 차이는 **축뿐**: 1-D(`revalidate`) / axis=1(`eval_ensemble*`, `etc_queue`) / axis=0(`visualize_multimaterial`) → `softmax(x, axis)` 하나로 대체 가능
-- [x] 전처리 상수 16곳 → waste_common 이관으로 이미 `waste_common.imaging` 1곳(0.485 grep 1건). 세부 옵션 차이는 이관 세션이 처리
-- [x] Supabase fake — `waste_common.supabase.get_client()` 로 이관됐으므로 conftest 에서 그 함수를 monkeypatch 하면 됨 (classifier 내 `create_client` 직접 호출 0건)
+- [x] 전처리 상수 16곳 → greenguide_common 이관으로 이미 `greenguide_common.imaging` 1곳(0.485 grep 1건). 세부 옵션 차이는 이관 세션이 처리
+- [x] Supabase fake — `greenguide_common.supabase.get_client()` 로 이관됐으므로 conftest 에서 그 함수를 monkeypatch 하면 됨 (classifier 내 `create_client` 직접 호출 0건)
 
 ### Phase 2 — 공통단 추출 (패턴당 1커밋)
 
-> 2026-08-30 갱신: `libs/waste-common`(settings·cli·imaging·supabase·logging·taxonomy) 이관이 preprocessor 세션에 의해 먼저 완료돼
-> 원래 2-1·2-3·2-4·2-5·2-7 은 해소됐다. `waste_common` 은 repo 범위(변경은 합의 필요)이므로, **classifier 전용 인프라는 `src/` 안에 둔다.**
+> 2026-08-30 갱신: `libs/greenguide-common`(settings·cli·imaging·supabase·logging·taxonomy) 이관이 preprocessor 세션에 의해 먼저 완료돼
+> 원래 2-1·2-3·2-4·2-5·2-7 은 해소됐다. `greenguide_common` 은 repo 범위(변경은 합의 필요)이므로, **classifier 전용 인프라는 `src/` 안에 둔다.**
 
 | 순서 | 패턴 | 현재 | 작업 | verify |
 |---|---|---|---|---|
-| 2-1 | ONNX 세션 + softmax | `InferenceSession(` 23회 / `_softmax` 5벌 | `src/infer.py`: `load_session(path)`, `softmax(x, axis=-1)` → 호출부 교체, 5벌 삭제 | golden 테스트 + `grep "def _softmax"` 0 |
-| 2-2 | device 선택 | 2곳 (`src/train.py`, `visualize_cam.py`) | `src/infer.py` `get_device()` 로 통합 | `src/train.py` smoke |
+| 2-1 | ONNX 세션 + softmax | `InferenceSession(` 23회 / `_softmax` 5벌 | `greenguide_classifier/infer.py`: `load_session(path)`, `softmax(x, axis=-1)` → 호출부 교체, 5벌 삭제 | golden 테스트 + `grep "def _softmax"` 0 |
+| 2-2 | device 선택 | 2곳 (`greenguide_classifier/train.py`, `visualize_cam.py`) | `greenguide_classifier/infer.py` `get_device()` 로 통합 | `greenguide_classifier/train.py` smoke |
 | 2-3 | `sys.path` | 10곳 (`scripts/_base.py` 방식) | **유지** — 이관 세션이 채택한 방식이고 `pip install -e .` 도 동작하므로 두 경로 모두 허용. E402 는 ruff `per-file-ignores` 로 scripts/ 한정 허용 | ruff 신규 위반 0 |
 | 2-4 | ruff 잔여 (E702 14 / B905 12 / B007 6 / E741 5 / F841 3) | 로직 접촉 필요 | 파일 단위로 나눠 처리, 커밋당 규칙 하나. B905 는 `strict=True` 가 아니라 **현행 동작 보존** 위해 `strict=False` 명시 | pytest + golden |
 
@@ -132,7 +132,7 @@ python tests/test_golden_inference.py                             # golden 일�
 ## 5. 하지 말 것
 
 - 공통화하면서 전처리 세부(resize 보간, crop)를 "통일" — 정확도가 바뀐다. 차이는 옵션으로 드러낸다.
-- `src/taxonomy.py`, `src/hier_*` 도메인 로직 손대기 — 이번 범위는 인프라 공통단.
+- `greenguide_classifier/taxonomy.py`, `greenguide_classifier/hier_*` 도메인 로직 손대기 — 이번 범위는 인프라 공통단.
 - 이름만 바꾸는 리네임, 스타일 통일 커밋을 기능 커밋과 섞기.
 - 스크립트 삭제 — 실험 재현성 때문에 archive 이동까지만.
 - 테스트 없는 상태에서 `retrain.py`(518줄, Supabase 4회 + 학습 + 업로드) 를 한 번에 쪼개기 — 2-5 에서 client 만 빼고, 함수 분리는 별도 작업.

@@ -7,7 +7,7 @@ import numpy as np
 import onnxruntime as ort
 
 from scripts.build_hier_prototypes import ONNX_PATH, OOD_PATH, _extract_embeddings
-from src.hier_dataset import build_hier_items, load_or_build_hier_splits
+from greenguide_classifier.hier_dataset import build_hier_items, load_or_build_hier_splits
 
 
 def main() -> None:

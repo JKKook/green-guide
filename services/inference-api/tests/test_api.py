@@ -1,6 +1,6 @@
 """API 엔드포인트 통합 테스트.
 
-실제 ONNX 모델을 로드하므로 waste-classifier 의 export 완료가 전제.
+실제 ONNX 모델을 로드하므로 greenguide-classifier 의 export 완료가 전제.
 """
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ def test_predict_with_real_cardboard_sample(
     """실제 cardboard 샘플은 cardboard 로 분류되어야 함 (CNN 92% 정확도 기준)."""
     if real_sample_image_bytes is None:
         import pytest
-        pytest.skip("waste-preprocessor의 실제 샘플 이미지 없음")
+        pytest.skip("greenguide-preprocessor의 실제 샘플 이미지 없음")
 
     res = client.post(
         "/predict",

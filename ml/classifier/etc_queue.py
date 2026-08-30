@@ -35,13 +35,13 @@ from PIL import Image
 from postgrest.types import CountMethod
 from sklearn.cluster import HDBSCAN
 from supabase import Client
-from waste_common import imaging
-from waste_common.logging import fail_open, get_logger
+from greenguide_common import imaging
+from greenguide_common.logging import fail_open, get_logger
 
-from src import config
-from src.dataset import load_manifest
-from src.model import build_model
-from src.train import model_kind, pick_device
+from greenguide_classifier import config
+from greenguide_classifier.dataset import load_manifest
+from greenguide_classifier.model import build_model
+from greenguide_classifier.train import model_kind, pick_device
 
 log = get_logger(__name__)
 
@@ -54,7 +54,7 @@ PROTO_SAMPLE_PER_CLASS = 40     # prototype 계산용 클래스당 샘플 수
 
 _PSEUDO_PREFIX = "etc_auto_"
 _IMG_SIZE = 224
-# ImageNet 정규화 — src/dataset.py 의 학습 transform 과 동일해야 함
+# ImageNet 정규화 — greenguide_classifier/dataset.py 의 학습 transform 과 동일해야 함
 _MEAN = imaging.MEAN_ARRAY
 _STD = imaging.STD_ARRAY
 
@@ -64,7 +64,7 @@ def is_pseudo_slug(slug: str) -> bool:
 
 
 def _supabase() -> Client:
-    from waste_common.supabase import get_client  # noqa: PLC0415
+    from greenguide_common.supabase import get_client  # noqa: PLC0415
 
     return get_client()
 

@@ -22,7 +22,7 @@ def sample_image_bytes() -> bytes:
 
 @pytest.fixture()
 def real_sample_image_bytes() -> bytes | None:
-    """waste-preprocessor의 실제 cardboard 샘플을 bytes 로 반환 (있으면)."""
+    """greenguide-preprocessor의 실제 cardboard 샘플을 bytes 로 반환 (있으면)."""
     candidate = (
         Path(__file__).resolve().parents[3]
         / "ml" / "preprocessor" / "data" / "raw" / "garbage-classification"
@@ -35,7 +35,7 @@ def real_sample_image_bytes() -> bytes | None:
 
 @pytest.fixture()
 def client() -> TestClient:
-    """TestClient — 실제 ONNX 모델 로드함 (waste-classifier 학습 완료가 전제)."""
+    """TestClient — 실제 ONNX 모델 로드함 (greenguide-classifier 학습 완료가 전제)."""
     from src.api import app
     with TestClient(app) as c:
         yield c

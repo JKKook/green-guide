@@ -22,10 +22,10 @@ import math
 from collections import Counter
 from datetime import UTC, datetime
 
-from waste_common.supabase import get_client
+from greenguide_common.supabase import get_client
 
 from retrain import MIN_SAMPLES_PER_CLASS
-from src import config
+from greenguide_classifier import config
 
 OUT_PATH = config.LOGS_DIR / "cnn" / "feedback_status.json"
 

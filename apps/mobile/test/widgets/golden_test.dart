@@ -7,9 +7,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waste_app/features/history/history_screen.dart';
-import 'package:waste_app/features/settings/settings_screen.dart';
-import 'package:waste_app/theme/app_theme.dart';
+import 'package:greenguide/features/history/history_screen.dart';
+import 'package:greenguide/features/settings/settings_screen.dart';
+import 'package:greenguide/theme/app_theme.dart';
 
 import '../helpers/test_env.dart';
 

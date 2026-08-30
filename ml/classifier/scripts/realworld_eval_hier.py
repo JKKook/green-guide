@@ -22,8 +22,8 @@ import numpy as np
 import onnxruntime as ort
 import requests
 from PIL import Image
-from waste_common import imaging
-from waste_common.taxonomy import (
+from greenguide_common import imaging
+from greenguide_common.taxonomy import (
     COARSE_TO_INDEX,
     FINE_IDX_TO_COARSE_IDX,
     FINE_LABELS,
@@ -33,8 +33,8 @@ from waste_common.taxonomy import (
 )
 
 from retrain import fetch_feedback_rows
-from src import config
-from src.hier_train import LOG_DIR
+from greenguide_classifier import config
+from greenguide_classifier.hier_train import LOG_DIR
 
 ONNX_PATH = config.MODELS_DIR / "cnn_hier" / "classifier.onnx"
 OUT_PATH = LOG_DIR / "realworld_eval.json"

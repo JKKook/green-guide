@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import torch
 
-from src.train import inverse_freq_weights
+from greenguide_classifier.train import inverse_freq_weights
 
 
 def test_matches_legacy_flat_weights() -> None:

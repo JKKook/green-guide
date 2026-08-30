@@ -1,4 +1,4 @@
-# waste_app (그린가이드 AI)
+# greenguide (그린가이드 AI)
 
 GreenGuide AI 의 네 번째 서브 프로젝트. 사용자가 폐기물 사진을 찍거나 갤러리에서 선택해 [`waste-api`](../waste-api) 로 보내면, 6-class 분류 결과와 함께 한국어 분리수거 상세 안내를 보여주는 Flutter 모바일 앱.
 
@@ -6,13 +6,13 @@ GreenGuide AI 의 네 번째 서브 프로젝트. 사용자가 폐기물 사진�
 [사용자]
    │  사진 촬영 또는 선택
    ▼
-[waste_app (Flutter)]                  ← 이 프로젝트
+[greenguide (Flutter)]                  ← 이 프로젝트
    │  POST /predict (multipart)
    ▼
 [waste-api (FastAPI + ONNX CNN)]
    │  분류 결과 JSON
    ▼
-[waste_app 결과 화면]
+[greenguide 결과 화면]
    - 클래스명 + 신뢰도
    - 한국어 분리수거 가이드
    - 전체 6개 클래스 확률 분포
@@ -40,10 +40,10 @@ GreenGuide AI 의 네 번째 서브 프로젝트. 사용자가 폐기물 사진�
 
 ```
 GreenGuide AI
-├── waste-preprocessor     (1) 수집·전처리·벡터화          완성
-├── waste-classifier       (2) 지도학습 분류기 + ONNX      완성 (CNN 92.35%)
+├── greenguide-preprocessor     (1) 수집·전처리·벡터화          완성
+├── greenguide-classifier       (2) 지도학습 분류기 + ONNX      완성 (CNN 92.35%)
 ├── waste-api              (3) HTTP 추론 서버              완성 (FastAPI)
-└── waste_app              (4) Flutter 모바일 클라이언트   현재
+└── greenguide              (4) Flutter 모바일 클라이언트   현재
 ```
 
 ---
@@ -121,7 +121,7 @@ SettingsScreen
 ### 2. 의존성 설치
 
 ```bash
-cd /Users/whdrnr01/ai/waste_app
+cd /Users/whdrnr01/ai/greenguide
 flutter pub get
 ```
 
@@ -234,7 +234,7 @@ cd /Users/whdrnr01/ai/waste-api
 현재는 개발용 임시값 사용. 정식 배포 전 변경 필요:
 
 ### 1. 패키지 이름 (Application ID)
-현재: `com.greenguide.waste_app`
+현재: `com.greenguide.greenguide`
 - `android/app/build.gradle.kts` 의 `applicationId` 확인
 - Google Play 에 한 번 등록되면 변경 불가능
 
@@ -279,7 +279,7 @@ flutter build appbundle --release
 | `CleartextNotPermitted` | HTTPS 강제 | `AndroidManifest.xml` 에 `android:usesCleartextTraffic="true"` 확인 |
 | 사진이 선택 안됨 | 권한 거부 | 안드로이드 설정 → 앱 → 권한 → 카메라/사진 허용 |
 | `RenderFlex overflowed` (테스트) | 화면 비례 안 맞음 | `SingleChildScrollView` 로 감싸기 (이미 적용됨) |
-| 분류가 자꾸 틀림 | 모델 정확도 92% 한계 | waste-classifier 의 CNN 개선 (data 증강·더 큰 모델) |
+| 분류가 자꾸 틀림 | 모델 정확도 92% 한계 | greenguide-classifier 의 CNN 개선 (data 증강·더 큰 모델) |
 
 ---
 
@@ -301,7 +301,7 @@ flutter build appbundle --release
 ## 프로젝트 구조
 
 ```
-waste_app/
+greenguide/
 ├── lib/
 │   ├── main.dart · app.dart
 │   ├── core/            # 공통단 — di/ ui/ feedback/ log.dart

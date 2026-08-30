@@ -15,9 +15,9 @@ from __future__ import annotations
 import _base  # noqa: F401 — sys.path 설정
 import numpy as np
 import torch
-from waste_common.taxonomy import FINE_LABELS
+from greenguide_common.taxonomy import FINE_LABELS
 
-from src import config
+from greenguide_classifier import config
 
 CLIP_NAME = "openai/clip-vit-base-patch32"
 OUT_DIR = config.MODELS_DIR / "clip"

@@ -11,4 +11,4 @@ select = ["E", "F", "I"]
 ignore = ["E501"]  # 줄 길이는 기준선 위반이 많아 제외
 
 [lint.isort]
-known-first-party = ["src", "waste_common"]
+known-first-party = ["src", "greenguide_common"]

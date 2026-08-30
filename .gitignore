@@ -42,3 +42,6 @@ data/
 .DS_Store
 *.swp
 *.log
+
+# 편집 가능 설치 산출물
+*.egg-info/

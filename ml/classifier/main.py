@@ -1,4 +1,4 @@
-"""waste-classifier CLI.
+"""greenguide-classifier CLI.
 
 사용 예:
     python main.py train --arch mlp
@@ -10,30 +10,30 @@ from __future__ import annotations
 
 import argparse
 
-from src import config
+from greenguide_classifier import config
 
 
 def cmd_train(arch: str) -> int:
-    from src.train import train
+    from greenguide_classifier.train import train
     train(arch=arch)
     return 0
 
 
 def cmd_evaluate(arch: str) -> int:
-    from src.evaluate import evaluate
+    from greenguide_classifier.evaluate import evaluate
     evaluate(arch=arch)
     return 0
 
 
 def cmd_visualize(arch: str) -> int:
-    from src.visualize import plot_confusion_matrix, plot_training_curves
+    from greenguide_classifier.visualize import plot_confusion_matrix, plot_training_curves
     plot_training_curves(arch=arch)
     plot_confusion_matrix(arch=arch)
     return 0
 
 
 def cmd_export(arch: str) -> int:
-    from src.export import export_onnx
+    from greenguide_classifier.export import export_onnx
     export_onnx(arch=arch)
     return 0
 
@@ -47,7 +47,7 @@ def cmd_all(arch: str) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="waste-classifier")
+    parser = argparse.ArgumentParser(prog="greenguide-classifier")
     parser.add_argument(
         "command",
         choices=["train", "evaluate", "visualize", "export", "all"],

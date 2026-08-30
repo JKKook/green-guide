@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from src.storage import SupabaseStore
+from greenguide_preprocessor.storage import SupabaseStore
 
 
 def _store() -> tuple[SupabaseStore, MagicMock]:

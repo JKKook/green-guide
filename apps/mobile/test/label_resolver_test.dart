@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waste_app/data/waste_info.dart';
+import 'package:greenguide/data/waste_info.dart';
 
 /// 피드백 "직접 입력" → 서버 라벨(slug) 해석.
 /// 서버 /feedback 은 등록된 slug 만 받으므로(그 외 400), 해석 결과가

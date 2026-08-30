@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src import config, pipeline
+from greenguide_preprocessor import config, pipeline
 
 
 def test_run_writes_manifest(fake_dataset: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

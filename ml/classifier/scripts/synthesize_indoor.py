@@ -28,7 +28,7 @@ import numpy as np
 import onnxruntime as ort
 from _base import PREPROCESSOR_ROOT, RAW_DIR, make_parser
 from PIL import Image
-from waste_common import imaging, settings
+from greenguide_common import imaging, settings
 
 SYNTH_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "synthetic_indoor"
 AUX_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "_aux"

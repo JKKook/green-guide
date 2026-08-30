@@ -6,8 +6,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src import config
-from src.vectorize import flatten, load_vector, save_vector
+from greenguide_preprocessor import config
+from greenguide_preprocessor.vectorize import flatten, load_vector, save_vector
 
 
 def test_flatten_produces_expected_dim() -> None:

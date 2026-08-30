@@ -14,11 +14,11 @@ green-guide/
 ├── services/
 │   └── inference-api/        FastAPI 추론 서버 — Hugging Face Spaces 배포, Supabase 연동
 ├── ml/                       모델 파이프라인
-│   ├── classifier/           학습·평가·ONNX 내보내기·발행 (src/·scripts/·tests/)
-│   ├── preprocessor/         데이터 수집·정제·벡터화 (src/·tests/)
+│   ├── classifier/           학습·평가·ONNX 내보내기·발행 (greenguide_classifier/·scripts/·tests/)
+│   ├── preprocessor/         데이터 수집·정제·벡터화 (greenguide_preprocessor/·tests/)
 │   └── data/raw/             AI-Hub·TACO·Open Images·합성 원본 (git 제외)
 ├── libs/
-│   └── waste-common/         공통 패키지 — 설정(경로)·taxonomy·이미지 전처리·Supabase·로깅
+│   └── greenguide-common/    공통 패키지 `greenguide_common` — 설정(경로)·taxonomy·이미지 전처리·Supabase·로깅
 ├── docs/                     설계 문서(plans/)·UI/UX 시안(design/)·모델 방법론·배포 체크리스트
 ├── wiki/                     프로젝트 지식 베이스 (llm-wiki)
 ├── bin/                      로컬 유틸 스크립트
@@ -29,15 +29,16 @@ green-guide/
 
 | 이전 | 현재 |
 | --- | --- |
-| `waste_app/` | `apps/mobile/` |
+| `waste_app/` (패키지 `waste_app`) | `apps/mobile/` (패키지 `greenguide`) |
 | `waste-api/` | `services/inference-api/` |
-| `waste-classifier/` | `ml/classifier/` |
-| `waste-preprocessor/` | `ml/preprocessor/` |
-| `waste-common/` | `libs/waste-common/` |
+| `waste-classifier/` (`src`) | `ml/classifier/` (`greenguide_classifier`) |
+| `waste-preprocessor/` (`src`) | `ml/preprocessor/` (`greenguide_preprocessor`) |
+| `waste-common/` (`waste_common`) | `libs/greenguide-common/` (`greenguide_common`) |
 | `*_staging/` | `ml/data/raw/<name>/` (git 제외) |
 
 다음 단계(선택): `ml/classifier`+`ml/preprocessor`를 `ml/src/greenguide_ml` 단일 패키지로 통합, `configs/`·`experiments/` 도입.
 
+네이밍: 폴더 `kebab-case`, import 패키지·파일 `snake_case`, 접두어 `greenguide` (CLAUDE.md 참고).
 학습 데이터·모델 가중치·`.env`·서명 키는 저장소에 포함하지 않습니다 (`.gitignore` 참고).
 
 ## 브랜치 전략

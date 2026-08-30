@@ -21,7 +21,7 @@ import numpy as np
 import onnxruntime as ort
 from _base import make_parser
 from PIL import Image, ImageFilter, ImageOps
-from waste_common import imaging, settings
+from greenguide_common import imaging, settings
 
 FINE_STAGING = settings.PREPROCESSOR_ROOT / "data" / "raw" / "fine-staging"
 REALWORLD_DIR = Path(

@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src import config
-from src.split import load_splits, save_splits, stratified_split
+from greenguide_classifier import config
+from greenguide_classifier.split import load_splits, save_splits, stratified_split
 
 
 def test_stratified_split_sizes(fake_dataset: tuple[list[dict], Path]) -> None:

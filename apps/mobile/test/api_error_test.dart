@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waste_app/api/api_client.dart';
+import 'package:greenguide/api/api_client.dart';
 
 /// 사용자에게 원시 예외 문자열이 노출되지 않아야 한다.
 void main() {

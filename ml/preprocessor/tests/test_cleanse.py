@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from src import config
-from src.cleanse import cleanse, is_corrupt
+from greenguide_preprocessor import config
+from greenguide_preprocessor.cleanse import cleanse, is_corrupt
 
 
 def test_is_corrupt(tmp_path: Path, sample_image: Path) -> None:

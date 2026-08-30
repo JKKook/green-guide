@@ -1,6 +1,6 @@
 # Lab: 학습 데이터가 모델까지 가는 길
 
-waste-classifier 의 학습 데이터가 어떤 형태로 만들어지고, 어떤 변환을 거쳐 **두 가지 모델(MLP / CNN)** 입력이 되는지를 **실제 값과 코드 위치**로 추적한 문서. 2026-05-17 실행 기준.
+greenguide-classifier 의 학습 데이터가 어떤 형태로 만들어지고, 어떤 변환을 거쳐 **두 가지 모델(MLP / CNN)** 입력이 되는지를 **실제 값과 코드 위치**로 추적한 문서. 2026-05-17 실행 기준.
 
 추적 대상 샘플 ID: `b2dfb128a3ad` (cardboard 클래스의 첫 번째 이미지)
 
@@ -10,10 +10,10 @@ waste-classifier 의 학습 데이터가 어떤 형태로 만들어지고, 어�
 
 ## 단계 0. 데이터의 출발점
 
-학습 데이터는 자매 프로젝트 **waste-preprocessor** 가 만들어 둔 산출물이다. waste-classifier 는 두 종류의 파일만 읽는다.
+학습 데이터는 자매 프로젝트 **greenguide-preprocessor** 가 만들어 둔 산출물이다. greenguide-classifier 는 두 종류의 파일만 읽는다.
 
 ```
-../waste-preprocessor/data/processed/
+../greenguide-preprocessor/data/processed/
 ├── manifest.json              <- 모든 메타데이터 (2,522 items)
 └── vectors/
     ├── b2dfb128a3ad.npz       <- 개별 이미지의 1D 벡터
@@ -21,9 +21,9 @@ waste-classifier 의 학습 데이터가 어떤 형태로 만들어지고, 어�
     └── ... (총 2,522개)
 ```
 
-**참조 코드**: [src/config.py:9-12](src/config.py#L9-L12)
+**참조 코드**: [greenguide_classifier/config.py:9-12](greenguide_classifier/config.py#L9-L12)
 ```python
-PREPROCESSOR_ROOT: Path = PROJECT_ROOT.parent / "waste-preprocessor"
+PREPROCESSOR_ROOT: Path = PROJECT_ROOT.parent / "greenguide-preprocessor"
 MANIFEST_PATH: Path = PREPROCESSOR_ROOT / "data" / "processed" / "manifest.json"
 VECTORS_DIR: Path = PREPROCESSOR_ROOT / "data" / "processed" / "vectors"
 ```
@@ -63,7 +63,7 @@ Supabase Postgres·Storage 에도 동일한 데이터의 사본이 있지만, **
 
 전체 manifest 는 다음과 같이 load 한다.
 
-**참조 코드**: [src/dataset.py:11-19](src/dataset.py#L11-L19)
+**참조 코드**: [greenguide_classifier/dataset.py:11-19](greenguide_classifier/dataset.py#L11-L19)
 ```python
 def load_manifest(path: Path | None = None) -> list[dict[str, Any]]:
     path = path if path is not None else config.MANIFEST_PATH
@@ -97,7 +97,7 @@ shape                     : (150528,)      = 224 × 224 × 3
 마지막 : [-0.4775, -0.6367, -0.1486, -0.4602, -0.6191]   <- 어두운 영역
 ```
 
-**참조 코드**: [src/dataset.py:33-37](src/dataset.py#L33-L37)
+**참조 코드**: [greenguide_classifier/dataset.py:33-37](greenguide_classifier/dataset.py#L33-L37)
 ```python
 def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
     item = self.items[idx]
@@ -126,7 +126,7 @@ def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
   └─ y: int, value 0 = "cardboard"
 ```
 
-**참조 코드**: [src/dataset.py:32-37](src/dataset.py#L32-L37)
+**참조 코드**: [greenguide_classifier/dataset.py:32-37](greenguide_classifier/dataset.py#L32-L37)
 
 ### 3b. CNN — `WasteImageDataset[0]`
 ```
@@ -142,7 +142,7 @@ def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
   5) torch.from_numpy(...)
 ```
 
-**참조 코드**: [src/dataset.py:50-64](src/dataset.py#L50-L64)
+**참조 코드**: [greenguide_classifier/dataset.py:50-64](greenguide_classifier/dataset.py#L50-L64)
 
 > CNN 도 같은 `.npz` 파일을 읽는다. 데이터는 동일하고 **모양만 바뀐다**. 테스트 `test_image_dataset_consistency_with_flatten` 가 이 등가성을 검증.
 
@@ -157,10 +157,10 @@ def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
 | 4 | plastic |
 | 5 | trash |
 
-**참조 코드**: [src/config.py:28-29](src/config.py#L28-L29). 라벨을 정수 인덱스로 바꾸는 이유: `nn.CrossEntropyLoss` 가 `int64` 타겟을 요구하기 때문.
+**참조 코드**: [greenguide_classifier/config.py:28-29](greenguide_classifier/config.py#L28-L29). 라벨을 정수 인덱스로 바꾸는 이유: `nn.CrossEntropyLoss` 가 `int64` 타겟을 요구하기 때문.
 
 ### Factory 함수 — `build_dataset(arch, items)`
-`arch` 문자열 ("mlp" / "cnn") 로 적절한 Dataset 인스턴스를 생성. **참조 코드**: [src/dataset.py:67-72](src/dataset.py#L67-L72)
+`arch` 문자열 ("mlp" / "cnn") 로 적절한 Dataset 인스턴스를 생성. **참조 코드**: [greenguide_classifier/dataset.py:67-72](greenguide_classifier/dataset.py#L67-L72)
 
 ---
 
@@ -184,7 +184,7 @@ def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
 }
 ```
 
-**참조 코드**: [src/split.py:18-43](src/split.py#L18-L43)
+**참조 코드**: [greenguide_classifier/split.py:18-43](greenguide_classifier/split.py#L18-L43)
 ```python
 def stratified_split(items, ratios=..., seed=42):
     # 1) train vs (val+test)
@@ -234,12 +234,12 @@ y_batch: shape (32,)
 
 > **왜 CNN 만 batch_size 가 작은가?** MLP 는 첫 Linear 의 weight matrix (38M params × 4 byte) 가 메모리의 대부분이라 activations 가 큰 batch 를 써도 부담 적음. CNN 은 conv layer 마다 큰 feature map (예: 64×112×112) 을 보존해야 해 batch 가 클수록 activation 메모리가 폭증. 실측 MPS GPU 메모리 한도에 맞춰 32 로 설정.
 
-**참조 코드**: [src/train.py:120-122](src/train.py#L120-L122)
+**참조 코드**: [greenguide_classifier/train.py:120-122](greenguide_classifier/train.py#L120-L122)
 ```python
 train_loader = DataLoader(train_ds, batch_size=hp.batch_size, shuffle=True, num_workers=0)
 val_loader = DataLoader(val_ds, batch_size=hp.batch_size, shuffle=False, num_workers=0)
 ```
-`hp.batch_size` 는 [src/train.py:42-58](src/train.py#L42-L58) 의 `get_hyperparams(arch)` 에서 결정.
+`hp.batch_size` 는 [greenguide_classifier/train.py:42-58](greenguide_classifier/train.py#L42-L58) 의 `get_hyperparams(arch)` 에서 결정.
 
 ---
 
@@ -264,7 +264,7 @@ Output : (64, 6) float32   <- 6개 클래스의 raw logits (softmax 안 됨)
 총 trainable parameters: 38,552,262
 ```
 
-**참조 코드**: [src/model.py:11-39](src/model.py#L11-L39)
+**참조 코드**: [greenguide_classifier/model.py:11-39](greenguide_classifier/model.py#L11-L39)
 
 ### 6b. CNN — WasteClassifierCNN
 ```
@@ -287,16 +287,16 @@ Output : (32, 6) float32
   - fc layer: 3,078
 ```
 
-**참조 코드**: [src/model.py:42-69](src/model.py#L42-L69)
+**참조 코드**: [greenguide_classifier/model.py:42-69](greenguide_classifier/model.py#L42-L69)
 
 > **핵심 차이**: MLP 가 38.5M params 인데도 CNN(11.2M) 보다 못한 이유는, MLP 의 거의 모든 params 가 **첫 Linear(150528→256)** 에 쏟아져 픽셀 위치별 weight 를 학습하는 데 소모되기 때문. CNN 의 Conv2d 는 **동일 weight 를 이미지 전체에 슬라이딩** 하면서 위치 불변 특징을 학습 — 파라미터 효율 압도적.
 
 ### 공통: build_model factory
 ```python
-from src.model import build_model
+from greenguide_classifier.model import build_model
 model = build_model("cnn")  # 또는 "mlp"
 ```
-**참조 코드**: [src/model.py:72-78](src/model.py#L72-L78)
+**참조 코드**: [greenguide_classifier/model.py:72-78](greenguide_classifier/model.py#L72-L78)
 
 logits 예시는 둘 다 같은 형태 — 가장 큰 값을 가진 인덱스가 모델의 예측 클래스.
 
@@ -353,7 +353,7 @@ optimizer.step()                        # gradient 의 반대 방향으로 가�
 
 Adam optimizer (lr=1e-4) 가 38.5M 개의 파라미터 각각에 대해 learning rate 와 momentum 을 적응적으로 조정.
 
-**참조 코드**: [src/train.py:65-71](src/train.py#L65-L71)
+**참조 코드**: [greenguide_classifier/train.py:65-71](greenguide_classifier/train.py#L65-L71)
 
 ---
 
@@ -411,7 +411,7 @@ import onnxruntime as ort
 
 sess = ort.InferenceSession("outputs/models/mlp/classifier.onnx")
 
-with np.load("../waste-preprocessor/data/processed/vectors/b2dfb128a3ad.npz") as data:
+with np.load("../greenguide-preprocessor/data/processed/vectors/b2dfb128a3ad.npz") as data:
     vec = data["vector"].astype(np.float32).reshape(1, 150528)
 
 logits = sess.run(["logits"], {"vector": vec})[0]          # (1, 6)
@@ -430,7 +430,7 @@ import onnxruntime as ort
 
 sess = ort.InferenceSession("outputs/models/cnn/classifier.onnx")
 
-with np.load("../waste-preprocessor/data/processed/vectors/b2dfb128a3ad.npz") as data:
+with np.load("../greenguide-preprocessor/data/processed/vectors/b2dfb128a3ad.npz") as data:
     vec = data["vector"].astype(np.float32)
     # 단계 3b 와 동일한 reshape
     hwc = vec.reshape(224, 224, 3)
@@ -479,7 +479,7 @@ manifest.json (2,522 items)
 ```bash
 # Dataset 한 개 샘플 보기
 .venv/bin/python -c "
-from src.dataset import WasteDataset, load_manifest
+from greenguide_classifier.dataset import WasteDataset, load_manifest
 items = load_manifest()
 ds = WasteDataset(items)
 x, y = ds[0]
@@ -489,7 +489,7 @@ print(f'item meta: {items[0][\"id\"]}, {items[0][\"label\"]}')
 
 # Split 결과 확인
 .venv/bin/python -c "
-from src.split import load_splits
+from greenguide_classifier.split import load_splits
 s = load_splits()
 print({k: len(v) for k, v in s.items()})
 "
@@ -497,8 +497,8 @@ print({k: len(v) for k, v in s.items()})
 # 한 batch 모양 확인
 .venv/bin/python -c "
 from torch.utils.data import DataLoader
-from src.dataset import WasteDataset, load_manifest
-from src.split import load_splits, subset_items
+from greenguide_classifier.dataset import WasteDataset, load_manifest
+from greenguide_classifier.split import load_splits, subset_items
 items = load_manifest()
 splits = load_splits()
 loader = DataLoader(WasteDataset(subset_items(items, splits['train'])),

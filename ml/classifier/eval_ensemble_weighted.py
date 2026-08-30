@@ -11,11 +11,11 @@ import numpy as np
 import onnxruntime as ort
 from sklearn.metrics import precision_recall_fscore_support
 from torch.utils.data import DataLoader
-from waste_common.logging import get_logger
+from greenguide_common.logging import get_logger
 
-from src import config
-from src.dataset import build_dataset, load_manifest
-from src.split import load_splits, subset_items
+from greenguide_classifier import config
+from greenguide_classifier.dataset import build_dataset, load_manifest
+from greenguide_classifier.split import load_splits, subset_items
 
 log = get_logger(__name__)
 

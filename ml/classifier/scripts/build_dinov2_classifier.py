@@ -38,7 +38,7 @@ from PIL import Image, ImageFile
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as T
 from transformers import AutoModel
-from waste_common import imaging
+from greenguide_common import imaging
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 

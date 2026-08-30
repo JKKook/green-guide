@@ -8,7 +8,7 @@
   - 처리 후 모든 임시 파일 즉시 삭제
   - per-class cap 도달 시 조기 종료
 
-사전: AIHUB_APIKEY 환경변수 (waste-preprocessor/.env).
+사전: AIHUB_APIKEY 환경변수 (greenguide-preprocessor/.env).
 
 사용:
     .venv/bin/python scripts/integrate_aihub.py \
@@ -46,7 +46,7 @@ from pathlib import Path
 
 from _base import RAW_DIR
 from PIL import Image
-from waste_common import settings
+from greenguide_common import settings
 
 STAGING = settings.WASTE_ROOT / "ml" / "data" / "raw" / "aihub"
 STAGING_140 = settings.WASTE_ROOT / "ml" / "data" / "raw" / "aihub_140"
@@ -55,10 +55,10 @@ IMG_EXT = (".jpg", ".jpeg", ".png")
 
 
 def _apikey() -> str:
-    import waste_common.settings  # noqa: F401,PLC0415 — .env 로드
+    import greenguide_common.settings  # noqa: F401,PLC0415 — .env 로드
     key = os.getenv("AIHUB_APIKEY")
     if not key:
-        sys.exit("ERROR: AIHUB_APIKEY 미설정 (waste-preprocessor/.env)")
+        sys.exit("ERROR: AIHUB_APIKEY 미설정 (greenguide-preprocessor/.env)")
     return key
 
 

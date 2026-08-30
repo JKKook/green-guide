@@ -4,8 +4,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from src import config
-from src.model import WasteClassifierCNN, WasteClassifierMLP, build_model, count_parameters
+from greenguide_classifier import config
+from greenguide_classifier.model import WasteClassifierCNN, WasteClassifierMLP, build_model, count_parameters
 
 # ───── MLP ─────
 

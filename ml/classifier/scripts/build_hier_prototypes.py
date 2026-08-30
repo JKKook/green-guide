@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """계층 모델용 임베딩 프로토타입 + OOD 임계 보정.
 
-src/ood.py 의 원칙(softmax 는 '최선'만, 임베딩 거리는 '닮았는가'를 봄)을
+greenguide_classifier/ood.py 의 원칙(softmax 는 '최선'만, 임베딩 거리는 '닮았는가'를 봄)을
 계층 ONNX(embedding 512d 출력)에 적용:
 
 1. train 의 fine-감독 아이템에서 클래스당 최대 CAP 장 샘플 → embedding 추출
@@ -21,8 +21,8 @@ import numpy as np
 import onnxruntime as ort
 from torch.utils.data import DataLoader
 
-from src import config
-from src.hier_dataset import (
+from greenguide_classifier import config
+from greenguide_classifier.hier_dataset import (
     HierImageDataset,
     build_hier_items,
     load_or_build_hier_splits,

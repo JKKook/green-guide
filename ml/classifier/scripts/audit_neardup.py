@@ -14,8 +14,8 @@ import _base  # noqa: F401 — sys.path 설정
 import imagehash
 from PIL import Image
 
-from src import config
-from src.hier_dataset import build_hier_items, load_or_build_hier_splits
+from greenguide_classifier import config
+from greenguide_classifier.hier_dataset import build_hier_items, load_or_build_hier_splits
 
 
 def phash(p: Path):

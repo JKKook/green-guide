@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 import torch
 
-from src import config
-from src.dataset import WasteImageDataset, build_dataset
+from greenguide_classifier import config
+from greenguide_classifier.dataset import WasteImageDataset, build_dataset
 
 
 def test_image_dataset_shape(fake_dataset: tuple[list[dict], Path]) -> None:

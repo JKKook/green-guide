@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from src import config
-from src.preprocess import (
+from greenguide_preprocessor import config
+from greenguide_preprocessor.preprocess import (
     image_stats,
     load_rgb,
     preprocess_image,

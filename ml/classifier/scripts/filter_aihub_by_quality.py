@@ -28,7 +28,7 @@ import numpy as np
 import onnxruntime as ort
 from _base import PROJECT_ROOT, RAW_DIR
 from PIL import Image
-from waste_common import imaging, settings
+from greenguide_common import imaging, settings
 
 U2NETP_PATH = settings.API_ROOT / "models" / "u2netp.onnx"
 CLASSIFIER_PATH = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx"
@@ -111,7 +111,7 @@ def load_classifier() -> tuple[ort.InferenceSession, list[str]]:
         sys.exit(f"classifier 없음: {CLASSIFIER_PATH}")
     sess = ort.InferenceSession(str(CLASSIFIER_PATH), providers=["CPUExecutionProvider"])
     # config 에서 라벨 순서 가져옴 (manifest 기반 — 학습과 동기)
-    from src import config  # noqa: PLC0415
+    from greenguide_classifier import config  # noqa: PLC0415
     config.refresh_classes_from_manifest()
     return sess, list(config.CLASS_LABELS)
 
@@ -414,7 +414,7 @@ def main() -> int:
                 dst = keep_dir / r["file"]
                 if dst.exists() or dst.is_symlink():
                     dst.unlink()
-                dst.symlink_to(src.resolve())
+                dst.symlink_to(greenguide_classifier.resolve())
         print(f"\n✓ {pass_count}장 심볼릭 링크 → {keep_dir}")
     else:
         print("\n(dry-run) --apply 없이 실행 — manifest 만 저장됨")

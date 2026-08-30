@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from src import config
+from greenguide_preprocessor import config
 
 
 @pytest.fixture()

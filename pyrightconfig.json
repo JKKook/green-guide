@@ -18,27 +18,27 @@
       "root": "ml/classifier",
       "extraPaths": [
         "ml/classifier",
-        "libs/waste-common"
+        "libs/greenguide-common"
       ]
     },
     {
       "root": "ml/preprocessor",
       "extraPaths": [
         "ml/preprocessor",
-        "libs/waste-common"
+        "libs/greenguide-common"
       ]
     },
     {
       "root": "services/inference-api",
       "extraPaths": [
         "services/inference-api",
-        "libs/waste-common"
+        "libs/greenguide-common"
       ]
     },
     {
-      "root": "libs/waste-common",
+      "root": "libs/greenguide-common",
       "extraPaths": [
-        "libs/waste-common"
+        "libs/greenguide-common"
       ]
     }
   ]

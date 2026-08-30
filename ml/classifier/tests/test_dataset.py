@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 import torch
 
-from src import config
-from src.dataset import WasteDataset, load_manifest
+from greenguide_classifier import config
+from greenguide_classifier.dataset import WasteDataset, load_manifest
 
 
 def test_load_manifest_missing_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

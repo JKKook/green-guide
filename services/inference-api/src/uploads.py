@@ -21,7 +21,7 @@ SUPABASE_KEY: str | None = config.__dict__.get("SUPABASE_KEY") or None
 
 
 def _client() -> Client:
-    """waste-classifier 의 .env 와 같은 Supabase 자격증명을 사용."""
+    """greenguide-classifier 의 .env 와 같은 Supabase 자격증명을 사용."""
     url, key = config.SUPABASE_URL, config.SUPABASE_KEY
     if not url or not key:
         raise RuntimeError(
