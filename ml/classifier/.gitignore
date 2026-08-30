@@ -31,3 +31,6 @@ data/splits/*.json
 .pytest_cache/
 .coverage
 htmlcov/
+
+# setuptools 산출물
+*.egg-info/
