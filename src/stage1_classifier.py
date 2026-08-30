@@ -16,7 +16,7 @@ import numpy as np
 import onnxruntime as ort
 from PIL import Image
 
-from src import config
+from src.core import config
 from src.core.log import get_logger
 
 log = get_logger(__name__)

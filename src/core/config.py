@@ -4,6 +4,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()  # 아래 os.getenv 전에 .env 반영 (이미 설정된 env 는 덮어쓰지 않음)
+
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 
@@ -100,3 +104,27 @@ def get_model_arch() -> str:
 
 def get_input_name(arch: str) -> str:
     return {"mlp": ONNX_INPUT_NAME_MLP, "cnn": ONNX_INPUT_NAME_CNN}[arch]
+
+
+# ── 외부 서비스 자격 ──
+SUPABASE_URL: str | None = os.getenv("SUPABASE_URL")
+SUPABASE_KEY: str | None = os.getenv("SUPABASE_KEY")
+ANTHROPIC_API_KEY: str | None = os.getenv("ANTHROPIC_API_KEY")
+
+# ── 계층 분류(hier) ──
+HIER_MODEL_PATH_ENV: str | None = os.getenv("WASTE_API_HIER_MODEL_PATH")
+DINO_WEIGHT: float = float(os.getenv("WASTE_API_DINO_W", "0"))       # 0 = DINOv2 앙상블 비활성
+CAM_PRIOR_WEIGHT: float = float(os.getenv("WASTE_API_CAM_W", "0.15"))
+
+# ── 증거 엔진 (CLIP 정체 / OCR) ──
+CLIP_ENABLED: bool = os.getenv("WASTE_API_CLIP", "1") != "0"
+CLIP_PRIOR_WEIGHT: float = float(os.getenv("WASTE_API_CLIP_W", "0.5"))
+CLIP_SCENE_WEIGHT: float = float(os.getenv("WASTE_API_CLIP_SCENE_W", "0.2"))
+OCR_ENABLED: bool = os.getenv("WASTE_API_OCR", "1") != "0"
+OCR_SKIP_CONFIDENCE: float = float(os.getenv("WASTE_API_OCR_SKIP_CONF", "0.75"))
+
+# ── VLM 폴백 ──
+VLM_MODEL: str = os.getenv("VLM_MODEL", "claude-haiku-4-5-20251001")
+VLM_DAILY_CAP: int = int(os.getenv("VLM_DAILY_CAP", "200"))
+VLM_MIN_CONF: float = float(os.getenv("VLM_MIN_CONF", "0.8"))            # fine 판정 채택 임계
+VLM_ITEM_MIN_CONF: float = float(os.getenv("VLM_ITEM_MIN_CONF", "0.6"))  # 품목 생성 채택 임계

@@ -11,12 +11,12 @@ crop 임베딩 × 컨셉 행렬 cosine → 정체 분포 → fine prior 승수.
 from __future__ import annotations
 
 import io
-import os
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from PIL import Image
+from src.core import config
 from src.core.log import get_logger
 
 log = get_logger(__name__)
@@ -31,8 +31,8 @@ _STD = np.array([0.26862954, 0.26130258, 0.27577711], dtype=np.float32).reshape(
 # prior 변환 파라미터 — 실사용 51장 스윕으로 결정.
 # 실측 교훈: 전체 장면 prior 는 역효과 (혼재 장면 center-crop 정체 오인) —
 # 부스트 전용 + 확신 임계 + 크롭 경로 한정으로 재설계.
-PRIOR_WEIGHT = float(os.getenv("WASTE_API_CLIP_W", "0.5"))
-SCENE_WEIGHT = float(os.getenv("WASTE_API_CLIP_SCENE_W", "0.2"))
+PRIOR_WEIGHT = config.CLIP_PRIOR_WEIGHT
+SCENE_WEIGHT = config.CLIP_SCENE_WEIGHT
 MIN_CONCEPT_PROB = 0.30     # 이 확신 미만의 정체는 노이즈로 보고 무시
 _RATIO_MAX = 8.0            # 우도비 상한 — 단일 신호의 폭주 방지
 
@@ -42,7 +42,7 @@ class ClipIdentity:
 
     def __init__(self) -> None:
         self.available = False
-        if os.getenv("WASTE_API_CLIP", "1") == "0":
+        if not config.CLIP_ENABLED:
             log.info("정체 인식 비활성 (WASTE_API_CLIP=0)")
             return
         onnx_path = _CLIP_DIR / "clip_image.onnx"

@@ -15,7 +15,7 @@ import io
 import numpy as np
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from src import config
+from src.core import config
 from src.core.log import get_logger
 
 log = get_logger(__name__)

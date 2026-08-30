@@ -15,7 +15,7 @@ import numpy as np
 import onnxruntime as ort
 from PIL import Image
 
-from src import config
+from src.core import config
 
 
 _U2NET_MEAN = (0.485, 0.456, 0.406)

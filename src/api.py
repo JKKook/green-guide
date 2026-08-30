@@ -1,13 +1,12 @@
 """FastAPI app 정의."""
 from __future__ import annotations
 
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from src import config
+from src.core import config
 from src.cam_renderer import render_overlay_png_base64
 from src.classes import ClassRegistry
 from src.inference import get_active_meta, get_classifier, reset_classifier
@@ -97,7 +96,7 @@ async def lifespan(app: FastAPI):
 
 
 # 트랙 B1 — 1차 확신이 이 값 이상이면 장면 경로 OCR 스킵 (운영 지연 -2~4s)
-OCR_SKIP_CONFIDENCE = float(os.getenv("WASTE_API_OCR_SKIP_CONF", "0.75"))
+OCR_SKIP_CONFIDENCE = config.OCR_SKIP_CONFIDENCE
 
 app = FastAPI(
     title=config.API_TITLE,
@@ -132,7 +131,7 @@ def health() -> HealthResponse:
     host = None
     try:
         from urllib.parse import urlparse  # noqa: PLC0415
-        u = os.getenv("SUPABASE_URL", "")
+        u = config.SUPABASE_URL or ""
         host = urlparse(u).hostname if u else None
     except Exception:  # noqa: BLE001
         host = None
@@ -339,11 +338,11 @@ async def predict_hier(
             # 재촬영 신호라 보수적 방향 / 품목 생성 0.6: 재질 필드 미변경
             # + 스트림은 닫힌 목록이라 중위험.
             if v is not None and v["slug"] is None:
-                min_conf = float(os.getenv("VLM_ITEM_MIN_CONF", "0.6"))
+                min_conf = config.VLM_ITEM_MIN_CONF
             elif v is not None and v["slug"] == "non_object":
                 min_conf = 0.5
             else:
-                min_conf = float(os.getenv("VLM_MIN_CONF", "0.8"))
+                min_conf = config.VLM_MIN_CONF
             if v is not None and v["confidence"] >= min_conf:
                 slug = v["slug"]
                 if slug is None:

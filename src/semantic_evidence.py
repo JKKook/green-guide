@@ -12,13 +12,13 @@ SEMANTIC_FUSION_PLAN.md 신호① 구현. VLM 이 약통/화장품을 구분하�
 from __future__ import annotations
 
 import io
-import os
 import re
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from PIL import Image
+from src.core import config
 from src.core.log import get_logger
 
 log = get_logger(__name__)
@@ -114,7 +114,7 @@ class SemanticEvidence:
     def __init__(self) -> None:
         self.available = False
         self._ocr = None
-        if os.getenv("WASTE_API_OCR", "1") == "0":
+        if not config.OCR_ENABLED:
             log.info("OCR 비활성 (WASTE_API_OCR=0)")
             return
         det = _OCR_DIR / "det.onnx"

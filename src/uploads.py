@@ -9,7 +9,7 @@ from typing import Any
 
 from supabase import Client, create_client
 
-from src import config
+from src.core import config
 from src.core.log import get_logger
 
 log = get_logger(__name__)
@@ -21,13 +21,7 @@ SUPABASE_KEY: str | None = config.__dict__.get("SUPABASE_KEY") or None
 
 def _client() -> Client:
     """waste-classifier 의 .env 와 같은 Supabase 자격증명을 사용."""
-    import os
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY")
+    url, key = config.SUPABASE_URL, config.SUPABASE_KEY
     if not url or not key:
         raise RuntimeError(
             "SUPABASE_URL / SUPABASE_KEY 가 설정되지 않음. .env 파일을 확인하세요."

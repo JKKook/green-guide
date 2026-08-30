@@ -14,7 +14,6 @@ DB 없이도 계층 응답이 가능하다.
 from __future__ import annotations
 
 import json
-import os
 import time
 from pathlib import Path
 from typing import Any
@@ -23,12 +22,13 @@ import numpy as np
 import onnxruntime as ort
 
 from src.inference import _softmax
+from src.core import config
 from src.core.log import get_logger
 
 log = get_logger(__name__)
 
 # 모델 경로 해석: env → 번들 → 자매 레포 (기존 config.MODEL_PATH 관례와 동일)
-_ENV_PATH = os.getenv("WASTE_API_HIER_MODEL_PATH")
+_ENV_PATH = config.HIER_MODEL_PATH_ENV
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _CANDIDATES = [
     Path(_ENV_PATH) if _ENV_PATH else None,
@@ -75,7 +75,7 @@ class HierWasteClassifier:
         # 오염 표본 암기 효과). 원칙 "실측 이득 없으면 제거" — 추론 ~2× 단축.
         # 재활성: env WASTE_API_DINO_W=0.3 (홀드아웃 커지면 트랙 A3 재스윕)
         self.dino_session: ort.InferenceSession | None = None
-        self.dino_weight = float(os.getenv("WASTE_API_DINO_W", "0"))
+        self.dino_weight = config.DINO_WEIGHT
         if self.dino_weight > 0:
             for cand in (model_path.parent / "dinov2_hier.onnx",
                          Path(__file__).resolve().parent.parent / "models" / "dinov2_hier.onnx"):
@@ -253,7 +253,7 @@ class HierWasteClassifier:
 
 # 탭 경로 CAM 융합 가중 — 실사용 51장(크롭 대리) 실측: 0.15 는 무해(29 유지),
 # 0.2+ 부터 자기강화로 -1~-4. 같은 CNN 파생 신호라 보조 역할에 한정 (env 조정 가능).
-CAM_PRIOR_WEIGHT = float(os.getenv("WASTE_API_CAM_W", "0.15"))
+CAM_PRIOR_WEIGHT = config.CAM_PRIOR_WEIGHT
 
 
 def cam_region_prior(

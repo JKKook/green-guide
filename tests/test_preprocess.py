@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from src import config
+from src.core import config
 from src.preprocess import (
     ImageDecodeError,
     decode_image,

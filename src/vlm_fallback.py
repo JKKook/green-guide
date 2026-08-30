@@ -13,7 +13,6 @@ from __future__ import annotations
 import base64
 import io
 import json
-import os
 import time
 from datetime import date
 from pathlib import Path
@@ -22,6 +21,7 @@ from typing import Any
 from PIL import Image
 
 from src.streams import is_valid_stream, prompt_lines
+from src.core import config
 from src.core.log import get_logger
 
 log = get_logger(__name__)
@@ -32,8 +32,8 @@ _LOG_PATH = _PROJECT_ROOT / "local_feedback" / "vlm_labels.jsonl"
 # 사전 밖 생성 품목 후보 큐 — 빈도 상위가 품목 사전/CLIP 컨셉 승격 우선순위
 _CANDIDATES_PATH = _PROJECT_ROOT / "local_feedback" / "item_candidates.jsonl"
 
-MODEL = os.getenv("VLM_MODEL", "claude-haiku-4-5-20251001")
-DAILY_CAP = int(os.getenv("VLM_DAILY_CAP", "200"))
+MODEL = config.VLM_MODEL
+DAILY_CAP = config.VLM_DAILY_CAP
 MAX_SIDE = 768
 
 
@@ -43,7 +43,7 @@ class VlmFallback:
     def __init__(self) -> None:
         self.available = False
         self._client = None
-        key = os.getenv("ANTHROPIC_API_KEY")
+        key = config.ANTHROPIC_API_KEY
         if not key:
             log.info("ANTHROPIC_API_KEY 미설정 — 폴백 비활성")
             return

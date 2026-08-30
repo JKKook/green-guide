@@ -11,14 +11,13 @@ waste-api 는 항상 부팅 가능해야 함 (오프라인/초기 상태 대응)
 from __future__ import annotations
 
 import hashlib
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import httpx
 
-from src import config
+from src.core import config
 from src.core.log import get_logger
 
 log = get_logger(__name__)
@@ -64,12 +63,9 @@ def _supabase_client():
     """Supabase client (없거나 env 미설정 시 None — fallback 트리거)."""
     try:
         from supabase import create_client
-        from dotenv import load_dotenv
     except Exception:  # noqa: BLE001
         return None
-    load_dotenv()
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY")
+    url, key = config.SUPABASE_URL, config.SUPABASE_KEY
     if not url or not key:
         return None
     try:
