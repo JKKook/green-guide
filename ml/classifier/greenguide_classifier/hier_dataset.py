@@ -148,7 +148,7 @@ def build_hier_splits(items: list[dict[str, Any]]) -> dict[str, list[int]]:
     frozen_all = legacy_frozen | hier_frozen
     # frozen 멤버를 포함한 그룹 전체 → test 강제 (train 누수 차단)
     group_forced_test: set[int] = set()
-    for g, members in group_members.items():
+    for _g, members in group_members.items():
         if any(items[i]["source_path"] in frozen_all for i in members):
             group_forced_test.update(members)
 
@@ -217,7 +217,7 @@ def build_hier_splits(items: list[dict[str, Any]]) -> dict[str, list[int]]:
     train_idx: list[int] = []
     val_idx: list[int] = []
     val_frac = SPLIT_RATIOS["val"] / (SPLIT_RATIOS["train"] + SPLIT_RATIOS["val"])
-    for key, pool in pool_by_class.items():
+    for _key, pool in pool_by_class.items():
         units = _group_units(pool)
         rng.shuffle(units)
         n_val_target = int(len(pool) * val_frac) if len(pool) >= 4 else 0

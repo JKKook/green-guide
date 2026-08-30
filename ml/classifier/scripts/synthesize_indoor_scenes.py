@@ -129,7 +129,7 @@ def main() -> None:
         out.mkdir(parents=True, exist_ok=True)
         made = skipped = 0
         rng.shuffle(files)
-        for i, f in enumerate(files):
+        for _i, f in enumerate(files):
             if made >= args.per_class:
                 break
             try:

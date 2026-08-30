@@ -35,23 +35,24 @@ def main() -> None:
     sess = load_session(config.MODELS_DIR / "cnn_hier" / "classifier.onnx")
     items = build_hier_items()
     splits = load_or_build_hier_splits(items)
-    train = set(splits["train"])
-
     for src_slug, suspects in TARGETS.items():
         idxs = [i for i in splits["train"]
                 if items[i]["sup_kind"] == "fine" and items[i]["sup_slug"] == src_slug
                 and "fine-staging" not in items[i]["source_path"]][:4000]  # legacy 만
         subset = [items[i] for i in idxs]
         if not subset:
-            print(f"{src_slug}: legacy 표본 없음"); continue
+            print(f"{src_slug}: legacy 표본 없음")
+            continue
         loader = DataLoader(HierImageDataset(subset, augment=False),
                             batch_size=64, num_workers=4)
-        hits = Counter(); n = 0
+        hits = Counter()
+        n = 0
         for x, _, _ in loader:
             (lg,) = sess.run(["logits"], {"image": x.numpy()})
             p = softmax(lg, axis=1)
-            top = p.argmax(axis=1); conf = p.max(axis=1)
-            for t, c in zip(top, conf):
+            top = p.argmax(axis=1)
+            conf = p.max(axis=1)
+            for t, c in zip(top, conf, strict=False):
                 n += 1
                 slug = FINE_LABELS[int(t)]
                 if slug in suspects and c >= CONF:

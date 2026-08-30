@@ -27,7 +27,7 @@ class WasteClassifierMLP(nn.Module):
 
         layers: list[nn.Module] = []
         in_dim = input_dim
-        for h, p in zip(hidden_dims, dropout_rates):
+        for h, p in zip(hidden_dims, dropout_rates, strict=False):
             layers.append(nn.Linear(in_dim, h))
             layers.append(nn.ReLU(inplace=True))
             layers.append(nn.Dropout(p))

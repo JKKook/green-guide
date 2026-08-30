@@ -52,8 +52,8 @@ def _prep(img: Image.Image, center_frac: float | None) -> np.ndarray:
     if center_frac:
         w, h = img.size
         s = int(min(w, h) * center_frac)
-        l, t = (w - s) // 2, (h - s) // 2
-        img = img.crop((l, t, l + s, t + s))
+        left, top = (w - s) // 2, (h - s) // 2
+        img = img.crop((left, top, left + s, top + s))
     im = img.convert("RGB").resize((224, 224), Image.BILINEAR)
     return np.ascontiguousarray(((np.asarray(im, np.float32) / 255 - _MEAN) / _STD).transpose(2, 0, 1))[None]
 

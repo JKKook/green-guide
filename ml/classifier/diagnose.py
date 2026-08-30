@@ -215,7 +215,7 @@ def run_diagnosis(
     gate_reasons: list[str] = []
     prev_acc = None
     if HISTORY_PATH.exists():
-        lines = [l for l in HISTORY_PATH.read_text(encoding="utf-8").splitlines() if l.strip()]
+        lines = [ln for ln in HISTORY_PATH.read_text(encoding="utf-8").splitlines() if ln.strip()]
         if lines:
             try:
                 prev_acc = json.loads(lines[-1]).get("accuracy")

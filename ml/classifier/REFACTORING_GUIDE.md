@@ -97,7 +97,7 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 | 2-1 | ONNX 세션 + softmax | `InferenceSession(` 23회 / `_softmax` 5벌 | `greenguide_classifier/infer.py`: `load_session(path)`, `softmax(x, axis=-1)` → 호출부 교체, 5벌 삭제 | golden 테스트 + `grep "def _softmax"` 0 |
 | 2-2 | device 선택 | 2곳 (`greenguide_classifier/train.py`, `visualize_cam.py`) | `greenguide_classifier/infer.py` `get_device()` 로 통합 | `greenguide_classifier/train.py` smoke |
 | 2-3 | `sys.path` | 10곳 (`scripts/_base.py` 방식) | **유지** — 이관 세션이 채택한 방식이고 `pip install -e .` 도 동작하므로 두 경로 모두 허용. E402 는 ruff `per-file-ignores` 로 scripts/ 한정 허용 | ruff 신규 위반 0 |
-| 2-4 | ruff 잔여 (E702 14 / B905 12 / B007 6 / E741 5 / F841 3) | 로직 접촉 필요 | 파일 단위로 나눠 처리, 커밋당 규칙 하나. B905 는 `strict=True` 가 아니라 **현행 동작 보존** 위해 `strict=False` 명시 | pytest + golden |
+| 2-4 ✅ | ruff 잔여 40건 | **0건** | B905 → `strict=False`(동작 보존) · B007 `_` 접두 · E741 `l`→`ln/left/i` · F841 미사용 대입 제거(`parse_args()` 호출은 유지) · E702/E701 줄 분리 · E402 `import os` 상단 이동 | pytest 41 + golden, 진입점 `--help` 9 통과 |
 
 ### Phase 3 — 스크립트 정리 (1일)
 - [ ] 루트 13개 진입점 분류: 운영 파이프라인(`main`, `retrain*`, `revalidate`, `feedback_monitor`, `etc_queue`) / 분석 도구(`diagnose`, `visualize_*`, `eval_ensemble*`, `realworld_eval`)
@@ -122,7 +122,7 @@ grep -rn "InferenceSession("         --include='*.py' . | wc -l   # 2 (infer.py 
 grep -rn "def _softmax"              --include='*.py' . | wc -l   # 0
 grep -rn "create_client("            --include='*.py' . | wc -l   # 0 (greenguide_common.supabase 로 이관)
 grep -rn "0.485"                     --include='*.py' . | wc -l   # 0 (greenguide_common.imaging 로 이관)
-pytest && ruff check . && pyright                                 # 통과, pyright 에러 수 ≤ Phase 0 기준선
+pytest && ruff check . && pyright                                 # ruff 0건 달성(2026-08-31), pyright 에러 수 ≤ Phase 0 기준선
 python tests/test_golden_inference.py                             # golden 일치
 ```
 + README·HIER_TRAINING_GUIDE 의 실행 명령이 전부 실제로 동작.
