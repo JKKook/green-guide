@@ -7,13 +7,10 @@ name = "waste-classifier"
 version = "0.1.0"
 description = "GreenGuide AI — 폐기물 분류기 학습 파이프라인 (PyTorch + ONNX)"
 requires-python = ">=3.12"
-dynamic = ["dependencies"]
+# 의존성은 requirements.txt 로만 관리 (-e 경로 줄 때문에 dynamic dependencies 사용 불가)
 
 [tool.setuptools]
 packages = ["src", "scripts"]
-
-[tool.setuptools.dynamic]
-dependencies = { file = ["requirements.txt"] }
 
 [tool.ruff]
 line-length = 100

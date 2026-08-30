@@ -80,27 +80,24 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 - `scripts/filter_aihub_by_quality.py:222` — argparse help 문자열의 `18%)` 가 `%` 포맷으로 해석돼 `--help` 가 ValueError. `%%` 로 이스케이프 필요
 - `scripts/synthesize_indoor.py` — `albumentations` 가 requirements.txt 에 없어 import 실패 (실험용이면 Phase 3 에서 archive 이동 대상)
 
-### Phase 1 — Characterization tests (1일)
-공통화 대상 5개 패턴의 현재 동작을 고정한다. 이 테스트가 이후 모든 단계의 안전망.
-- [ ] `tests/test_golden_inference.py`: 고정 이미지 3장(클래스 다름) → 현행 ONNX 모델 logits 를 `tests/fixtures/golden_logits.npz` 로 저장. 테스트는 `np.allclose(atol=1e-5)`
-  → verify: 테스트 통과, fixture 커밋
-- [ ] `_softmax` 5개 구현 각각에 같은 입력 → 동일 출력인지 확인하는 임시 스크립트 실행 (차이 있으면 **여기서 발견**, 공통화 전에 어떤 걸 정본으로 할지 결정)
-- [ ] 전처리 16곳 중 resize 방식(`BILINEAR`/`BICUBIC`), center-crop 유무가 다른 곳을 표로 정리 → 정본 1개 + 예외 목록
-  → verify: 예외가 있으면 `to_input_tensor(img, *, crop=...)` 처럼 **명시 옵션**으로 남기고, 조용히 통일하지 않는다
-- [ ] Supabase 헬퍼는 네트워크 필요 → `tests/conftest.py` 에 `create_client` 를 monkeypatch 하는 fake 추가
+### Phase 1 — Characterization tests (1일) ✅ 2026-08-30 완료
+- [x] `tests/test_golden_inference.py` + `tests/fixtures/golden_logits.json` — seed 고정 난수 입력 3장 → `cnn`(13 logits)·`cnn_hier`(25 logits) 출력 고정, `rtol/atol=1e-4`. 모델 파일 없으면 skip. 재생성 `python -m tests.test_golden_inference --update`
+  (worktree 처럼 `outputs/` 가 없는 체크아웃은 `WASTE_GOLDEN_MODELS_DIR=<main tree>/ml/classifier/outputs/models` 지정)
+- [x] `_softmax` 5벌 비교 — 전부 max-shift 방식으로 수치 동일, 차이는 **축뿐**: 1-D(`revalidate`) / axis=1(`eval_ensemble*`, `etc_queue`) / axis=0(`visualize_multimaterial`) → `softmax(x, axis)` 하나로 대체 가능
+- [x] 전처리 상수 16곳 → waste_common 이관으로 이미 `waste_common.imaging` 1곳(0.485 grep 1건). 세부 옵션 차이는 이관 세션이 처리
+- [x] Supabase fake — `waste_common.supabase.get_client()` 로 이관됐으므로 conftest 에서 그 함수를 monkeypatch 하면 됨 (classifier 내 `create_client` 직접 호출 0건)
 
-### Phase 2 — 공통단 추출 (2~3일, 패턴당 1커밋)
-우선순위 = 중복 횟수 × 변경 위험 낮음 순.
+### Phase 2 — 공통단 추출 (패턴당 1커밋)
 
-| 순서 | 패턴 | 작업 | verify |
-|---|---|---|---|
-| 2-1 | `sys.path` 해킹 15곳 | Phase 0 editable 설치 덕에 삭제만. `scripts/__init__.py` 추가, README 실행법을 `python -m scripts.x` 로 | 각 스크립트 `--help` 실행 성공 |
-| 2-2 | ONNX 세션 + softmax | `common/onnx.py` 작성 → 25회 호출부 교체, `_softmax` 5개 삭제 | golden 테스트 + 삭제된 함수 grep 0건 |
-| 2-3 | ImageNet 상수/전처리 | `common/image.py` → 16곳 교체. `src/dataset.py` 는 torchvision transform 을 유지하되 상수만 import | golden 테스트, `test_dataset_cnn` 통과 |
-| 2-4 | 이미지 로드/다운로드 | `download_image(url, retries, timeout)` 하나로 (`etc_queue`·`integrate_taco` 버전 중 retry 있는 쪽 채택) | fake requests 로 retry 단위테스트 |
-| 2-5 | Supabase client | `common/supabase.py` `get_client()` + `fetch_user_uploads(status=...)`. `retrain.py` 4회 → 1회 | conftest fake 로 테스트, `grep -rn create_client` 가 common 1곳만 |
-| 2-6 | device 선택 | `common/device.py` → 7곳 교체 | `src/train.py` smoke (1 epoch, tiny subset) |
-| 2-7 | argparse 공통 옵션 | `common/cli.py` 부모 파서 — **옵션 이름이 이미 같은 스크립트만** 적용. 인터페이스 변경 금지 | 각 `--help` 출력 diff 없음 |
+> 2026-08-30 갱신: `libs/waste-common`(settings·cli·imaging·supabase·logging·taxonomy) 이관이 preprocessor 세션에 의해 먼저 완료돼
+> 원래 2-1·2-3·2-4·2-5·2-7 은 해소됐다. `waste_common` 은 repo 범위(변경은 합의 필요)이므로, **classifier 전용 인프라는 `src/` 안에 둔다.**
+
+| 순서 | 패턴 | 현재 | 작업 | verify |
+|---|---|---|---|---|
+| 2-1 | ONNX 세션 + softmax | `InferenceSession(` 23회 / `_softmax` 5벌 | `src/infer.py`: `load_session(path)`, `softmax(x, axis=-1)` → 호출부 교체, 5벌 삭제 | golden 테스트 + `grep "def _softmax"` 0 |
+| 2-2 | device 선택 | 2곳 (`src/train.py`, `visualize_cam.py`) | `src/infer.py` `get_device()` 로 통합 | `src/train.py` smoke |
+| 2-3 | `sys.path` | 10곳 (`scripts/_base.py` 방식) | **유지** — 이관 세션이 채택한 방식이고 `pip install -e .` 도 동작하므로 두 경로 모두 허용. E402 는 ruff `per-file-ignores` 로 scripts/ 한정 허용 | ruff 신규 위반 0 |
+| 2-4 | ruff 잔여 (E702 14 / B905 12 / B007 6 / E741 5 / F841 3) | 로직 접촉 필요 | 파일 단위로 나눠 처리, 커밋당 규칙 하나. B905 는 `strict=True` 가 아니라 **현행 동작 보존** 위해 `strict=False` 명시 | pytest + golden |
 
 ### Phase 3 — 스크립트 정리 (1일)
 - [ ] 루트 13개 진입점 분류: 운영 파이프라인(`main`, `retrain*`, `revalidate`, `feedback_monitor`, `etc_queue`) / 분석 도구(`diagnose`, `visualize_*`, `eval_ensemble*`, `realworld_eval`)
