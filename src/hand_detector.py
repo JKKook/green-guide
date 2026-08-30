@@ -16,6 +16,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from PIL import Image
+from src.core.singleton import lazy_singleton
 
 
 _DILATE_KERNEL = np.ones((15, 15), np.uint8)
@@ -85,11 +86,6 @@ class HandDetector:
         return float((mask > 127).mean())
 
 
-_detector: HandDetector | None = None
-
-
+@lazy_singleton
 def get_hand_detector() -> HandDetector:
-    global _detector
-    if _detector is None:
-        _detector = HandDetector()
-    return _detector
+    return HandDetector()

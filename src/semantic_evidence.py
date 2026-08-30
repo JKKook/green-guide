@@ -20,6 +20,7 @@ import numpy as np
 from PIL import Image
 from src.core import config
 from src.core.log import get_logger
+from src.core.singleton import lazy_singleton
 
 log = get_logger(__name__)
 
@@ -230,11 +231,6 @@ def evidence_prior(
     return prior if used else None
 
 
-_evidence: SemanticEvidence | None = None
-
-
+@lazy_singleton
 def get_evidence_engine() -> SemanticEvidence:
-    global _evidence
-    if _evidence is None:
-        _evidence = SemanticEvidence()
-    return _evidence
+    return SemanticEvidence()

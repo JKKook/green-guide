@@ -23,6 +23,7 @@ from PIL import Image
 from src.streams import is_valid_stream, prompt_lines
 from src.core import config
 from src.core.log import get_logger
+from src.core.singleton import lazy_singleton
 
 log = get_logger(__name__)
 
@@ -191,11 +192,6 @@ class VlmFallback:
             return None
 
 
-_vlm: VlmFallback | None = None
-
-
+@lazy_singleton
 def get_vlm_fallback() -> VlmFallback:
-    global _vlm
-    if _vlm is None:
-        _vlm = VlmFallback()
-    return _vlm
+    return VlmFallback()

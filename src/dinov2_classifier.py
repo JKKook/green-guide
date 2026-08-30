@@ -22,6 +22,7 @@ from PIL import Image
 
 from src.core import config
 from src.core.log import get_logger
+from src.core.singleton import lazy_singleton
 
 log = get_logger(__name__)
 
@@ -105,11 +106,6 @@ class DINOv2Classifier:
         }
 
 
-_classifier: DINOv2Classifier | None = None
-
-
+@lazy_singleton
 def get_dinov2_classifier() -> DINOv2Classifier:
-    global _classifier
-    if _classifier is None:
-        _classifier = DINOv2Classifier()
-    return _classifier
+    return DINOv2Classifier()

@@ -11,6 +11,7 @@ from supabase import Client, create_client
 
 from src.core import config
 from src.core.log import get_logger
+from src.core.singleton import lazy_singleton
 
 log = get_logger(__name__)
 
@@ -267,16 +268,7 @@ class UploadRecorder:
         return result.data[0]
 
 
-_recorder: UploadRecorder | None = None
-
-
+@lazy_singleton
 def get_recorder() -> UploadRecorder:
-    global _recorder
-    if _recorder is None:
-        _recorder = UploadRecorder()
-    return _recorder
+    return UploadRecorder()
 
-
-def reset_recorder() -> None:
-    global _recorder
-    _recorder = None

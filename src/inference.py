@@ -10,6 +10,7 @@ import onnxruntime as ort
 
 from src.core import config
 from src.core.log import get_logger
+from src.core.singleton import lazy_singleton
 
 log = get_logger(__name__)
 
@@ -175,34 +176,30 @@ class WasteClassifier:
         return result
 
 
-_classifier: WasteClassifier | None = None
-_active_meta: Any = None  # RemoteModelMeta | None — None 이면 fallback (config) 사용 중
+@lazy_singleton
+def _load() -> tuple[WasteClassifier, Any]:
+    """첫 호출 시 Supabase 의 active 버전을 fetch (있으면) 후 로드.
+    active meta 의 class_labels 가 있으면 그것을 사용 (동적 N 클래스 지원)."""
+    from src.model_loader import resolve_model_paths
+    color_path, edge_path, meta = resolve_model_paths()
+    labels = meta.class_labels if meta and meta.class_labels else None
+    classifier = WasteClassifier(
+        model_path=color_path,
+        edge_model_path=edge_path,
+        labels=labels,
+    )
+    return classifier, meta  # meta: RemoteModelMeta | None — None 이면 fallback (config) 사용 중
 
 
 def get_classifier() -> WasteClassifier:
-    """싱글톤. 첫 호출 시 Supabase 의 active 버전을 fetch (있으면) 후 로드.
-    active meta 의 class_labels 가 있으면 그것을 사용 (동적 N 클래스 지원)."""
-    global _classifier, _active_meta
-    if _classifier is None:
-        from src.model_loader import resolve_model_paths
-        color_path, edge_path, meta = resolve_model_paths()
-        labels = meta.class_labels if meta and meta.class_labels else None
-        _classifier = WasteClassifier(
-            model_path=color_path,
-            edge_model_path=edge_path,
-            labels=labels,
-        )
-        _active_meta = meta
-    return _classifier
+    return _load()[0]
 
 
 def get_active_meta():
-    """현재 로드된 모델의 RemoteModelMeta (fallback 모드면 None)."""
-    return _active_meta
+    """현재 로드된 모델의 RemoteModelMeta (fallback 모드면 None). 로드를 유발하지 않음."""
+    return _load.instance[1] if _load.instance else None
 
 
 def reset_classifier() -> None:
     """캐시된 인스턴스 폐기. 다음 get_classifier() 호출 시 재로드 (model_loader 재실행)."""
-    global _classifier, _active_meta
-    _classifier = None
-    _active_meta = None
+    _load.reset()

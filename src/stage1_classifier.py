@@ -18,6 +18,7 @@ from PIL import Image
 
 from src.core import config
 from src.core.log import get_logger
+from src.core.singleton import lazy_singleton
 
 log = get_logger(__name__)
 
@@ -82,11 +83,6 @@ class Stage1Classifier:
         return waste_prob >= 0.5, waste_prob
 
 
-_classifier: Stage1Classifier | None = None
-
-
+@lazy_singleton
 def get_stage1_classifier() -> Stage1Classifier:
-    global _classifier
-    if _classifier is None:
-        _classifier = Stage1Classifier()
-    return _classifier
+    return Stage1Classifier()

@@ -34,7 +34,7 @@ from src.regions import extract_regions, render_hatching
 from src.segment import get_segmenter
 from src.dinov2_classifier import get_dinov2_classifier
 from src.stage1_classifier import get_stage1_classifier
-from src.uploads import get_recorder, reset_recorder
+from src.uploads import get_recorder
 from src.core.log import get_logger
 
 log = get_logger(__name__)
@@ -92,7 +92,7 @@ async def lifespan(app: FastAPI):
     if prune_task is not None:
         prune_task.cancel()
     reset_classifier()
-    reset_recorder()
+    get_recorder.reset()
 
 
 # 트랙 B1 — 1차 확신이 이 값 이상이면 장면 경로 OCR 스킵 (운영 지연 -2~4s)

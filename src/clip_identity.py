@@ -18,6 +18,7 @@ import numpy as np
 from PIL import Image
 from src.core import config
 from src.core.log import get_logger
+from src.core.singleton import lazy_singleton
 
 log = get_logger(__name__)
 
@@ -148,11 +149,6 @@ class ClipIdentity:
         return prior, evidence
 
 
-_clip: ClipIdentity | None = None
-
-
+@lazy_singleton
 def get_clip_identity() -> ClipIdentity:
-    global _clip
-    if _clip is None:
-        _clip = ClipIdentity()
-    return _clip
+    return ClipIdentity()

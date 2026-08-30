@@ -24,6 +24,7 @@ import onnxruntime as ort
 from src.inference import _softmax
 from src.core import config
 from src.core.log import get_logger
+from src.core.singleton import lazy_singleton
 
 log = get_logger(__name__)
 
@@ -371,16 +372,7 @@ def predict_best_rotation(
     return best
 
 
-_hier: HierWasteClassifier | None = None
-
-
+@lazy_singleton
 def get_hier_classifier() -> HierWasteClassifier:
-    global _hier
-    if _hier is None:
-        _hier = HierWasteClassifier()
-    return _hier
+    return HierWasteClassifier()
 
-
-def reset_hier_classifier() -> None:
-    global _hier
-    _hier = None

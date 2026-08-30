@@ -16,6 +16,7 @@ import onnxruntime as ort
 from PIL import Image
 
 from src.core import config
+from src.core.singleton import lazy_singleton
 
 
 _U2NET_MEAN = (0.485, 0.456, 0.406)
@@ -127,14 +128,9 @@ class Segmenter:
         }
 
 
-_segmenter: Segmenter | None = None
-
-
+@lazy_singleton
 def get_segmenter() -> Segmenter:
-    global _segmenter
-    if _segmenter is None:
-        _segmenter = Segmenter()
-    return _segmenter
+    return Segmenter()
 
 
 # 병합 성분 재분리 — u2netp 는 인접 객체 사이 후광까지 salient 라 기본
