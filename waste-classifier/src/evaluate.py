@@ -15,12 +15,15 @@ from sklearn.metrics import (
     precision_recall_fscore_support,
 )
 from torch.utils.data import DataLoader
+from waste_common.logging import get_logger
 
 from src import config
 from src.dataset import build_dataset, load_manifest
 from src.model import build_model
 from src.split import load_splits, subset_items
-from src.train import _input_mode, _model_kind, get_hyperparams, pick_device
+from src.train import _input_mode, get_hyperparams, model_kind, pick_device
+
+log = get_logger(__name__)
 
 
 def collect_predictions(
@@ -52,10 +55,10 @@ def evaluate(arch: str = "mlp") -> dict[str, Any]:
         raise FileNotFoundError(f"checkpoint not found: {ckpt_path}")
 
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
-    print(f"[evaluate:{arch}] loaded checkpoint epoch {ckpt['epoch']} "
+    log.info(f"[{arch}] loaded checkpoint epoch {ckpt['epoch']} "
           f"(val_acc={ckpt['val_acc']:.4f})")
 
-    model = build_model(_model_kind(arch)).to(device)
+    model = build_model(model_kind(arch)).to(device)
     model.load_state_dict(ckpt["model_state"])
 
     items = load_manifest()
@@ -63,7 +66,7 @@ def evaluate(arch: str = "mlp") -> dict[str, Any]:
     test_ds = build_dataset(arch, subset_items(items, splits["test"]),
                               input_mode=_input_mode(arch))
     test_loader = DataLoader(test_ds, batch_size=hp.batch_size, shuffle=False)
-    print(f"[evaluate:{arch}] test size: {len(test_ds):,}")
+    log.info(f"[{arch}] test size: {len(test_ds):,}")
 
     y_true, y_pred = collect_predictions(model, test_loader, device)
 
@@ -102,8 +105,8 @@ def evaluate(arch: str = "mlp") -> dict[str, Any]:
         target_names=list(config.CLASS_LABELS),
         zero_division=0,
     ))
-    print(f"[evaluate:{arch}] accuracy: {accuracy:.4f}")
-    print(f"[evaluate:{arch}] report   → {report_path}")
+    log.info(f"[{arch}] accuracy: {accuracy:.4f}")
+    log.info(f"[{arch}] report   → {report_path}")
     return report
 
 

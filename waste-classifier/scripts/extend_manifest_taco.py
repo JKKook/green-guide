@@ -12,11 +12,9 @@ import json
 import shutil
 import sys
 from collections import Counter
-from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
-RAW_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "garbage-classification"
+from _base import PREPROCESSOR_ROOT, RAW_DIR
+
 MANIFEST = PREPROCESSOR_ROOT / "data" / "processed" / "manifest.json"
 MANIFEST_BACKUP_TACO = PREPROCESSOR_ROOT / "data" / "processed" / "manifest_pre_taco.json"
 

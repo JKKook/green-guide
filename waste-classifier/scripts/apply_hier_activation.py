@@ -20,11 +20,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
-from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+from _base import PROJECT_ROOT
 
 EVAL_PATH = PROJECT_ROOT / "outputs" / "logs" / "cnn_hier" / "evaluation.json"
 
@@ -42,16 +39,9 @@ NEW_COARSE_SLUGS = ("paper_pack", "hazardous")
 
 
 def _client():
-    import os
+    from waste_common.supabase import get_client
 
-    from dotenv import load_dotenv
-    from supabase import create_client
-    load_dotenv(PROJECT_ROOT.parent / "waste-preprocessor" / ".env")
-    load_dotenv(PROJECT_ROOT.parent / "waste-api" / ".env")
-    url, key = os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY")
-    if not url or not key:
-        sys.exit("SUPABASE_URL/KEY 없음")
-    return create_client(url, key)
+    return get_client()
 
 
 def main() -> None:

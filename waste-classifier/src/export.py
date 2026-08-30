@@ -7,10 +7,13 @@ import numpy as np
 import onnx
 import onnxruntime as ort
 import torch
+from waste_common.logging import get_logger
 
 from src import config
 from src.model import CamWasteClassifierCNN, WasteClassifierCNN, build_model
-from src.train import _model_kind
+from src.train import model_kind
+
+log = get_logger(__name__)
 
 
 def _dummy_input(arch: str) -> torch.Tensor:
@@ -46,7 +49,7 @@ def export_onnx(arch: str = "mlp", opset: int = 17) -> Path:
     out_path = config.arch_subdir(config.MODELS_DIR, arch) / "classifier.onnx"
 
     ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-    model = build_model(_model_kind(arch))
+    model = build_model(model_kind(arch))
     model.load_state_dict(ckpt["model_state"])
     model.eval()
 
@@ -92,19 +95,19 @@ def export_onnx(arch: str = "mlp", opset: int = 17) -> Path:
     onnx_logits = session.run(["logits"], {in_name: test_batch})[0]
 
     diff = float(np.abs(torch_logits - onnx_logits).max())
-    print(f"[export:{arch}] ONNX saved → {out_path}")
-    print(f"[export:{arch}] outputs: {output_names}")
-    print(f"[export:{arch}] PyTorch vs ONNX (logits) max abs diff: {diff:.3e}")
+    log.info(f"[{arch}] ONNX saved → {out_path}")
+    log.info(f"[{arch}] outputs: {output_names}")
+    log.info(f"[{arch}] PyTorch vs ONNX (logits) max abs diff: {diff:.3e}")
     if diff > 1e-4:
         raise RuntimeError(f"ONNX 출력이 PyTorch 와 크게 다름: {diff}")
-    print(f"[export:{arch}] equivalence OK (tol=1e-4)")
+    log.info(f"[{arch}] equivalence OK (tol=1e-4)")
 
     # cnn 의 경우 cam + embedding 출력도 sanity check
     if arch == "cnn":
         onnx_cam, onnx_emb = session.run(["cam", "embedding"], {in_name: test_batch})
-        print(f"[export:{arch}] cam shape: {onnx_cam.shape} (expected: "
+        log.info(f"[{arch}] cam shape: {onnx_cam.shape} (expected: "
               f"(batch, num_classes, 7, 7))")
-        print(f"[export:{arch}] embedding shape: {onnx_emb.shape} (expected: (batch, 512))")
+        log.info(f"[{arch}] embedding shape: {onnx_emb.shape} (expected: (batch, 512))")
 
     return out_path
 

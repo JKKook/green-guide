@@ -15,12 +15,10 @@ import json
 import shutil
 import sys
 from collections import Counter
-from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
+from _base import PREPROCESSOR_ROOT, RAW_DIR
+
 SYNTH_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "synthetic_indoor"
-RAW_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "garbage-classification"
 MANIFEST = PREPROCESSOR_ROOT / "data" / "processed" / "manifest.json"
 MANIFEST_BACKUP = PREPROCESSOR_ROOT / "data" / "processed" / "manifest_pre_synthetic.json"
 

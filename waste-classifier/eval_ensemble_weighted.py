@@ -11,10 +11,13 @@ import numpy as np
 import onnxruntime as ort
 from sklearn.metrics import precision_recall_fscore_support
 from torch.utils.data import DataLoader
+from waste_common.logging import get_logger
 
 from src import config
 from src.dataset import build_dataset, load_manifest
 from src.split import load_splits, subset_items
+
+log = get_logger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 COLOR_ONNX = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx"
@@ -55,7 +58,7 @@ def collect_probs():
 
 
 def main():
-    print("Loading probs...")
+    log.info("Loading probs...")
     y_true, p_color, p_edge = collect_probs()
     labels = list(range(config.NUM_CLASSES))
     names = list(config.CLASS_LABELS)

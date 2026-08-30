@@ -10,19 +10,16 @@
 """
 from __future__ import annotations
 
-import sys
 from collections import Counter
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
+import _base  # noqa: F401 — sys.path 설정
 import numpy as np
 import onnxruntime as ort
 from torch.utils.data import DataLoader
+from waste_common.taxonomy import FINE_LABELS
 
 from src import config
 from src.hier_dataset import HierImageDataset, build_hier_items, load_or_build_hier_splits
-from src.taxonomy import FINE_LABELS
 
 TARGETS = {
     "paper_other": ["carton", "paper_cup", "cardboard"],

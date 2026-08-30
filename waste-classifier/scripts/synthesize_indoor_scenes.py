@@ -14,29 +14,26 @@ u2netp 누끼로 얹어 "실내에 놓인 폐기물" 분포를 합성한다 (SEM
 """
 from __future__ import annotations
 
-import argparse
 import random
-import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+import numpy as np
+import onnxruntime as ort
+from _base import make_parser
+from PIL import Image, ImageFilter, ImageOps
+from waste_common import imaging, settings
 
-import numpy as np  # noqa: E402
-import onnxruntime as ort  # noqa: E402
-from PIL import Image, ImageFilter, ImageOps  # noqa: E402
-
-FINE_STAGING = Path("/Users/ethan/practice/waste/waste-preprocessor/data/raw/fine-staging")
+FINE_STAGING = settings.PREPROCESSOR_ROOT / "data" / "raw" / "fine-staging"
 REALWORLD_DIR = Path(
     "/private/tmp/claude-501/-Users-ethan-practice-waste/"
     "142cc691-4ab6-48ea-a632-274f14f81459/scratchpad/realworld")
-U2NETP = Path("/Users/ethan/practice/waste/waste-api/models/u2netp.onnx")
-OUT_DIR = Path("/Users/ethan/practice/waste/synth_indoor_staging")
+U2NETP = settings.API_ROOT / "models" / "u2netp.onnx"
+OUT_DIR = settings.WASTE_ROOT / "synth_indoor_staging"
 
 CANVAS = 640                     # 합성 캔버스 (긴 변)
 BG_MAX_SALIENCY = 0.10           # 배경 패치 평균 saliency 상한
-_U2_MEAN = (0.485, 0.456, 0.406)
-_U2_STD = (0.229, 0.224, 0.225)
+_U2_MEAN = imaging.IMAGENET_MEAN
+_U2_STD = imaging.IMAGENET_STD
 
 
 class Saliency:
@@ -112,9 +109,8 @@ def paste_object(bg: Image.Image, obj: Image.Image, alpha: np.ndarray,
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser()
+    ap = make_parser("synthesize_indoor_scenes")
     ap.add_argument("--per-class", type=int, default=300)
-    ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
     rng = random.Random(args.seed)
 

@@ -16,7 +16,6 @@
 """
 from __future__ import annotations
 
-import argparse
 import json
 import sys
 import time
@@ -27,11 +26,10 @@ import albumentations as A
 import cv2
 import numpy as np
 import onnxruntime as ort
+from _base import PREPROCESSOR_ROOT, PROJECT_ROOT, RAW_DIR, make_parser
 from PIL import Image
+from waste_common import imaging
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
-RAW_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "garbage-classification"
 SYNTH_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "synthetic_indoor"
 AUX_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "_aux"
 U2NETP_PATH = PROJECT_ROOT.parent / "waste-api" / "models" / "u2netp.onnx"
@@ -42,8 +40,8 @@ JPEG_QUALITY = 90
 
 # u2netp 정규화
 _U2NET_SIZE = 320
-_U2NET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float64)
-_U2NET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float64)
+_U2NET_MEAN = np.array(imaging.IMAGENET_MEAN, dtype=np.float64)
+_U2NET_STD = np.array(imaging.IMAGENET_STD, dtype=np.float64)
 
 # 합성 후처리 (폰 카메라 도메인 randomization)
 SYNTHESIS_AUGMENT = A.Compose([
@@ -214,12 +212,11 @@ def quality_check(synthesized: Image.Image, alpha: np.ndarray) -> bool:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="실내 합성 엔진")
+    ap = make_parser("synthesize_indoor", "실내 합성 엔진")
     ap.add_argument("--our-class", required=True, help="합성할 클래스 (예: etc)")
     ap.add_argument("--n", type=int, default=100, help="합성 장수 목표")
     ap.add_argument("--bg-pool", default=str(AUX_DIR / "backgrounds"),
                     help="실내 배경 풀 디렉토리")
-    ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--dry-run", action="store_true", help="저장 안 하고 시험만")
     args = ap.parse_args()
 

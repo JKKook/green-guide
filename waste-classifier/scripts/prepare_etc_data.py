@@ -26,8 +26,8 @@ import shutil
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
+from _base import PREPROCESSOR_ROOT
+
 TARGET_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "garbage-classification" / "etc"
 
 # OOD 로 적합한 ImageNet 카테고리 (waste 와 무관한 일반 객체).
@@ -51,19 +51,13 @@ SUGGESTED_IMAGENET_CATEGORIES = [
 def _check_supabase_class() -> bool:
     """waste_classes 에 'etc' 가 active 인지 확인."""
     try:
-        import os
+        from waste_common.supabase import try_get_client
 
-        from dotenv import load_dotenv
-        from supabase import create_client
-
-        load_dotenv(PREPROCESSOR_ROOT / ".env")
-        url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_KEY")
-        if not url or not key:
+        client = try_get_client()
+        if client is None:
             print("[warn] SUPABASE_URL/KEY 없음 — Supabase 검증 skip")
             return True
 
-        client = create_client(url, key)
         res = client.table("waste_classes").select("slug,active").eq("slug", "etc").execute()
         rows = res.data or []
         if not rows:

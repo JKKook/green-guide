@@ -32,17 +32,20 @@ from datetime import UTC, datetime
 import numpy as np
 import onnxruntime as ort
 import requests
-from dotenv import load_dotenv
 from PIL import Image
-from supabase import create_client
+from waste_common import imaging
+from waste_common.logging import get_logger
+from waste_common.supabase import get_client
 
 from feedback_monitor import REJECT_THRESHOLD
 from src import config
 
+log = get_logger(__name__)
+
 DEFAULT_MODEL = config.MODELS_DIR / "cnn" / "classifier.onnx"
 OUT_PATH = config.LOGS_DIR / "cnn" / "revalidate.json"
-_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+_MEAN = imaging.MEAN_ARRAY
+_STD = imaging.STD_ARRAY
 
 
 def _prep(img: Image.Image, center_frac: float | None) -> np.ndarray:
@@ -89,14 +92,13 @@ def main() -> int:
     def classify(img: Image.Image) -> tuple[str, float, float]:
         return _run(sess, inp, img)
 
-    load_dotenv(config.PREPROCESSOR_ROOT / ".env")
-    cli = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+    cli = get_client()
     rows = (cli.table("user_uploads")
             .select("id,image_url,predicted_class,predicted_confidence")
             .eq("feedback_status", "pending").execute().data) or []
     if args.limit:
         rows = rows[:args.limit]
-    print(f"[revalidate] pending {len(rows)}건, 모델={os.path.basename(args.model)}"
+    log.info(f"pending {len(rows)}건, 모델={os.path.basename(args.model)}"
           f"{f', center-crop={args.center_crop}' if args.center_crop else ''}")
 
     items, flips = [], Counter()
@@ -105,7 +107,7 @@ def main() -> int:
     for r in rows:
         try:
             img = Image.open(io.BytesIO(requests.get(r["image_url"], timeout=20).content))
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001 — fail-open: fetch 실패는 집계만 하고 건너뜀
             fetch_fail += 1
             continue
         old = _run(base_sess, base_inp, img)[0] if base_sess else r.get("predicted_class")

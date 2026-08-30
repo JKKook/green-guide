@@ -27,11 +27,9 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 import requests
+from _base import PREPROCESSOR_ROOT, PROJECT_ROOT, RAW_DIR
 from PIL import Image
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
-RAW_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "garbage-classification"
 TACO_ANNOTATIONS = Path("/tmp/TACO/data/annotations.json")
 STORE_SIZE = 256
 JPEG_QUALITY = 90

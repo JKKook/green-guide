@@ -20,25 +20,24 @@ import argparse
 import json
 import os
 import statistics
-import sys
 import time
 from collections import Counter, defaultdict
-from pathlib import Path
+
+import _base  # noqa: F401 — sys.path 설정
 
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
 
 import numpy as np
 import torch
 import torch.nn as nn
 from PIL import Image, ImageFile
 from torch.utils.data import DataLoader, Dataset
+from waste_common import imaging
+from waste_common.taxonomy import FINE_LABELS, NUM_FINE
 
 from src import config
 from src.hier_dataset import build_hier_items, load_or_build_hier_splits
-from src.taxonomy import FINE_LABELS, NUM_FINE
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -53,8 +52,8 @@ SEED = 42
 class _ImgSet(Dataset):
     """DINOv2 전용 전처리 (ImageNet 정규화, 224²)."""
 
-    MEAN = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
-    STD = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+    MEAN = torch.tensor(list(imaging.IMAGENET_MEAN)).view(3, 1, 1)
+    STD = torch.tensor(list(imaging.IMAGENET_STD)).view(3, 1, 1)
 
     def __init__(self, items):
         self.items = items

@@ -4,8 +4,7 @@ from __future__ import annotations
 import math
 
 import torch
-
-from src.taxonomy import (
+from waste_common.taxonomy import (
     COARSE_LABELS,
     COARSE_TO_INDEX,
     FINE_IDX_TO_COARSE_IDX,

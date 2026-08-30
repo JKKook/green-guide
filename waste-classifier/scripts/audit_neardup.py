@@ -7,12 +7,10 @@ pHash(8×8, 64bit) 기준:
 """
 from __future__ import annotations
 
-import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
+import _base  # noqa: F401 — sys.path 설정
 import imagehash
 from PIL import Image
 

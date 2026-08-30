@@ -20,10 +20,9 @@ import sys
 import time
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+import _base  # noqa: F401 — sys.path 설정
 
-from src import config  # noqa: E402
+from src import config
 
 MODELS_DIR = config.MODELS_DIR / "cnn_hier"
 ONNX = MODELS_DIR / "classifier.onnx"
@@ -87,11 +86,9 @@ def main() -> None:
         print("\n[dry-run] --apply 로 실제 게시. (운영 클라이언트에 즉시 영향)")
         return
 
-    from supabase import create_client  # noqa: PLC0415
+    from waste_common.supabase import get_client  # noqa: PLC0415
 
-    from retrain import _load_supabase_env  # noqa: PLC0415
-    url, key = _load_supabase_env()
-    sb = create_client(url, key)
+    sb = get_client()
 
     base = f"v{version}"
     if args.storage == "hf":
@@ -138,7 +135,8 @@ def main() -> None:
         # ── Supabase 스토리지 호스팅 (한도 해제 후 재시도용 경로 — 유지) ──
         # 스토리지 쿼터 가드 (사용자 상시 지시: 1GB 초과 위험 사전 경고)
         # 2026-07-21 구버전 누적 981MB → 쿼터 초과 → 프로젝트 이사 사태 재발 방지
-        sys.path.insert(0, "/Users/ethan/practice/waste/waste-api")
+        from waste_common import settings  # noqa: PLC0415
+        sys.path.insert(0, str(settings.API_ROOT))
         from scripts.storage_usage import check_storage  # noqa: PLC0415
         incoming = ONNX.stat().st_size + SIDECAR.stat().st_size + OOD.stat().st_size
         print("[quota] 발행 전 스토리지 점검:")

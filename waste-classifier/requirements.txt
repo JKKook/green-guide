@@ -12,3 +12,6 @@ pytest==8.3.3
 supabase==2.7.4
 python-dotenv==1.0.1
 requests==2.32.3
+
+# 공통단 (editable)
+-e ../waste-common

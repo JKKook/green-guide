@@ -23,7 +23,6 @@ etc_clusters 리뷰 테이블을 보고 이름·배출법을 넣어 active=true 
 from __future__ import annotations
 
 import io
-import os
 from collections import Counter, defaultdict
 from datetime import datetime
 from typing import Any
@@ -32,16 +31,19 @@ import numpy as np
 import requests
 import torch
 import torch.nn as nn
-from dotenv import load_dotenv
 from PIL import Image
 from postgrest.types import CountMethod
 from sklearn.cluster import HDBSCAN
-from supabase import Client, create_client
+from supabase import Client
+from waste_common import imaging
+from waste_common.logging import fail_open, get_logger
 
 from src import config
 from src.dataset import load_manifest
 from src.model import build_model
-from src.train import _model_kind, pick_device
+from src.train import model_kind, pick_device
+
+log = get_logger(__name__)
 
 # ── 임계값 (모두 보수적; 운영하며 보정) ──────────────────
 ETC_QUEUE_TRIGGER = 30          # etc 피드백이 이만큼 쌓이면 처리 시작
@@ -53,8 +55,8 @@ PROTO_SAMPLE_PER_CLASS = 40     # prototype 계산용 클래스당 샘플 수
 _PSEUDO_PREFIX = "etc_auto_"
 _IMG_SIZE = 224
 # ImageNet 정규화 — src/dataset.py 의 학습 transform 과 동일해야 함
-_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+_MEAN = imaging.MEAN_ARRAY
+_STD = imaging.STD_ARRAY
 
 
 def is_pseudo_slug(slug: str) -> bool:
@@ -62,11 +64,9 @@ def is_pseudo_slug(slug: str) -> bool:
 
 
 def _supabase() -> Client:
-    load_dotenv(config.PREPROCESSOR_ROOT / ".env")
-    url, key = os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY")
-    if not url or not key:
-        raise RuntimeError("SUPABASE_URL / SUPABASE_KEY 미설정")
-    return create_client(url, key)
+    from waste_common.supabase import get_client  # noqa: PLC0415
+
+    return get_client()
 
 
 def count_etc_queue(client: Client | None = None) -> int:
@@ -93,7 +93,7 @@ def _load_models(device: torch.device) -> tuple[nn.Module, nn.Module]:
     feature_extractor: ResNet18 backbone 의 avgpool 출력(512d).
     """
     ckpt_path = config.arch_subdir(config.CHECKPOINTS_DIR, "cnn") / "best.pt"
-    model = build_model(_model_kind("cnn")).to(device)
+    model = build_model(model_kind("cnn")).to(device)
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
@@ -122,13 +122,11 @@ def _softmax_rows(logits: np.ndarray) -> np.ndarray:
 
 
 def _download_image(url: str) -> Image.Image | None:
-    try:
+    with fail_open(log, f"이미지 다운로드 {url[:60]}…"):
         r = requests.get(url, timeout=20)
         r.raise_for_status()
         return Image.open(io.BytesIO(r.content))
-    except Exception as exc:  # noqa: BLE001
-        print(f"  [warn] 이미지 다운로드 실패 {url[:60]}…: {exc}")
-        return None
+    return None
 
 
 # ── prototype (기존 클래스 중심) ─────────────────────────
@@ -152,7 +150,7 @@ def _class_prototypes(
             try:
                 img = Image.open(group[i]["source_path"])
                 tensors.append(_to_tensor(img))
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001 — fail-open: 손상 이미지는 prototype 에서 제외
                 continue
         if not tensors:
             protos.append(np.zeros(512, dtype=np.float32))
@@ -177,7 +175,7 @@ def process_etc_queue(apply: bool = False) -> dict[str, Any]:
         .execute()
     ).data or []
     n = len(rows)
-    print(f"[etc_queue] etc 피드백 {n}건 (트리거 {ETC_QUEUE_TRIGGER}) — apply={apply}")
+    log.info(f"etc 피드백 {n}건 (트리거 {ETC_QUEUE_TRIGGER}) — apply={apply}")
     if n == 0:
         return {"count": 0, "reassigned": {}, "clusters": [], "noise": 0}
 
@@ -192,7 +190,7 @@ def process_etc_queue(apply: bool = False) -> dict[str, Any]:
             imgs.append(_to_tensor(img))
             kept_rows.append(r)
     if not imgs:
-        print("  [etc_queue] 유효 이미지 0 — 중단")
+        log.warning("유효 이미지 0 — 중단")
         return {"count": n, "reassigned": {}, "clusters": [], "noise": 0}
 
     emb, probs = _embed_batch(imgs, model, feat, device)
@@ -248,7 +246,7 @@ def process_etc_queue(apply: bool = False) -> dict[str, Any]:
     if apply:
         _apply(client, summary)
     else:
-        print("  [dry-run] 변경 없음 — 실제 적용하려면 apply=True")
+        log.info("[dry-run] 변경 없음 — 실제 적용하려면 apply=True")
     return summary
 
 
@@ -258,7 +256,7 @@ def _apply(client: Client, summary: dict[str, Any]) -> None:
         client.table("user_uploads").update(
             {"feedback_label": cls},
         ).eq("id", upload_id).execute()
-    print(f"  [apply] {len(summary['reassigned'])}건 기존 클래스 재배정")
+    log.info(f"{len(summary['reassigned'])}건 기존 클래스 재배정")
 
     # 2) 신규 후보 — 숨김 pseudo-class 등록 + feedback_label 갱신 + 리뷰행
     for k, cl in enumerate(summary["clusters"]):
@@ -280,16 +278,14 @@ def _apply(client: Client, summary: dict[str, Any]) -> None:
             client.table("user_uploads").update(
                 {"feedback_label": slug},
             ).eq("id", upload_id).execute()
-        try:
+        with fail_open(log, "etc_clusters 기록 (migration 005 필요?)"):
             client.table("etc_clusters").insert({
                 "slug": slug,
                 "size": cl["size"],
                 "sample_upload_ids": cl["upload_ids"][:10],
                 "status": "pending_review",
             }).execute()
-        except Exception as exc:  # noqa: BLE001
-            print(f"  [warn] etc_clusters 기록 실패 (migration 005 필요?): {exc}")
-    print(f"  [apply] 신규 pseudo-class {len(summary['clusters'])}개 등록 (active=false)")
+    log.info(f"신규 pseudo-class {len(summary['clusters'])}개 등록 (active=false)")
 
 
 def _print_summary(s: dict[str, Any]) -> None:
@@ -304,9 +300,9 @@ def maybe_process() -> dict[str, Any] | None:
     client = _supabase()
     n = count_etc_queue(client)
     if n < ETC_QUEUE_TRIGGER:
-        print(f"[etc_queue] etc {n}건 < 임계 {ETC_QUEUE_TRIGGER} — skip")
+        log.info(f"etc {n}건 < 임계 {ETC_QUEUE_TRIGGER} — skip")
         return None
-    print(f"[etc_queue] etc {n}건 ≥ 임계 {ETC_QUEUE_TRIGGER} — 자동 처리 시작")
+    log.info(f"etc {n}건 ≥ 임계 {ETC_QUEUE_TRIGGER} — 자동 처리 시작")
     return process_etc_queue(apply=True)
 
 

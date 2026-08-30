@@ -9,8 +9,11 @@ import numpy as np
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from waste_common.logging import get_logger
 
 from src import config
+
+log = get_logger(__name__)
 
 
 def plot_training_curves(arch: str = "mlp") -> Path:
@@ -20,9 +23,9 @@ def plot_training_curves(arch: str = "mlp") -> Path:
     output_path = plot_dir / "training_curves.png"
 
     with log_path.open("r", encoding="utf-8") as f:
-        log = json.load(f)
+        train_log = json.load(f)
 
-    history = log["history"]
+    history = train_log["history"]
     epochs = [h["epoch"] for h in history]
     tr_loss = [h["train_loss"] for h in history]
     val_loss = [h["val_loss"] for h in history]
@@ -40,8 +43,8 @@ def plot_training_curves(arch: str = "mlp") -> Path:
 
     axes[1].plot(epochs, tr_acc, label="train", marker="o", markersize=3)
     axes[1].plot(epochs, val_acc, label="val", marker="s", markersize=3)
-    axes[1].axhline(y=log["best_val_acc"], color="red", linestyle="--",
-                    alpha=0.5, label=f"best val={log['best_val_acc']:.4f}")
+    axes[1].axhline(y=train_log["best_val_acc"], color="red", linestyle="--",
+                    alpha=0.5, label=f"best val={train_log['best_val_acc']:.4f}")
     axes[1].set_title(f"{arch.upper()} Accuracy")
     axes[1].set_xlabel("epoch")
     axes[1].set_ylabel("accuracy")
@@ -51,7 +54,7 @@ def plot_training_curves(arch: str = "mlp") -> Path:
     fig.tight_layout()
     fig.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"[visualize:{arch}] training curves → {output_path}")
+    log.info(f"[{arch}] training curves → {output_path}")
     return output_path
 
 
@@ -95,7 +98,7 @@ def plot_confusion_matrix(arch: str = "mlp", normalize: bool = True) -> Path:
     fig.tight_layout()
     fig.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"[visualize:{arch}] confusion matrix → {output_path}")
+    log.info(f"[{arch}] confusion matrix → {output_path}")
     return output_path
 
 

@@ -12,17 +12,12 @@
 """
 from __future__ import annotations
 
-import sys
-from pathlib import Path
+import _base  # noqa: F401 — sys.path 설정
+import numpy as np
+import torch
+from waste_common.taxonomy import FINE_LABELS
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-import numpy as np  # noqa: E402
-import torch  # noqa: E402
-
-from src import config  # noqa: E402
-from src.taxonomy import FINE_LABELS  # noqa: E402
+from src import config
 
 CLIP_NAME = "openai/clip-vit-base-patch32"
 OUT_DIR = config.MODELS_DIR / "clip"

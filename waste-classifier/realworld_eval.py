@@ -10,23 +10,25 @@ from __future__ import annotations
 
 import io
 import json
-import os
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
 
 import numpy as np
 import onnxruntime as ort
 import requests
-from dotenv import load_dotenv
 from PIL import Image
-from supabase import create_client
+from waste_common import imaging
+from waste_common.logging import get_logger
+from waste_common.supabase import Bucket, get_client
 
 from src import config
 
+log = get_logger(__name__)
+
 ONNX_PATH = config.MODELS_DIR / "cnn" / "classifier.onnx"
 OUT_PATH = config.LOGS_DIR / "realworld_eval.json"
-_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+_MEAN = imaging.MEAN_ARRAY
+_STD = imaging.STD_ARRAY
 
 
 def _prep(img: Image.Image, center_frac: float | None = None) -> np.ndarray:
@@ -51,12 +53,11 @@ def main() -> int:
         i = int(p.argmax())
         return labels[i], float(p[i])
 
-    load_dotenv(config.PREPROCESSOR_ROOT / ".env")
-    cli = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+    cli = get_client()
     rows = (cli.table("user_uploads")
             .select("id,image_url,storage_path,feedback_label,feedback_status")
             .in_("feedback_status", ["confirmed", "corrected"]).execute().data) or []
-    print(f"[realworld] 피드백 {len(rows)}건 수집")
+    log.info(f"피드백 {len(rows)}건 수집")
 
     y_true, y_pred, y_pred_crop = [], [], []
     skipped_label = Counter()
@@ -69,13 +70,13 @@ def main() -> int:
             # 비공개 버킷 대응: storage API 우선, 레거시 공개 URL fallback
             sp = r.get("storage_path")
             try:
-                data = cli.storage.from_("user-uploads").download(sp) if sp else None
-            except Exception:  # noqa: BLE001
+                data = cli.storage.from_(str(Bucket.USER_UPLOADS)).download(sp) if sp else None
+            except Exception:  # noqa: BLE001 — fail-open: 레거시 공개 URL 로 fallback
                 data = None
             if data is None:
                 data = requests.get(r["image_url"], timeout=20).content
             img = Image.open(io.BytesIO(data))
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001 — fail-open: 이미지 로드 실패 샘플 건너뜀
             continue
         pred, _ = classify(img)
         pred_c, _ = classify(img, center_frac=0.7)
@@ -83,7 +84,7 @@ def main() -> int:
 
     n = len(y_true)
     if n == 0:
-        print("[realworld] 평가 가능한 샘플 0 — 피드백 데이터 부족")
+        log.warning("평가 가능한 샘플 0 — 피드백 데이터 부족")
         return 0
 
     acc = sum(t == p for t, p in zip(y_true, y_pred)) / n

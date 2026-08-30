@@ -15,19 +15,22 @@ import json
 import torch
 from sklearn.metrics import classification_report, confusion_matrix
 from torch.utils.data import DataLoader
-
-from src import config
-from src.hier_dataset import HierImageDataset, build_hier_items, load_or_build_hier_splits
-from src.hier_train import ARCH, CKPT_DIR, LOG_DIR
-from src.model import build_hier_model
-from src.taxonomy import (
+from waste_common.logging import get_logger
+from waste_common.taxonomy import (
     COARSE_LABELS,
     FINE_IDX_TO_COARSE_IDX,
     FINE_LABELS,
     NUM_FINE,
     same_guidance,
 )
+
+from src import config
+from src.hier_dataset import HierImageDataset, build_hier_items, load_or_build_hier_splits
+from src.hier_train import ARCH, CKPT_DIR, LOG_DIR
+from src.model import build_hier_model
 from src.train import pick_device
+
+log = get_logger(__name__)
 
 FINE_ACTIVATION_F1 = 0.80          # blueprint §5: 세부품목 활성화 임계
 GUIDANCE_SAFE_ACTIVATION_F1 = 0.85  # 안내-동일 형제 혼동을 정답 처리한 보조 임계
@@ -70,7 +73,7 @@ def evaluate_hier() -> dict:
     items = build_hier_items()
     splits = load_or_build_hier_splits(items)
     test_items = [items[i] for i in splits["test"]]
-    print(f"[eval:{ARCH}] test items: {len(test_items):,}")
+    log.info(f"[{ARCH}] test items: {len(test_items):,}")
 
     loader = DataLoader(
         HierImageDataset(test_items, augment=False),
@@ -154,11 +157,11 @@ def evaluate_hier() -> dict:
     out_path = LOG_DIR / "evaluation.json"
     out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"[eval:{ARCH}] 대분류 정확도: {coarse_acc:.4f}")
-    print(f"[eval:{ARCH}] 세부 정확도(fine 아이템 {len(fine_true):,}건): {fine_acc:.4f}")
+    log.info(f"[{ARCH}] 대분류 정확도: {coarse_acc:.4f}")
+    log.info(f"[{ARCH}] 세부 정확도(fine 아이템 {len(fine_true):,}건): {fine_acc:.4f}")
     ready = [k for k, v in activation.items() if v["ready"]]
-    print(f"[eval:{ARCH}] 활성화 준비된 세부품목({len(ready)}): {ready}")
-    print(f"[eval:{ARCH}] → {out_path}")
+    log.info(f"[{ARCH}] 활성화 준비된 세부품목({len(ready)}): {ready}")
+    log.info(f"[{ARCH}] → {out_path}")
     return result
 
 

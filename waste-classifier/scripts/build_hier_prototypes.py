@@ -14,19 +14,15 @@ src/ood.py 의 원칙(softmax 는 '최선'만, 임베딩 거리는 '닮았는가
 from __future__ import annotations
 
 import json
-import sys
 from collections import defaultdict
-from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+import _base  # noqa: F401 — sys.path 설정
+import numpy as np
+import onnxruntime as ort
+from torch.utils.data import DataLoader
 
-import numpy as np  # noqa: E402
-import onnxruntime as ort  # noqa: E402
-from torch.utils.data import DataLoader  # noqa: E402
-
-from src import config  # noqa: E402
-from src.hier_dataset import (  # noqa: E402
+from src import config
+from src.hier_dataset import (
     HierImageDataset,
     build_hier_items,
     load_or_build_hier_splits,

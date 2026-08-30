@@ -11,31 +11,29 @@ Cascade 1단계: 사용자 입력이 '폐기물 분류 대상' 인지 OOD (손/�
 """
 from __future__ import annotations
 
-import argparse
 import json
 import sys
 import time
 from collections import Counter
-from pathlib import Path
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.models as tvm
 import torchvision.transforms as T
+from _base import PREPROCESSOR_ROOT, PROJECT_ROOT, make_parser
 from PIL import Image, ImageFile
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
+from waste_common import imaging
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
 MANIFEST_PATH = PREPROCESSOR_ROOT / "data" / "processed" / "manifest.json"
 OUT_DIR = PROJECT_ROOT / "outputs" / "models" / "stage1_binary"
 INPUT_SIZE = 224
 
-_MEAN = [0.485, 0.456, 0.406]
-_STD = [0.229, 0.224, 0.225]
+_MEAN = list(imaging.IMAGENET_MEAN)
+_STD = list(imaging.IMAGENET_STD)
 
 
 class BinaryWasteDataset(Dataset):
@@ -220,11 +218,10 @@ def train(args) -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Stage 1 binary classifier")
+    ap = make_parser("train_stage1_binary", "Stage 1 binary classifier")
     ap.add_argument("--epochs", type=int, default=5)
     ap.add_argument("--batch-size", type=int, default=64)
     ap.add_argument("--lr", type=float, default=1e-4)
-    ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
     return train(args)
 

@@ -19,7 +19,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -27,11 +26,17 @@ from datetime import datetime
 from pathlib import Path
 
 import requests
-from dotenv import load_dotenv
-from supabase import create_client
+from waste_common import settings
+from waste_common.logging import fail_open, get_logger
+from waste_common.supabase import Bucket, get_client
+from waste_common.taxonomy import LEGACY_LABELS
+
+from src.artifacts import backup_artifacts, rollback_artifacts
+
+log = get_logger(__name__)
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent              # waste-classifier
-PREPROCESSOR_ROOT: Path = PROJECT_ROOT.parent / "waste-preprocessor"
+PREPROCESSOR_ROOT: Path = settings.PREPROCESSOR_ROOT
 RAW_DIR: Path = PREPROCESSOR_ROOT / "data" / "raw" / "garbage-classification"
 
 EVAL_PATH: Path = PROJECT_ROOT / "outputs" / "logs" / "cnn" / "evaluation.json"
@@ -40,11 +45,13 @@ ONNX_PATH: Path = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx
 EDGE_ONNX_PATH: Path = PROJECT_ROOT / "outputs" / "models" / "cnn_edge" / "classifier.onnx"
 SPLITS_PATH: Path = PROJECT_ROOT / "data" / "splits" / "splits.json"
 BACKUP_DIR: Path = PROJECT_ROOT / "outputs" / "backups"
+# 백업/복원 대상 아티팩트
+ARTIFACTS = [(p, p.name) for p in (CKPT_PATH, ONNX_PATH, EVAL_PATH)]
 
-MODELS_BUCKET = "models"
+MODELS_BUCKET = str(Bucket.MODELS)
 
 # 기본 fallback — Supabase 조회 실패 시 사용 (정상 운영 시엔 항상 동적 조회).
-_FALLBACK_LABELS = ("cardboard", "glass", "metal", "paper", "plastic", "trash")
+_FALLBACK_LABELS = LEGACY_LABELS
 
 # 70/15/15 stratified split 이 통과하려면 각 클래스가 holdout(30%)에서 ≥2개,
 # 즉 전체 ≥7개 필요. 마진 두고 6으로 설정 — 그 이하면 quarantine.
@@ -52,19 +59,8 @@ MIN_SAMPLES_PER_CLASS = 6
 QUARANTINE_DIR: Path = PREPROCESSOR_ROOT / "data" / "raw" / "quarantine_too_few_samples"
 
 
-def _load_supabase_env() -> tuple[str, str]:
-    # waste-preprocessor 의 .env 가 정본
-    load_dotenv(PREPROCESSOR_ROOT / ".env")
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY")
-    if not url or not key:
-        sys.exit("ERROR: SUPABASE_URL / SUPABASE_KEY 가 설정되지 않음")
-    return url, key
-
-
 def fetch_feedback_rows():
-    url, key = _load_supabase_env()
-    client = create_client(url, key)
+    client = get_client()
     res = (
         client.table("user_uploads")
         .select("*")
@@ -80,9 +76,8 @@ def fetch_active_labels() -> set[str]:
     pseudo-class 는 active=false(사용자에겐 숨김)지만 모델은 학습해야 하므로
     download 게이트에서 예외적으로 포함한다 (etc_queue.py 참고).
     """
-    try:
-        url, key = _load_supabase_env()
-        client = create_client(url, key)
+    with fail_open(log, "waste_classes 조회 (fallback 사용)"):
+        client = get_client()
         res = client.table("waste_classes").select("slug,active").execute()
         slugs = {
             row["slug"] for row in (res.data or [])
@@ -90,8 +85,6 @@ def fetch_active_labels() -> set[str]:
         }
         if slugs:
             return slugs
-    except Exception as exc:  # noqa: BLE001
-        print(f"  [warn] waste_classes 조회 실패 → fallback: {exc}")
     return set(_FALLBACK_LABELS)
 
 
@@ -104,14 +97,12 @@ def download_to_raw(rows: list[dict], valid_labels: set[str]) -> tuple[int, int,
     failed = 0
 
     # 비공개 버킷 다운로드용 클라이언트 (service key)
-    from supabase import create_client as _cc  # noqa: PLC0415
-    _url, _key = _load_supabase_env()
-    client = _cc(_url, _key)
+    client = get_client()
 
     for row in rows:
         label = row["feedback_label"]
         if label not in valid_labels:
-            print(f"  [skip] invalid label {label!r} for {row['id']}")
+            log.warning(f"invalid label {label!r} for {row['id']}")
             failed += 1
             continue
 
@@ -130,15 +121,15 @@ def download_to_raw(rows: list[dict], valid_labels: set[str]) -> tuple[int, int,
             # 비공개 버킷 대응: service key 로 storage API 다운로드 우선,
             # 실패 시 image_url (레거시 공개 URL 행) fallback
             try:
-                data = client.storage.from_("user-uploads").download(storage_path)
-            except Exception:  # noqa: BLE001
+                data = client.storage.from_(str(Bucket.USER_UPLOADS)).download(storage_path)
+            except Exception:  # noqa: BLE001 — fail-open: 레거시 공개 URL 로 fallback
                 resp = requests.get(row["image_url"], timeout=30)
                 resp.raise_for_status()
                 data = resp.content
             dest_file.write_bytes(data)
             downloaded += 1
-        except Exception as exc:  # noqa: BLE001
-            print(f"  [fail] {upload_id}: {exc}")
+        except Exception:  # noqa: BLE001 — fail-open: 한 장 실패가 전체를 막지 않음
+            log.warning(f"다운로드 실패 {upload_id}", exc_info=True)
             failed += 1
 
     return downloaded, skipped, failed
@@ -182,42 +173,6 @@ def quarantine_tiny_classes() -> dict[str, int]:
     return quarantined
 
 
-def backup_artifacts() -> Path | None:
-    """현재 모델·평가 결과를 timestamp 폴더로 백업.
-    Returns: 백업 폴더 경로 또는 None (백업할 게 없으면).
-    """
-    if not (CKPT_PATH.exists() or ONNX_PATH.exists()):
-        return None
-
-    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    target = BACKUP_DIR / f"cnn_{ts}"
-    target.mkdir()
-
-    for src in (CKPT_PATH, ONNX_PATH, EVAL_PATH):
-        if src.exists():
-            shutil.copy2(src, target / src.name)
-    return target
-
-
-def rollback_artifacts(backup_path: Path | None) -> bool:
-    """게이트 FAIL 시 백업에서 모델·평가 결과 복원 → 기존 active 모델 유지.
-    Returns True if 복원됨.
-    """
-    if backup_path is None or not backup_path.exists():
-        print("  [rollback] 백업이 없어 복원 불가 (첫 학습이었을 수 있음)")
-        return False
-    restored: list[str] = []
-    for dst in (CKPT_PATH, ONNX_PATH, EVAL_PATH):
-        src = backup_path / dst.name
-        if src.exists():
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
-            restored.append(dst.name)
-    print(f"  [rollback] 백업에서 복원: {restored}")
-    return True
-
-
 def get_current_accuracy() -> float | None:
     if not EVAL_PATH.exists():
         return None
@@ -238,19 +193,16 @@ def _mark_trained_classes() -> None:
     manifest_path = PREPROCESSOR_ROOT / "data" / "processed" / "manifest.json"
     if not manifest_path.exists():
         return
-    try:
+    with fail_open(log, "trained 갱신"):
         with manifest_path.open("r", encoding="utf-8") as f:
             manifest = json.load(f)
         labels = sorted({item["label"] for item in manifest.get("items", [])})
-        url, key = _load_supabase_env()
-        client = create_client(url, key)
+        client = get_client()
         for slug in labels:
             client.table("waste_classes").update(
                 {"trained_in_model": True},
             ).eq("slug", slug).execute()
-        print(f"  waste_classes.trained_in_model = true → {labels}")
-    except Exception as exc:  # noqa: BLE001
-        print(f"  [warn] trained 갱신 실패: {exc}")
+        log.info(f"waste_classes.trained_in_model = true → {labels}")
 
 
 def _read_manifest_labels() -> list[str]:
@@ -270,11 +222,10 @@ def publish_model_version(feedback_count: int, version: str | None = None) -> st
     - 반환: 생성된 version 문자열 (실패 시 None).
     """
     if not ONNX_PATH.exists():
-        print(f"  [warn] {ONNX_PATH} 없음 — 모델 publish skip")
+        log.warning(f"{ONNX_PATH} 없음 — 모델 publish skip")
         return None
 
-    url, key = _load_supabase_env()
-    client = create_client(url, key)
+    client = get_client()
     bucket = client.storage.from_(MODELS_BUCKET)
     version = version or datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -282,7 +233,7 @@ def publish_model_version(feedback_count: int, version: str | None = None) -> st
     color_bytes = ONNX_PATH.read_bytes()
     color_sha = hashlib.sha256(color_bytes).hexdigest()
     color_storage = f"v{version}/classifier.onnx"
-    print(f"  ⬆ uploading color ONNX ({len(color_bytes) / 1024 / 1024:.1f} MB)...")
+    log.info(f"⬆ uploading color ONNX ({len(color_bytes) / 1024 / 1024:.1f} MB)...")
     bucket.upload(
         path=color_storage,
         file=color_bytes,
@@ -298,7 +249,7 @@ def publish_model_version(feedback_count: int, version: str | None = None) -> st
         edge_bytes = EDGE_ONNX_PATH.read_bytes()
         edge_sha = hashlib.sha256(edge_bytes).hexdigest()
         edge_storage = f"v{version}/classifier_edge.onnx"
-        print(f"  ⬆ uploading edge ONNX ({len(edge_bytes) / 1024 / 1024:.1f} MB)...")
+        log.info(f"⬆ uploading edge ONNX ({len(edge_bytes) / 1024 / 1024:.1f} MB)...")
         bucket.upload(
             path=edge_storage,
             file=edge_bytes,
@@ -306,7 +257,7 @@ def publish_model_version(feedback_count: int, version: str | None = None) -> st
         )
         edge_url = bucket.get_public_url(edge_storage)
     else:
-        print("  (edge ONNX 없음 — color 단독)")
+        log.info("(edge ONNX 없음 — color 단독)")
 
     # 3) 메타데이터
     accuracy = get_current_accuracy()
@@ -329,10 +280,10 @@ def publish_model_version(feedback_count: int, version: str | None = None) -> st
         "is_active": True,
     }).execute()
 
-    print(f"  ✓ model_versions row inserted: version={version}, active=true")
-    print(f"    color: {color_url}")
+    log.info(f"✓ model_versions row inserted: version={version}, active=true")
+    log.info(f"color: {color_url}")
     if edge_url:
-        print(f"    edge:  {edge_url}")
+        log.info(f"edge:  {edge_url}")
     return version
 
 
@@ -340,7 +291,7 @@ def run_classifier_full() -> None:
     # splits.json 을 지워 새 데이터까지 포함된 새 분할 생성
     if SPLITS_PATH.exists():
         SPLITS_PATH.unlink()
-        print(f"  removed {SPLITS_PATH.name} → will regenerate with new data")
+        log.info(f"removed {SPLITS_PATH.name} → will regenerate with new data")
 
     subprocess.run(
         [
@@ -380,7 +331,7 @@ def main() -> int:
 
     # --publish-only: 현재 있는 ONNX 만 Supabase 에 올림
     if args.publish_only:
-        print("\n[publish-only] 재학습 없이 현재 ONNX 만 publish 합니다.")
+        log.info("[publish-only] 재학습 없이 현재 ONNX 만 publish 합니다.")
         v = publish_model_version(feedback_count=0)
         if v is None:
             return 1
@@ -389,24 +340,22 @@ def main() -> int:
 
     # 0) etc 큐 자동 처리 (open-set) — 임계 도달 시 기존 클래스 재배정 + 신규 후보 군집.
     #    feedback_label 을 갱신하므로 반드시 피드백 수집 전에 실행.
-    print("\n[0] etc 큐 점검 (open-set 2단계)...")
-    try:
+    log.info("[0] etc 큐 점검 (open-set 2단계)...")
+    with fail_open(log, "etc 큐 처리"):
         from etc_queue import maybe_process
         maybe_process()
-    except Exception as exc:  # noqa: BLE001
-        print(f"  [warn] etc 큐 처리 실패 (계속 진행): {exc}")
 
     # 1) Supabase에서 피드백 수집 + 유효 클래스 목록 (waste_classes active=true)
-    print("\n[1/6] Supabase user_uploads 조회 + waste_classes 동적 라벨 셋...")
+    log.info("[1/6] Supabase user_uploads 조회 + waste_classes 동적 라벨 셋...")
     valid_labels = fetch_active_labels()
-    print(f"  active 클래스 ({len(valid_labels)}개): {sorted(valid_labels)}")
+    log.info(f"active 클래스 ({len(valid_labels)}개): {sorted(valid_labels)}")
     rows = fetch_feedback_rows()
     confirmed_count = sum(1 for r in rows if r["feedback_status"] == "confirmed")
     corrected_count = sum(1 for r in rows if r["feedback_status"] == "corrected")
-    print(f"  총 {len(rows)}건 (confirmed={confirmed_count}, corrected={corrected_count})")
+    log.info(f"총 {len(rows)}건 (confirmed={confirmed_count}, corrected={corrected_count})")
 
     if not rows:
-        print("\n재학습할 새 데이터가 없습니다. 종료.")
+        log.warning("재학습할 새 데이터가 없습니다. 종료.")
         return 0
 
     # 라벨별 분포 출력 — active 클래스 기준 (정렬)
@@ -418,16 +367,16 @@ def main() -> int:
     # 알 수 없는 라벨이 있으면 같이 표시 (디버깅용)
     unknown = set(label_dist.keys()) - valid_labels
     if unknown:
-        print(f"  [warn] active set 에 없는 라벨: {sorted(unknown)} — download 단계에서 reject 됨")
+        log.warning(f"active set 에 없는 라벨: {sorted(unknown)} — download 단계에서 reject 됨")
 
     if args.dry_run:
-        print("\n[dry-run] 다운로드·학습 안 함. 종료.")
+        log.info("[dry-run] 다운로드·학습 안 함. 종료.")
         return 0
 
     # 2) 이미지 다운로드
-    print("\n[2/6] 이미지 다운로드...")
+    log.info("[2/6] 이미지 다운로드...")
     downloaded, skipped, failed = download_to_raw(rows, valid_labels)
-    print(f"  downloaded={downloaded} skipped(already)={skipped} failed={failed}")
+    log.info(f"downloaded={downloaded} skipped(already)={skipped} failed={failed}")
 
     # 2.5) 너무 적은 클래스는 격리 (stratified split 통과 보장)
     quarantined = quarantine_tiny_classes()
@@ -437,34 +386,34 @@ def main() -> int:
             print(f"  - {label}: {n}장 (다음 retrain 까지 학습 제외, 원복은 폴더 복원만 하면 됨)")
 
     # 3) 백업 + 기존 정확도 기록
-    print("\n[3/6] 기존 모델 백업 + 정확도 기록...")
+    log.info("[3/6] 기존 모델 백업 + 정확도 기록...")
     old_acc = get_current_accuracy()
-    backup_path = backup_artifacts()
+    backup_path = backup_artifacts(ARTIFACTS, BACKUP_DIR, "cnn")
     if old_acc is not None:
-        print(f"  이전 test accuracy: {old_acc:.4f}")
+        log.info(f"이전 test accuracy: {old_acc:.4f}")
     else:
-        print("  이전 평가 결과 없음 (첫 학습)")
+        log.info("이전 평가 결과 없음 (첫 학습)")
     if backup_path:
-        print(f"  백업 위치: {backup_path}")
+        log.info(f"백업 위치: {backup_path}")
 
     # 4) waste-preprocessor 재실행
     if args.skip_train:
-        print("\n[4-5] --skip-train: 전처리·학습 건너뜀 (현재 best.pt/ONNX 사용)")
+        log.info("[4-5] --skip-train: 전처리·학습 건너뜀 (현재 best.pt/ONNX 사용)")
     elif not args.skip_preprocessor:
-        print("\n[4/6] waste-preprocessor 실행 (2-3분 소요)...")
+        log.info("[4/6] waste-preprocessor 실행 (2-3분 소요)...")
         run_preprocessor()
     else:
-        print("\n[4/6] preprocessor 스킵 (--skip-preprocessor)")
+        log.info("[4/6] preprocessor 스킵 (--skip-preprocessor)")
 
     # 5) waste-classifier 재학습 + 평가 + ONNX export
     if not args.skip_train:
-        print("\n[5/7] waste-classifier 재학습 (10분 이상 소요)...")
+        log.info("[5/7] waste-classifier 재학습 (10분 이상 소요)...")
         run_classifier_full()
 
     # 6) 진단 + 게이트 — 고정 held-out 으로 회귀 검사. 통과해야만 publish/activate.
     #    publish 와 동일 태그를 쓰도록 version 을 한 번만 생성해 공유.
     version = datetime.now().strftime("%Y%m%d_%H%M%S")
-    print("\n[6/7] 진단 + 게이트 (고정 held-out)...")
+    log.info("[6/7] 진단 + 게이트 (고정 held-out)...")
     from diagnose import run_diagnosis
     report = run_diagnosis(arch="cnn", version=version, commit_history=True)
     if not report["gate"]["pass"]:
@@ -473,7 +422,7 @@ def main() -> int:
         print("=" * 60)
         for reason in report["gate"]["reasons"]:
             print(f"  - {reason}")
-        rollback_artifacts(backup_path)
+        rollback_artifacts(ARTIFACTS, backup_path)
         print("\n  새 모델은 폐기됐고 기존 active 모델이 그대로 유지됩니다.")
         print(f"  실패 진단 상세: outputs/logs/diagnosis/{version}.json")
         return 1
@@ -483,7 +432,7 @@ def main() -> int:
 
     # 7) Supabase Storage 에 ONNX 업로드 + model_versions row 등록.
     #    waste-api · Flutter 앱이 부팅 시 이 row 를 조회해서 자동 갱신.
-    print("\n[7/7] 새 ONNX → Supabase models/ 버킷 publish...")
+    log.info("[7/7] 새 ONNX → Supabase models/ 버킷 publish...")
     published_version = publish_model_version(feedback_count=len(rows), version=version)
 
     # 결과 비교

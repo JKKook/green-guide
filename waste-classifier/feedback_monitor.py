@@ -19,12 +19,10 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import os
 from collections import Counter
 from datetime import UTC, datetime
 
-from dotenv import load_dotenv
-from supabase import create_client
+from waste_common.supabase import get_client
 
 from retrain import MIN_SAMPLES_PER_CLASS
 from src import config
@@ -64,11 +62,7 @@ def main() -> int:
     config.refresh_classes_from_manifest()
     labels = set(config.CLASS_LABELS)
 
-    load_dotenv(config.PREPROCESSOR_ROOT / ".env")
-    url, key = os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY")
-    if not url or not key:
-        raise SystemExit("SUPABASE_URL / SUPABASE_KEY 미설정")
-    cli = create_client(url, key)
+    cli = get_client()
 
     rows = (cli.table("user_uploads")
             .select("id,image_url,predicted_class,predicted_confidence,"
