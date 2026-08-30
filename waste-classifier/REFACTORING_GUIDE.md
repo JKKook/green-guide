@@ -71,6 +71,15 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 > 환경 메모: Rosetta(x86_64) 셸에서 `.venv/bin/python` 을 실행하면 universal 바이너리의 x86_64 슬라이스가 선택돼 numpy(arm64) import 가 실패한다.
 > Claude Code Bash 세션 등 i386 셸에서는 `arch -arm64 .venv/bin/python -m pytest` 로 실행. 일반 터미널(arm64)은 영향 없음.
 
+**Phase 0 검증 기록**
+- ruff 가 제거한 import 20개 이름 → 각 파일에서 잔여 참조 0건 (부수효과 import 없음, `timezone` 은 `UTC` 로 대체)
+- 진입점 39개 `--help` 스모크: 37 통과 / 2 실패 — 두 건 모두 baseline 에서 동일 재현되는 **기존 버그** (아래)
+- pytest 32 passed
+
+**리팩토링 중 발견한 기존 버그 (범위 밖, 별도 수정 필요)**
+- `scripts/filter_aihub_by_quality.py:222` — argparse help 문자열의 `18%)` 가 `%` 포맷으로 해석돼 `--help` 가 ValueError. `%%` 로 이스케이프 필요
+- `scripts/synthesize_indoor.py` — `albumentations` 가 requirements.txt 에 없어 import 실패 (실험용이면 Phase 3 에서 archive 이동 대상)
+
 ### Phase 1 — Characterization tests (1일)
 공통화 대상 5개 패턴의 현재 동작을 고정한다. 이 테스트가 이후 모든 단계의 안전망.
 - [ ] `tests/test_golden_inference.py`: 고정 이미지 3장(클래스 다름) → 현행 ONNX 모델 logits 를 `tests/fixtures/golden_logits.npz` 로 저장. 테스트는 `np.allclose(atol=1e-5)`
