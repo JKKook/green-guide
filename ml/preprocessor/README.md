@@ -1,4 +1,4 @@
-# waste-preprocessor
+# greenguide-preprocessor
 
 GreenGuide AI의 첫 서브 프로젝트. Kaggle의 폐기물 분류 데이터셋을 자동으로 수집·정제·전처리·벡터화하고, 결과를 로컬 디스크와 Supabase(Postgres + Storage)에 저장하는 이미지 전처리 파이프라인이다.
 
@@ -30,7 +30,7 @@ GreenGuide AI의 첫 서브 프로젝트. Kaggle의 폐기물 분류 데이터�
 
 ```
 GreenGuide AI (전체 비전)
-├── waste-preprocessor      <-- 현재 프로젝트 (전처리)
+├── greenguide-preprocessor      <-- 현재 프로젝트 (전처리)
 ├── 데이터 로더             (다음)
 ├── 분류 모델 학습          (다음)
 ├── ReAct 에이전트화        (장기)
@@ -89,7 +89,7 @@ GreenGuide AI (전체 비전)
 
 ## 파이프라인 단계
 
-전체 흐름은 `src/pipeline.py:run()` 에서 오케스트레이션된다.
+전체 흐름은 `greenguide_preprocessor/pipeline.py:run()` 에서 오케스트레이션된다.
 
 | # | 단계 | 모듈 | 입력 | 출력 |
 |---|---|---|---|---|
@@ -143,10 +143,10 @@ GreenGuide AI (전체 비전)
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt   # ../waste-common 이 editable 로 함께 설치됨
+pip install -r requirements.txt   # ../greenguide-common 이 editable 로 함께 설치됨
 ```
 
-> 이미지 전처리·Supabase 접속·분류체계는 [`waste-common`](../waste-common/README.md) 공통단을 사용한다.
+> 이미지 전처리·Supabase 접속·분류체계는 [`greenguide-common`](../greenguide-common/README.md) 공통단을 사용한다.
 > Apple Silicon 에서 Rosetta 셸(x86_64)로 실행하면 arm64 휠과 충돌하므로 `arch -arm64 .venv/bin/python ...` 으로 실행.
 
 ### Kaggle 인증 (자동 다운로드용)
@@ -226,13 +226,13 @@ python main.py --upload
 
 ### Python API
 ```python
-from src.pipeline import run
+from greenguide_preprocessor.pipeline import run
 
 # 전체 실행
 manifest_path = run(upload_to_supabase=True)
 
 # 처리된 벡터 1개 로드 (자동으로 float32 로 복원)
-from src.vectorize import load_vector
+from greenguide_preprocessor.vectorize import load_vector
 vec = load_vector("b2dfb128a3ad")    # shape: (150528,), dtype: float32
 
 # manifest 직접 읽기
@@ -243,7 +243,7 @@ for item in manifest["items"][:3]:
     print(item["label"], item["id"], item["original_url"])
 
 # Supabase 에서 메타 조회
-from src.storage import _client
+from greenguide_preprocessor.storage import _client
 c = _client()
 rows = c.table("items").select("*").eq("label", "plastic").limit(10).execute().data
 ```
@@ -340,8 +340,8 @@ ImageNet mean/std 는 ImageNet 데이터셋 기준이므로, 이 데이터에 �
 ```python
 import numpy as np
 from PIL import Image
-from src.vectorize import load_vector
-from src import config
+from greenguide_preprocessor.vectorize import load_vector
+from greenguide_preprocessor import config
 
 vec = load_vector("b2dfb128a3ad")
 arr = vec.reshape(config.IMAGE_SIZE, config.IMAGE_SIZE, config.IMAGE_CHANNELS)
@@ -414,7 +414,7 @@ print(Counter(i["label"] for i in m["items"]))
 ## 프로젝트 구조
 
 ```
-waste-preprocessor/
+greenguide-preprocessor/
 ├── .env                          # 실제 자격증명 (gitignore)
 ├── .env.example                  # 자격증명 양식
 ├── .gitignore

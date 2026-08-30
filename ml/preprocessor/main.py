@@ -1,4 +1,4 @@
-"""waste-preprocessor CLI.
+"""greenguide-preprocessor CLI.
 
 사용 예:
     python main.py                         # 전체 파이프라인 (로컬만)
@@ -10,40 +10,40 @@ from __future__ import annotations
 import argparse
 import sys
 
-from src import config
+from greenguide_preprocessor import config
 
 
 def _run_pipeline(upload: bool, vectorize: bool = True) -> int:
-    from src.pipeline import run
+    from greenguide_preprocessor.pipeline import run
     run(upload_to_supabase=upload, vectorize=vectorize)
     return 0
 
 
 def _run_step(step: str) -> int:
     if step == "collect":
-        from src.collect import ensure_dataset
+        from greenguide_preprocessor.collect import ensure_dataset
         ensure_dataset()
         return 0
     if step == "catalog":
-        from src.catalog import build_catalog, save_catalog
+        from greenguide_preprocessor.catalog import build_catalog, save_catalog
         save_catalog(build_catalog())
         return 0
     if step == "cleanse":
-        from src.catalog import load_catalog, save_catalog
-        from src.cleanse import cleanse
+        from greenguide_preprocessor.catalog import load_catalog, save_catalog
+        from greenguide_preprocessor.cleanse import cleanse
         cleansed, _ = cleanse(load_catalog())
         save_catalog(cleansed, config.INTERIM_DIR / "catalog.cleansed.json")
         return 0
     if step == "preprocess":
-        from src.preprocess import run_sample
+        from greenguide_preprocessor.preprocess import run_sample
         run_sample()
         return 0
     if step == "vectorize":
-        from src.vectorize import run_sample
+        from greenguide_preprocessor.vectorize import run_sample
         run_sample()
         return 0
     if step == "supabase-check":
-        from src.storage import SupabaseStore
+        from greenguide_preprocessor.storage import SupabaseStore
         store = SupabaseStore()
         print(f"[supabase] connected. bucket={store.bucket} table={store.table}")
         return 0
@@ -52,7 +52,7 @@ def _run_step(step: str) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="waste-preprocessor")
+    parser = argparse.ArgumentParser(prog="greenguide-preprocessor")
     parser.add_argument(
         "--step",
         choices=["collect", "catalog", "cleanse", "preprocess", "vectorize", "supabase-check"],

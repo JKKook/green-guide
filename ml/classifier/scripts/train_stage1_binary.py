@@ -24,7 +24,7 @@ import torchvision.transforms as T
 from _base import PREPROCESSOR_ROOT, PROJECT_ROOT, make_parser
 from PIL import Image, ImageFile
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
-from waste_common import imaging
+from greenguide_common import imaging
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 

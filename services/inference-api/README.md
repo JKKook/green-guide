@@ -11,7 +11,7 @@ license: mit
 
 # waste-api
 
-GreenGuide AI 의 세 번째 서브 프로젝트. [`waste-classifier`](../waste-classifier) 가 학습·export 한 ONNX 모델을 FastAPI 로 감싸 HTTP 엔드포인트로 노출하는 추론 서버.
+GreenGuide AI 의 세 번째 서브 프로젝트. [`greenguide-classifier`](../greenguide-classifier) 가 학습·export 한 ONNX 모델을 FastAPI 로 감싸 HTTP 엔드포인트로 노출하는 추론 서버.
 
 Flutter 앱·웹·다른 서비스 등 어디서든 사진 한 장만 보내면 6-class 폐기물 분류 결과를 받을 수 있다.
 
@@ -49,8 +49,8 @@ Flutter 앱·웹·다른 서비스 등 어디서든 사진 한 장만 보내면 
 
 ```
 GreenGuide AI
-├── waste-preprocessor     (1) 수집·전처리·벡터화          완성
-├── waste-classifier       (2) 지도학습 분류기 + ONNX      완성 (CNN 92.35%)
+├── greenguide-preprocessor     (1) 수집·전처리·벡터화          완성
+├── greenguide-classifier       (2) 지도학습 분류기 + ONNX      완성 (CNN 92.35%)
 ├── waste-api              (3) HTTP 추론 서버              현재
 └── Flutter 클라이언트     (4) 모바일 앱                   예정
 ```
@@ -100,7 +100,7 @@ GreenGuide AI
 ```bash
 WASTE_API_COLLECT_UPLOADS=false python main.py
 ```
-수집된 데이터는 [`../waste-classifier/retrain.py`](../waste-classifier/retrain.py) 로 모델 재학습에 사용.
+수집된 데이터는 [`../greenguide-classifier/retrain.py`](../greenguide-classifier/retrain.py) 로 모델 재학습에 사용.
 
 ### POST /predict 응답 스키마
 ```json
@@ -140,9 +140,9 @@ pip install -r requirements.txt
 
 ### 2. 전제 — 모델 파일
 ```bash
-ls ../waste-classifier/outputs/models/cnn/classifier.onnx
+ls ../greenguide-classifier/outputs/models/cnn/classifier.onnx
 ```
-없으면 waste-classifier 의 `python main.py all --arch cnn` 먼저 실행.
+없으면 greenguide-classifier 의 `python main.py all --arch cnn` 먼저 실행.
 
 ### 3. 서버 실행
 ```bash
@@ -158,11 +158,11 @@ python main.py --host 0.0.0.0 --port 8000 --workers 4
 ### 4. 환경 변수
 | 변수 | 기본값 | 설명 |
 |---|---|---|
-| `WASTE_API_MODEL_PATH` | `../waste-classifier/outputs/models/cnn/classifier.onnx` | ONNX 모델 경로 (절대/상대 경로) |
+| `WASTE_API_MODEL_PATH` | `../greenguide-classifier/outputs/models/cnn/classifier.onnx` | ONNX 모델 경로 (절대/상대 경로) |
 
 예: MLP 모델로 전환
 ```bash
-WASTE_API_MODEL_PATH=../waste-classifier/outputs/models/mlp/classifier.onnx \
+WASTE_API_MODEL_PATH=../greenguide-classifier/outputs/models/mlp/classifier.onnx \
   python main.py
 ```
 
@@ -252,7 +252,7 @@ CNN 의 전체 test accuracy 92.35% 와 일치하는 결과. plastic/glass 혼�
 | `src/services/` | 비즈니스 로직 | `image_io`(읽기·검증·크롭), `cascade`(손/이진 게이트→분류), `regions_service`(다중재질 영역), `recording`(업로드 기록) |
 | `src/routers/` | 얇은 라우터 | `meta`·`inference`·`admin`·`learning` — 입력 읽기 → 서비스 호출 → 응답 조립 |
 | `src/api.py` | app 조립 | lifespan(모델 lazy load·정리 루프) + 미들웨어 + 라우터 include |
-| `src/preprocess.py` | bytes → 텐서 | waste-preprocessor 와 **완전히 동일한** RGB→resize→normalize→reshape |
+| `src/preprocess.py` | bytes → 텐서 | greenguide-preprocessor 와 **완전히 동일한** RGB→resize→normalize→reshape |
 | `src/inference.py` 외 모델 모듈 | ONNX wrapper | `hier_inference`·`segment`·`clip_identity`·`dinov2_classifier`·`stage1_classifier`·`hand_detector` 등 |
 | `src/schemas.py` | Pydantic 모델 | 자동 검증·OpenAPI 스키마 생성 |
 | `main.py` | uvicorn 진입점 | host/port/reload/workers CLI 인자 |
@@ -272,7 +272,7 @@ CNN 의 전체 test accuracy 92.35% 와 일치하는 결과. plastic/glass 혼�
 | `test_preprocess.py` | RGB 변환, grayscale 자동 변환, 잘못된 bytes 거부, 정규화 shape/dtype/범위, MLP/CNN reshape, end-to-end |
 | `test_api.py` | 4개 엔드포인트 정상 응답, 실제 cardboard 샘플 정확 분류, 잘못된 Content-Type/empty/invalid bytes 거부 |
 
-테스트는 실제 ONNX 모델을 로드하므로 waste-classifier 의 학습·export 완료가 전제.
+테스트는 실제 ONNX 모델을 로드하므로 greenguide-classifier 의 학습·export 완료가 전제.
 
 ---
 
@@ -280,12 +280,12 @@ CNN 의 전체 test accuracy 92.35% 와 일치하는 결과. plastic/glass 혼�
 
 | 증상 | 원인 | 해결 |
 |---|---|---|
-| `FileNotFoundError: ONNX 모델 파일을 찾을 수 없음` | classifier 학습 미완료 | `cd ../waste-classifier && .venv/bin/python main.py all --arch cnn` |
+| `FileNotFoundError: ONNX 모델 파일을 찾을 수 없음` | classifier 학습 미완료 | `cd ../greenguide-classifier && .venv/bin/python main.py all --arch cnn` |
 | `415 Unsupported Media Type` | Content-Type 헤더 누락/잘못됨 | curl `;type=image/jpeg` 명시 또는 클라이언트 헤더 확인 |
 | `413 Request Entity Too Large` | 10MB 초과 | 클라이언트에서 리사이즈 후 전송, 또는 `config.MAX_UPLOAD_SIZE_BYTES` 조정 |
 | 첫 요청만 느림 | 서버 시작 직후 모델 워밍업 | 정상 — lifespan 으로 로드되지만 첫 추론 시 ONNX session 캐시 발생 |
 | Flutter web 에서 CORS 에러 | 다른 origin 호출 | 현재 `*` 허용. production 에선 `CORS_ORIGINS` 좁히기 |
-| 분류 결과가 부정확 | CNN 92.35% 한계 | 데이터 증강·앙상블·더 큰 backbone (waste-classifier 개선) |
+| 분류 결과가 부정확 | CNN 92.35% 한계 | 데이터 증강·앙상블·더 큰 backbone (greenguide-classifier 개선) |
 
 ---
 

@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from src.preprocess import image_stats, preprocess_image
+from greenguide_preprocessor.preprocess import image_stats, preprocess_image
 
 
 # 결정적 입력: seed 0, 600x800 RGB — conftest.sample_image 와 동일 생성식이지만

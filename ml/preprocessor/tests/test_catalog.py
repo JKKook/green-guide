@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from src import config
-from src.catalog import build_catalog, load_catalog, save_catalog
+from greenguide_preprocessor import config
+from greenguide_preprocessor.catalog import build_catalog, load_catalog, save_catalog
 
 
 def test_build_catalog_counts_all_items(fake_dataset: Path) -> None:

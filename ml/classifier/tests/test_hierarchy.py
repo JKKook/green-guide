@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 
 import torch
-from waste_common.taxonomy import (
+from greenguide_common.taxonomy import (
     COARSE_LABELS,
     COARSE_TO_INDEX,
     FINE_IDX_TO_COARSE_IDX,
@@ -72,7 +72,7 @@ def test_rollup_probs_sum():
 
 def test_hierarchical_loss_math():
     """롤업 NLL 이 수학적으로 -log(Σ P(children)) 과 일치."""
-    from src.hier_train import HierarchicalLoss
+    from greenguide_classifier.hier_train import HierarchicalLoss
 
     crit = HierarchicalLoss(torch.ones(NUM_FINE), torch.ones(NUM_COARSE))
     torch.manual_seed(1)
@@ -94,7 +94,7 @@ def test_hierarchical_loss_fine_matches_ce():
     """fine 감독만 있을 때 표준 CE 와 동일."""
     import torch.nn.functional as F
 
-    from src.hier_train import HierarchicalLoss
+    from greenguide_classifier.hier_train import HierarchicalLoss
 
     crit = HierarchicalLoss(torch.ones(NUM_FINE), torch.ones(NUM_COARSE))
     torch.manual_seed(2)

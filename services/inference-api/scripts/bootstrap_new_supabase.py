@@ -14,7 +14,7 @@
   [4] 검증 출력
 
 이후 수동 단계 (스크립트가 마지막에 안내):
-  - waste-classifier publish_hier_version.py --apply (모델 레지스트리 재발행)
+  - greenguide-classifier publish_hier_version.py --apply (모델 레지스트리 재발행)
   - 계층 활성화 상태 복원: apply_hier_activation.py
   - HF Spaces 시크릿(SUPABASE_URL/KEY) 교체 → 재빌드
 
@@ -35,7 +35,7 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(PROJECT_ROOT / ".env")
 
-RAW = Path("/Users/ethan/practice/waste/waste-preprocessor/data/raw/garbage-classification")
+RAW = Path("/Users/ethan/practice/waste/greenguide-preprocessor/data/raw/garbage-classification")
 
 
 def main() -> None:
@@ -110,9 +110,9 @@ def main() -> None:
     print(f"[4] 검증 — 피드백 {len(fb)}건, region_rules 접근 OK")
 
     print("\n다음 수동 단계:")
-    print("  1) waste-classifier: .venv/bin/python scripts/apply_hier_activation.py "
+    print("  1) greenguide-classifier: .venv/bin/python scripts/apply_hier_activation.py "
           "(계층 활성화/승격 상태 복원)")
-    print("  2) waste-classifier: publish_hier_version.py --apply (레지스트리 재발행 — 운영 배포 승인 필요)")
+    print("  2) greenguide-classifier: publish_hier_version.py --apply (레지스트리 재발행 — 운영 배포 승인 필요)")
     print("  3) HF Spaces Settings → Secrets: SUPABASE_URL / SUPABASE_KEY 교체 → 재시작")
 
 

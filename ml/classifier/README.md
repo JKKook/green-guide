@@ -1,6 +1,6 @@
-# waste-classifier
+# greenguide-classifier
 
-GreenGuide AI 의 두 번째 서브 프로젝트. 자매 프로젝트 [`waste-preprocessor`](../waste-preprocessor) 가 만든 메타데이터(manifest.json) 와 전처리된 벡터(.npz) 를 입력으로 받아, 6-class 폐기물 분류기를 학습하는 PyTorch 기반 파이프라인.
+GreenGuide AI 의 두 번째 서브 프로젝트. 자매 프로젝트 [`greenguide-preprocessor`](../greenguide-preprocessor) 가 만든 메타데이터(manifest.json) 와 전처리된 벡터(.npz) 를 입력으로 받아, 6-class 폐기물 분류기를 학습하는 PyTorch 기반 파이프라인.
 
 **두 가지 아키텍처를 모두 지원** — Fully-Connected NN (baseline) 과 ResNet18 기반 CNN. 같은 데이터·평가 파이프라인으로 두 모델을 직접 비교 가능. 학습된 모델은 ONNX 로 export 되어 클라우드 API · Flutter on-device 등 다양한 배포 환경에 사용 가능하다.
 
@@ -33,8 +33,8 @@ GreenGuide AI 의 두 번째 서브 프로젝트. 자매 프로젝트 [`waste-pr
 
 ```
 GreenGuide AI
-├── waste-preprocessor   (1) 수집·전처리·벡터화         완성
-├── waste-classifier     (2) 지도학습 분류기 + ONNX     현재
+├── greenguide-preprocessor   (1) 수집·전처리·벡터화         완성
+├── greenguide-classifier     (2) 지도학습 분류기 + ONNX     현재
 ├── 추론 API             (3) FastAPI/Cloud 배포        예정
 ├── Flutter 클라이언트   (4) 모바일 on-device 추론       예정
 └── ReAct 에이전트화     (5) LLM 결합                  장기
@@ -64,7 +64,7 @@ GreenGuide AI
 
 ```
 +----------------------------------------------------------+
-|  waste-preprocessor (sibling)                            |
+|  greenguide-preprocessor (sibling)                            |
 |    data/processed/                                       |
 |      manifest.json    <- 메타데이터                      |
 |      vectors/<id>.npz <- float16 압축 벡터               |
@@ -73,15 +73,15 @@ GreenGuide AI
                            | 상대 경로 read
                            v
 +----------------------------------------------------------+
-|  waste-classifier                                        |
+|  greenguide-classifier                                        |
 |                                                          |
-|  src/dataset.py   --> PyTorch Dataset                    |
-|  src/split.py     --> stratified train/val/test          |
-|  src/model.py     --> WasteClassifierMLP (3 layer FC)    |
-|  src/train.py     --> training loop + early stopping     |
-|  src/evaluate.py  --> metrics on test set                |
-|  src/visualize.py --> loss curve + confusion matrix      |
-|  src/export.py    --> torch -> ONNX + equivalence check  |
+|  greenguide_classifier/dataset.py   --> PyTorch Dataset                    |
+|  greenguide_classifier/split.py     --> stratified train/val/test          |
+|  greenguide_classifier/model.py     --> WasteClassifierMLP (3 layer FC)    |
+|  greenguide_classifier/train.py     --> training loop + early stopping     |
+|  greenguide_classifier/evaluate.py  --> metrics on test set                |
+|  greenguide_classifier/visualize.py --> loss curve + confusion matrix      |
+|  greenguide_classifier/export.py    --> torch -> ONNX + equivalence check  |
 |                                                          |
 |  outputs/                                                |
 |    checkpoints/best.pt        <- 학습 중간 산출물        |
@@ -114,7 +114,7 @@ GreenGuide AI
 ## 설치 및 환경 설정
 
 ```bash
-cd /Users/whdrnr01/ai/waste-classifier
+cd /Users/whdrnr01/ai/greenguide-classifier
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -122,14 +122,14 @@ pip install -r requirements.txt
 
 ### 데이터 준비
 
-waste-preprocessor 가 먼저 실행되어 있어야 한다.
+greenguide-preprocessor 가 먼저 실행되어 있어야 한다.
 
 ```bash
-ls ../waste-preprocessor/data/processed/manifest.json    # 존재 확인
-ls ../waste-preprocessor/data/processed/vectors/ | head  # *.npz 파일 확인
+ls ../greenguide-preprocessor/data/processed/manifest.json    # 존재 확인
+ls ../greenguide-preprocessor/data/processed/vectors/ | head  # *.npz 파일 확인
 ```
 
-만약 없다면 `../waste-preprocessor/README.md` 참조하여 먼저 실행.
+만약 없다면 `../greenguide-preprocessor/README.md` 참조하여 먼저 실행.
 
 ---
 
@@ -168,11 +168,11 @@ python retrain.py --skip-preprocessor
 
 `retrain.py` 가 하는 일:
 1. Supabase `user_uploads` 에서 `confirmed`/`corrected` 피드백 조회
-2. 이미지를 `../waste-preprocessor/data/raw/garbage-classification/<label>/user_<id>.jpg` 로 다운로드
+2. 이미지를 `../greenguide-preprocessor/data/raw/garbage-classification/<label>/user_<id>.jpg` 로 다운로드
 3. 기존 모델·평가 결과를 `outputs/backups/cnn_YYYYMMDD_HHMMSS/` 로 백업
-4. waste-preprocessor 재실행 (전처리·벡터화)
+4. greenguide-preprocessor 재실행 (전처리·벡터화)
 5. 기존 `splits.json` 삭제 → 새 데이터 포함 재분할
-6. waste-classifier 재학습 + 평가 + ONNX export
+6. greenguide-classifier 재학습 + 평가 + ONNX export
 7. 새 vs 이전 정확도 비교, **악화 시 복원 안내** (수동 복원)
 
 재학습 후 waste-api 가 새 모델을 쓰려면 서버 재시작 필요.
@@ -181,11 +181,11 @@ python retrain.py --skip-preprocessor
 
 ```python
 # 학습
-from src.train import train
+from greenguide_classifier.train import train
 ckpt_path = train()
 
 # 평가
-from src.evaluate import evaluate
+from greenguide_classifier.evaluate import evaluate
 report = evaluate()
 print(report["accuracy"])
 
@@ -206,8 +206,8 @@ import onnxruntime as ort
 # 1) ONNX 모델 로드
 sess = ort.InferenceSession("outputs/models/classifier.onnx")
 
-# 2) waste-preprocessor가 만든 벡터 하나 로드
-with np.load("../waste-preprocessor/data/processed/vectors/<some_id>.npz") as data:
+# 2) greenguide-preprocessor가 만든 벡터 하나 로드
+with np.load("../greenguide-preprocessor/data/processed/vectors/<some_id>.npz") as data:
     vec = data["vector"].astype(np.float32).reshape(1, -1)
 
 # 3) 예측
@@ -372,7 +372,7 @@ Output : (B, 6)
 freeze_backbone=True 면 마지막 fc 만 학습 (3,078 params)
 ```
 
-### 하이퍼파라미터 (`src/config.py`)
+### 하이퍼파라미터 (`greenguide_classifier/config.py`)
 
 | 항목 | MLP | CNN |
 |---|---:|---:|
@@ -448,7 +448,7 @@ outputs/
 
 | 증상 | 원인 | 해결 |
 |---|---|---|
-| `manifest not found` | waste-preprocessor 미실행 | 자매 프로젝트 먼저 완료 |
+| `manifest not found` | greenguide-preprocessor 미실행 | 자매 프로젝트 먼저 완료 |
 | `least populated class has only N member` | 데이터셋이 너무 작아 stratified 분할 실패 | 클래스당 최소 8개 이상 확보 |
 | `Out of memory` | MPS/CUDA 메모리 부족 | `BATCH_SIZE` 를 32 또는 16 으로 |
 | 학습이 매우 느림 | CPU 만 사용 중 | Mac 의 경우 자동으로 MPS 가 잡혀야 함. `pick_device()` 결과 확인 |
@@ -460,7 +460,7 @@ outputs/
 ## 프로젝트 구조
 
 ```
-waste-classifier/
+greenguide-classifier/
 ├── .gitignore
 ├── README.md
 ├── pytest.ini

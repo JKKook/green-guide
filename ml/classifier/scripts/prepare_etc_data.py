@@ -10,11 +10,11 @@ cardboard/paper 로 잘못 분류하는 문제 완화용. ImageNet/Open Images �
 기본 동작:
   - HuggingFace `datasets` 라이브러리로 ImageNet-1k subset (CC license)
     또는 fallback 으로 Open Images V7 의 일부 카테고리에서 N장 다운로드
-  - `~/ai/waste-preprocessor/data/raw/garbage-classification/etc/` 에 저장
+  - `~/ai/greenguide-preprocessor/data/raw/garbage-classification/etc/` 에 저장
   - 다음 retrain.py 실행 시 자동으로 etc 클래스로 학습됨
 
 사용:
-    cd waste-classifier
+    cd greenguide-classifier
     .venv/bin/python scripts/prepare_etc_data.py --n 100 --dry-run     # 어떤 카테고리·이미지 받을지 미리 보기
     .venv/bin/python scripts/prepare_etc_data.py --n 100               # 실제 다운로드
     .venv/bin/python scripts/prepare_etc_data.py --source local --dir ~/my_ood_photos  # 직접 찍은 사진 통합
@@ -51,7 +51,7 @@ SUGGESTED_IMAGENET_CATEGORIES = [
 def _check_supabase_class() -> bool:
     """waste_classes 에 'etc' 가 active 인지 확인."""
     try:
-        from waste_common.supabase import try_get_client
+        from greenguide_common.supabase import try_get_client
 
         client = try_get_client()
         if client is None:
@@ -126,7 +126,7 @@ def _copy_local_dir(src_dir: Path, n: int, dry_run: bool) -> int:
     TARGET_DIR.mkdir(parents=True, exist_ok=True)
     copied = 0
     for src in selected:
-        dest = TARGET_DIR / f"etc_local_{src.name}"
+        dest = TARGET_DIR / f"etc_local_{greenguide_classifier.name}"
         if dest.exists():
             continue
         shutil.copy2(src, dest)
@@ -185,7 +185,7 @@ def main() -> int:
     print(f"\n[3/3] 완료 — 수집된 이미지: {count}장")
     if count > 0 and not args.dry_run:
         print("\n다음 단계:")
-        print("  cd ~/ai/waste-classifier")
+        print("  cd ~/ai/greenguide-classifier")
         print("  .venv/bin/python retrain.py")
         print("")
         print("  retrain 이 'etc' 폴더를 자동 감지해서 7개 클래스로 학습합니다.")

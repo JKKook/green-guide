@@ -43,7 +43,7 @@ class WasteClassifier:
         if not self.model_path.exists():
             raise FileNotFoundError(
                 f"ONNX 모델 파일을 찾을 수 없음: {self.model_path}\n"
-                f"waste-classifier 의 학습·export 를 먼저 완료해주세요."
+                f"greenguide-classifier 의 학습·export 를 먼저 완료해주세요."
             )
 
         self.arch = config.get_model_arch()

@@ -23,11 +23,11 @@ import onnxruntime as ort
 import torch
 from PIL import Image
 from torchvision import transforms
-from waste_common import imaging, settings
-from waste_common.logging import get_logger
+from greenguide_common import imaging, settings
+from greenguide_common.logging import get_logger
 
-from src import config
-from src.model import CamWasteClassifierCNN, WasteClassifierCNN
+from greenguide_classifier import config
+from greenguide_classifier.model import CamWasteClassifierCNN, WasteClassifierCNN
 
 log = get_logger(__name__)
 
@@ -154,8 +154,8 @@ def analyze(image_path: Path, cam_model, u2_session, out_path: Path,
 def main() -> int:
     ap = argparse.ArgumentParser()
     src = ap.add_mutually_exclusive_group(required=True)
-    src.add_argument("--image", type=Path)
-    src.add_argument("--label", type=str)
+    greenguide_classifier.add_argument("--image", type=Path)
+    greenguide_classifier.add_argument("--label", type=str)
     ap.add_argument("--n", type=int, default=5)
     ap.add_argument("--out", type=Path, default=OUTPUT_DIR)
     args = ap.parse_args()

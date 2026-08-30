@@ -12,7 +12,7 @@ ResNet18 의 마지막 conv block (layer4) 의 activation × gradient 을 이용
   6. side-by-side (원본 / overlay) PNG 저장
 
 사용:
-    cd waste-classifier
+    cd greenguide-classifier
     .venv/bin/python visualize_cam.py --image <path>
     .venv/bin/python visualize_cam.py --label plastic --n 5   # 클래스에서 5장 샘플
     .venv/bin/python visualize_cam.py --image x.jpg --target-class trash  # 강제 클래스
@@ -29,11 +29,11 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
-from waste_common import imaging, settings
-from waste_common.logging import get_logger
+from greenguide_common import imaging, settings
+from greenguide_common.logging import get_logger
 
-from src import config
-from src.model import WasteClassifierCNN
+from greenguide_classifier import config
+from greenguide_classifier.model import WasteClassifierCNN
 
 log = get_logger(__name__)
 
@@ -184,7 +184,7 @@ def visualize(
 
 
 def _sample_images_for_label(label: str, n: int) -> list[Path]:
-    """waste-preprocessor 의 raw 폴더에서 해당 라벨 이미지 n 장 샘플."""
+    """greenguide-preprocessor 의 raw 폴더에서 해당 라벨 이미지 n 장 샘플."""
     raw_dir = (
         settings.PREPROCESSOR_ROOT
         / "data" / "raw" / "garbage-classification" / label
@@ -205,8 +205,8 @@ def _sample_images_for_label(label: str, n: int) -> list[Path]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Grad-CAM 시각화")
     src = parser.add_mutually_exclusive_group(required=True)
-    src.add_argument("--image", type=Path, help="시각화할 단일 이미지 경로")
-    src.add_argument("--label", type=str, help="이 라벨 폴더에서 자동 샘플")
+    greenguide_classifier.add_argument("--image", type=Path, help="시각화할 단일 이미지 경로")
+    greenguide_classifier.add_argument("--label", type=str, help="이 라벨 폴더에서 자동 샘플")
     parser.add_argument("--n", type=int, default=5,
                         help="--label 사용 시 샘플 개수 (default 5)")
     parser.add_argument("--target-class", type=str, default=None,

@@ -33,8 +33,8 @@ import sys
 import time
 from pathlib import Path
 
-from waste_common.logging import fail_open, get_logger
-from waste_common.taxonomy import COARSE_LABELS
+from greenguide_common.logging import fail_open, get_logger
+from greenguide_common.taxonomy import COARSE_LABELS
 
 # retrain.py(flat) 의 검증된 유틸 재사용
 from retrain import (
@@ -44,9 +44,9 @@ from retrain import (
     quarantine_tiny_classes,
     run_preprocessor,
 )
-from src import config
-from src.artifacts import backup_artifacts, rollback_artifacts
-from src.hier_train import CKPT_DIR, LOG_DIR
+from greenguide_classifier import config
+from greenguide_classifier.artifacts import backup_artifacts, rollback_artifacts
+from greenguide_classifier.hier_train import CKPT_DIR, LOG_DIR
 
 log = get_logger(__name__)
 
@@ -156,7 +156,7 @@ def append_history(version: str, evaluation: dict, feedback_count: int) -> None:
 def record_diagnostics(version: str, evaluation: dict) -> None:
     """Supabase model_diagnostics 에 계층 지표 기록 (best-effort)."""
     with fail_open(log, "model_diagnostics 기록"):
-        from waste_common.supabase import get_client  # noqa: PLC0415
+        from greenguide_common.supabase import get_client  # noqa: PLC0415
 
         client = get_client()
         fine_rep = evaluation["fine_report"]
@@ -236,8 +236,8 @@ def main() -> int:
             if HIER_SPLITS.exists():
                 HIER_SPLITS.unlink()
                 log.info("[5] hier_splits.json 삭제 (frozen 은 hier_frozen_test.json 으로 유지)")
-            _run([py, "-m", "src.hier_train"], "계층 학습")
-        _run([py, "-m", "src.hier_evaluate"], "계층 평가")
+            _run([py, "-m", "greenguide_classifier.hier_train"], "계층 학습")
+        _run([py, "-m", "greenguide_classifier.hier_evaluate"], "계층 평가")
         evaluation = json.loads((LOG_DIR / "evaluation.json").read_text(encoding="utf-8"))
 
         # [6] 게이트
@@ -252,7 +252,7 @@ def main() -> int:
         log.info(f"[6] ✅ 게이트 PASS (대분류 {evaluation['coarse_accuracy']:.4f})")
 
         # [7] export + OOD 프로토타입 + history
-        _run([py, "-m", "src.hier_export"], "ONNX export")
+        _run([py, "-m", "greenguide_classifier.hier_export"], "ONNX export")
         _run([py, "scripts/build_hier_prototypes.py"], "OOD 프로토타입")
         append_history(version, evaluation, feedback_count=len(rows))
 

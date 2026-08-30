@@ -14,7 +14,7 @@
   4. 다음 retrain.py 가 이 데이터를 자동으로 학습에 포함.
 
 사용:
-    cd waste-classifier
+    cd greenguide-classifier
     .venv/bin/python scripts/integrate_kaggle_garbage12.py --src /tmp/kaggle_garbage12 --dry-run
     .venv/bin/python scripts/integrate_kaggle_garbage12.py --src /tmp/kaggle_garbage12
 """
@@ -56,18 +56,18 @@ def _find_dataset_root(src: Path) -> Path:
     Kaggle 데이터셋은 압축 해제 시 'garbage_classification/' 같은 single subdir
     안에 클래스 폴더들이 있는 경우가 흔함. 그 경우 자동 탐색.
     """
-    if not src.exists():
+    if not greenguide_classifier.exists():
         sys.exit(f"ERROR: {src} 가 없음")
 
     expected = set(KAGGLE_TO_OURS.keys())
 
     # 1) src 자체가 클래스 폴더들을 갖는지
-    direct = {p.name for p in src.iterdir() if p.is_dir()}
+    direct = {p.name for p in greenguide_classifier.iterdir() if p.is_dir()}
     if expected.issubset(direct):
         return src
 
     # 2) 한 단계 더 들어가서 찾기
-    for sub in src.iterdir():
+    for sub in greenguide_classifier.iterdir():
         if sub.is_dir():
             inner = {p.name for p in sub.iterdir() if p.is_dir()}
             if expected.issubset(inner):
@@ -181,7 +181,7 @@ def main() -> int:
     print("\n[copy] 결과:")
     print(f"  copied={copied:,}  skipped(existing)={skipped_existing}  failed={failed}")
     print("\n다음 단계:")
-    print("  cd ~/ai/waste-classifier")
+    print("  cd ~/ai/greenguide-classifier")
     print("  .venv/bin/python retrain.py")
     print("\nretrain.py 가 새 데이터를 자동 감지해서 학습합니다 (시간 ~30분 예상).")
     print("학습 완료 후 ONNX 가 Supabase 에 publish 되고 앱·서버가 자동 갱신됩니다.")

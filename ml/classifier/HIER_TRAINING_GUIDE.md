@@ -20,7 +20,7 @@
                                               → 롤업 logsumexp NLL loss
 ```
 
-정의 위치: [src/taxonomy.py](src/taxonomy.py) — `TAXONOMY`(계층), `LEGACY_LABEL_SUPERVISION`
+정의 위치: [greenguide_classifier/taxonomy.py](greenguide_classifier/taxonomy.py) — `TAXONOMY`(계층), `LEGACY_LABEL_SUPERVISION`
 (구 manifest 라벨 → 감독), `STAGING_DIR_SUPERVISION`(fine-staging 폴더 → 감독),
 `GUIDANCE_GROUPS`(안내-동일 형제).
 
@@ -82,7 +82,7 @@
 | **다중객체 합성** (`scripts/synthesize_multiobject.py`) | 8,000 | 10개 클래스 ×800 — 이웃 파편 포함 크롭(서빙 분포 정렬) + carton↔유리 하드네거티브 |
 | 사용자 피드백 (user_uploads) | 51 | 정정 라벨별 |
 
-물리 위치: 구 데이터 `waste-preprocessor/data/raw/garbage-classification/<라벨>/`,
+물리 위치: 구 데이터 `greenguide-preprocessor/data/raw/garbage-classification/<라벨>/`,
 신규 `.../data/raw/fine-staging/<staging라벨>/` (폴더명→감독은
 `STAGING_DIR_SUPERVISION`). 조건은 파일명에 보존: `aihub385_<cond>__…`,
 합성은 `synmo_*` (test 진입 금지).
@@ -91,7 +91,7 @@
 
 ## 3. 파이프라인 단계별 (코드 추적)
 
-### 3-1. 아이템 수집 — [src/hier_dataset.py](src/hier_dataset.py) `build_hier_items()`
+### 3-1. 아이템 수집 — [greenguide_classifier/hier_dataset.py](greenguide_classifier/hier_dataset.py) `build_hier_items()`
 manifest 아이템 + fine-staging 파일을 합쳐 각 아이템에
 `{source_path, sup_kind(fine|coarse), sup_slug, sup_idx}` 를 부여.
 미지의 라벨이 fine/coarse 공간에 있으면 자동 수용(피드백 fine slug 지원).
@@ -109,10 +109,10 @@ manifest 아이템 + fine-staging 파일을 합쳐 각 아이템에
 PIL→RGB→224² bilinear→[0,1]→ImageNet 정규화. train 증강: 좌우 flip 50%,
 **grayscale 20%**(색 편향 억제), color jitter 70%. 반환 `(x, is_fine, sup_idx)`.
 
-### 3-4. 모델 — [src/model.py](src/model.py) `WasteClassifierCNN(num_classes=25)`
+### 3-4. 모델 — [greenguide_classifier/model.py](greenguide_classifier/model.py) `WasteClassifierCNN(num_classes=25)`
 ImageNet 사전학습 ResNet18, fc 만 25-way 교체, 전층 fine-tune.
 
-### 3-5. 손실 — [src/hier_train.py](src/hier_train.py) `HierarchicalLoss`
+### 3-5. 손실 — [greenguide_classifier/hier_train.py](greenguide_classifier/hier_train.py) `HierarchicalLoss`
 ```
 fine 아이템:   CE( logits, fine_idx ) × w_fine[fine_idx]
 coarse 아이템: -log P(coarse_idx) × w_coarse[coarse_idx]
@@ -127,7 +127,7 @@ batch 32 / 최대 15 epoch / Adam 1e-4 / patience 4 / seed 42 / MPS.
 체크포인트 선택 점수 = **val 대분류 acc + 0.2×세부 acc** (대분류 우선 원칙).
 v4: 에포크 13 best, train 14.1만.
 
-### 3-7. 평가·활성화 — [src/hier_evaluate.py](src/hier_evaluate.py)
+### 3-7. 평가·활성화 — [greenguide_classifier/hier_evaluate.py](greenguide_classifier/hier_evaluate.py)
 - 대분류 acc(전체 test, 롤업) / 세부 acc(fine 감독 test 만)
 - **활성화 판정**: `test≥30 AND (f1≥0.80 OR guidance_safe_f1≥0.85)`
   — guidance-safe 는 **배출 안내가 같은 형제 혼동을 정답 처리**
@@ -227,7 +227,7 @@ loss = -log P(glass) × w_coarse[glass]
 ```
 5형제 중 무엇이라 했는지는 안 묻고, **합이 크기만 하면 통과** — 부분 정보를
 정확히 부분만큼만 요구한다. 구현은 수치 안정을 위해 logsumexp
-([src/hier_train.py](src/hier_train.py) `coarse_log_probs`, scatter_add 로 파이썬 루프 없이).
+([greenguide_classifier/hier_train.py](greenguide_classifier/hier_train.py) `coarse_log_probs`, scatter_add 로 파이썬 루프 없이).
 
 **클래스 가중치** — 불균형 보정:
 ```
@@ -327,7 +327,7 @@ TensorFlow/TFLite(교환 포맷은 ONNX 단일).
 
 ### 5-2. 전처리기(preprocessor) 계보 — 3계층
 
-**(a) 원천 정제 — [waste-preprocessor](../waste-preprocessor/)** (구 manifest 생성)
+**(a) 원천 정제 — [greenguide-preprocessor](../greenguide-preprocessor/)** (구 manifest 생성)
 ```
 collect (Kaggle CLI 자동 다운로드)
 → catalog (클래스 폴더 스캔 + 12자리 UUID 부여)
@@ -342,7 +342,7 @@ AI-Hub tar 스트림 → zip 파트 병합없이 직접 읽기(MultiPartFile) �
 PK 헤더 스캔 salvage) → 라벨 bbox + **8% 패딩** 크롭 → **min side 64px 필터**
 → 긴 변 256 thumbnail → JPEG q90 저장. 조건(clean/라벨부착/오염)은 폴더/파일명으로 보존.
 
-**(c) 학습 시점 변환 — [src/hier_dataset.py](src/hier_dataset.py) `_load_rgb_chw01` + `HierImageDataset`**
+**(c) 학습 시점 변환 — [greenguide_classifier/hier_dataset.py](greenguide_classifier/hier_dataset.py) `_load_rgb_chw01` + `HierImageDataset`**
 ```
 PIL.open → convert("RGB") → resize(224², BILINEAR) → np/255 → (3,224,224) float32
 → [train만] 증강(5-3) → (x - mean)/std   # ImageNet mean(0.485,0.456,0.406) std(0.229,0.224,0.225)
@@ -359,7 +359,7 @@ skew 를 없애는 단일 계약이며, 테스트로 고정돼 있다.
 ### 5-3. 증강(augmentation) 기법 — 자체 구현 텐서 연산
 
 torchvision transforms 대신 `[0,1]` 텐서 위 직접 연산
-([src/dataset.py](src/dataset.py) `_apply_augmentation`, hier 가 재사용):
+([greenguide_classifier/dataset.py](greenguide_classifier/dataset.py) `_apply_augmentation`, hier 가 재사용):
 
 | 기법 | 확률 | 구현 | 가르치는 불변성 |
 |---|---|---|---|
@@ -411,7 +411,7 @@ bbox 크롭이라 기하 변형이 라벨 경계를 훼손할 수 있음 — 대
 ## 7. 클래스 추가 시 체크리스트
 
 1. 데이터: `fine-staging/<새라벨>/` 에 크롭 적재 (조건은 파일명 prefix)
-2. [src/taxonomy.py](src/taxonomy.py): `TAXONOMY` 에 자식 추가 + `STAGING_DIR_SUPERVISION` 매핑
+2. [greenguide_classifier/taxonomy.py](greenguide_classifier/taxonomy.py): `TAXONOMY` 에 자식 추가 + `STAGING_DIR_SUPERVISION` 매핑
 3. (안내 동일 형제면) `GUIDANCE_GROUPS` 갱신
 4. migration: `waste_classes` 에 level=2 행 시드 (`active=false`)
 5. `pytest tests/test_hierarchy.py` (분할 무결성 자동 검증)
@@ -442,7 +442,7 @@ bbox 크롭이라 기하 변형이 라벨 경계를 훼손할 수 있음 — 대
 
 ### 재학습 실행 (전 과정 자동)
 ```bash
-cd waste-classifier
+cd greenguide-classifier
 .venv/bin/python retrain_hier.py --dry-run     # 피드백 현황
 .venv/bin/python retrain_hier.py               # 풀 사이클 (게이트·승격·실사용평가 포함)
 ```

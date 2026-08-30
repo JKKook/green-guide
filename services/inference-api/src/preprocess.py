@@ -1,6 +1,6 @@
 """이미지 bytes → 모델 입력 텐서.
 
-waste-preprocessor의 preprocess.py 와 동일한 변환:
+greenguide-preprocessor의 preprocess.py 와 동일한 변환:
   1. RGB 변환
   2. 224×224 리사이즈 (bilinear)
   3. [0,1] 스케일
@@ -95,7 +95,7 @@ def preprocess(raw: bytes, arch: str) -> np.ndarray:
 
 def to_edge_input(arr: np.ndarray) -> np.ndarray:
     """(H, W, C) RGB normalized → (1, 3, H, W) Sobel edge map (3채널 복제, ImageNet 재정규화).
-    waste-classifier 의 WasteEdgeDataset 와 동일 변환.
+    greenguide-classifier 의 WasteEdgeDataset 와 동일 변환.
     """
     mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
     std = np.array([0.229, 0.224, 0.225], dtype=np.float32)

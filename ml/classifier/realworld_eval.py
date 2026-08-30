@@ -17,11 +17,11 @@ import numpy as np
 import onnxruntime as ort
 import requests
 from PIL import Image
-from waste_common import imaging
-from waste_common.logging import get_logger
-from waste_common.supabase import Bucket, get_client
+from greenguide_common import imaging
+from greenguide_common.logging import get_logger
+from greenguide_common.supabase import Bucket, get_client
 
-from src import config
+from greenguide_classifier import config
 
 log = get_logger(__name__)
 

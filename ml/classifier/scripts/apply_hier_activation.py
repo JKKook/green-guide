@@ -39,7 +39,7 @@ NEW_COARSE_SLUGS = ("paper_pack", "hazardous")
 
 
 def _client():
-    from waste_common.supabase import get_client
+    from greenguide_common.supabase import get_client
 
     return get_client()
 

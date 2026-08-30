@@ -60,7 +60,7 @@ ENSEMBLE_COLOR_WEIGHT: float = float(
     os.getenv("WASTE_API_ENSEMBLE_COLOR_WEIGHT", "0.8"),
 )
 
-# 클래스 정의 (waste-preprocessor·waste-classifier와 동일 순서)
+# 클래스 정의 (greenguide-preprocessor·greenguide-classifier와 동일 순서)
 CLASS_LABELS: tuple[str, ...] = (
     "cardboard", "glass", "metal", "paper", "plastic", "trash",
 )

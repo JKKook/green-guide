@@ -27,14 +27,14 @@ import numpy as np
 import torch
 from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
 from torch.utils.data import DataLoader
-from waste_common.logging import fail_open, get_logger
+from greenguide_common.logging import fail_open, get_logger
 
-from src import config
-from src.dataset import build_dataset, load_manifest
-from src.evaluate import collect_predictions
-from src.frozen_test import ensure_frozen_test, load_frozen_keys
-from src.model import build_model
-from src.train import _input_mode, get_hyperparams, model_kind, pick_device
+from greenguide_classifier import config
+from greenguide_classifier.dataset import build_dataset, load_manifest
+from greenguide_classifier.evaluate import collect_predictions
+from greenguide_classifier.frozen_test import ensure_frozen_test, load_frozen_keys
+from greenguide_classifier.model import build_model
+from greenguide_classifier.train import _input_mode, get_hyperparams, model_kind, pick_device
 
 log = get_logger(__name__)
 
@@ -58,7 +58,7 @@ def _sync_to_supabase(report: dict[str, Any]) -> None:
     테이블은 migrations/004_model_diagnostics.sql 로 미리 생성돼 있어야 함.
     """
     with fail_open(log, "Supabase 기록"):
-        from waste_common.supabase import try_get_client
+        from greenguide_common.supabase import try_get_client
 
         client = try_get_client()
         if client is None:

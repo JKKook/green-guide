@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from waste_common.supabase import get_client
+from greenguide_common.supabase import get_client
 
 
 def _client():

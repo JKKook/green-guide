@@ -2,16 +2,16 @@
 
 흐름:
   1. Supabase user_uploads 에서 confirmed/corrected 피드백 수집
-  2. 이미지를 waste-preprocessor의 raw 폴더로 다운로드
+  2. 이미지를 greenguide-preprocessor의 raw 폴더로 다운로드
      (naming: user_<upload_id>.<ext>, 라벨별 폴더에 저장)
   3. 이전 모델 백업
-  4. waste-preprocessor 재실행 (전처리·벡터화·manifest 갱신)
-  5. waste-classifier 재학습·평가·ONNX export
+  4. greenguide-preprocessor 재실행 (전처리·벡터화·manifest 갱신)
+  5. greenguide-classifier 재학습·평가·ONNX export
   6. 새 ONNX 를 Supabase Storage 에 업로드 + model_versions row 등록
   7. 새 vs 기존 정확도 비교 및 보고
 
 사용:
-    cd waste-classifier
+    cd greenguide-classifier
     .venv/bin/python retrain.py
 """
 from __future__ import annotations
@@ -26,16 +26,16 @@ from datetime import datetime
 from pathlib import Path
 
 import requests
-from waste_common import settings
-from waste_common.logging import fail_open, get_logger
-from waste_common.supabase import Bucket, get_client
-from waste_common.taxonomy import LEGACY_LABELS
+from greenguide_common import settings
+from greenguide_common.logging import fail_open, get_logger
+from greenguide_common.supabase import Bucket, get_client
+from greenguide_common.taxonomy import LEGACY_LABELS
 
-from src.artifacts import backup_artifacts, rollback_artifacts
+from greenguide_classifier.artifacts import backup_artifacts, rollback_artifacts
 
 log = get_logger(__name__)
 
-PROJECT_ROOT: Path = Path(__file__).resolve().parent              # waste-classifier
+PROJECT_ROOT: Path = Path(__file__).resolve().parent              # greenguide-classifier
 PREPROCESSOR_ROOT: Path = settings.PREPROCESSOR_ROOT
 RAW_DIR: Path = PREPROCESSOR_ROOT / "data" / "raw" / "garbage-classification"
 
@@ -396,18 +396,18 @@ def main() -> int:
     if backup_path:
         log.info(f"백업 위치: {backup_path}")
 
-    # 4) waste-preprocessor 재실행
+    # 4) greenguide-preprocessor 재실행
     if args.skip_train:
         log.info("[4-5] --skip-train: 전처리·학습 건너뜀 (현재 best.pt/ONNX 사용)")
     elif not args.skip_preprocessor:
-        log.info("[4/6] waste-preprocessor 실행 (2-3분 소요)...")
+        log.info("[4/6] greenguide-preprocessor 실행 (2-3분 소요)...")
         run_preprocessor()
     else:
         log.info("[4/6] preprocessor 스킵 (--skip-preprocessor)")
 
-    # 5) waste-classifier 재학습 + 평가 + ONNX export
+    # 5) greenguide-classifier 재학습 + 평가 + ONNX export
     if not args.skip_train:
-        log.info("[5/7] waste-classifier 재학습 (10분 이상 소요)...")
+        log.info("[5/7] greenguide-classifier 재학습 (10분 이상 소요)...")
         run_classifier_full()
 
     # 6) 진단 + 게이트 — 고정 held-out 으로 회귀 검사. 통과해야만 publish/activate.

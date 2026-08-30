@@ -1,6 +1,6 @@
 """계층(cnn_hier) ONNX 추론 — fine 예측 + 대분류 롤업 + 신뢰도 게이트.
 
-waste-classifier 의 hier_export 산출물(classifier.onnx + taxonomy.json)을
+greenguide-classifier 의 hier_export 산출물(classifier.onnx + taxonomy.json)을
 로드한다. taxonomy 사이드카가 fine→coarse 매핑과 게이트 임계를 제공하므로
 DB 없이도 계층 응답이 가능하다.
 
@@ -47,7 +47,7 @@ def _resolve_hier_paths() -> tuple[Path, Path]:
                 raise FileNotFoundError(f"taxonomy.json 이 {cand.parent} 에 없음")
             return cand, sidecar
     raise FileNotFoundError(
-        "계층 ONNX 를 찾을 수 없음 — waste-classifier 에서 "
+        "계층 ONNX 를 찾을 수 없음 — greenguide-classifier 에서 "
         "`python -m src.hier_export` 를 먼저 실행하거나 "
         "WASTE_API_HIER_MODEL_PATH 를 설정하세요."
     )

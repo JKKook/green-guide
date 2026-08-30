@@ -17,17 +17,17 @@ from pathlib import Path
 import _base  # noqa: F401 — sys.path 설정
 import torch
 from torch.utils.data import DataLoader
-from waste_common.taxonomy import FINE_LABELS, NUM_FINE
+from greenguide_common.taxonomy import FINE_LABELS, NUM_FINE
 
-from src import config
-from src.hier_dataset import (
+from greenguide_classifier import config
+from greenguide_classifier.hier_dataset import (
     HierImageDataset,
     build_hier_items,
     load_or_build_hier_splits,
 )
-from src.hier_train import CKPT_DIR, LOG_DIR
-from src.model import WasteClassifierCNN
-from src.train import pick_device
+from greenguide_classifier.hier_train import CKPT_DIR, LOG_DIR
+from greenguide_classifier.model import WasteClassifierCNN
+from greenguide_classifier.train import pick_device
 
 TARGETS = ("carton", "paper_cup", "glass_clear")
 

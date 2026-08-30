@@ -34,7 +34,7 @@ def main() -> int:
     args = ap.parse_args()
 
     src = Path(args.src).expanduser()
-    if not src.exists():
+    if not greenguide_classifier.exists():
         sys.exit(f"ERROR: 소스 폴더 없음: {src}")
 
     out_dir = RAW_DIR / args.our_class
@@ -42,7 +42,7 @@ def main() -> int:
     start = _count(args.our_class)
     n = start
 
-    files = [p for p in src.rglob("*") if p.is_file() and p.suffix.lower() in IMG_EXT]
+    files = [p for p in greenguide_classifier.rglob("*") if p.is_file() and p.suffix.lower() in IMG_EXT]
     print(f"[ingest] {src} 에서 이미지 {len(files)}개 발견 → {args.our_class} (현재 {start}장)")
 
     added = 0

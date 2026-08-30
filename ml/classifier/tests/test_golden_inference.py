@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src import config
+from greenguide_classifier import config
 
 GOLDEN_PATH = Path(__file__).parent / "fixtures" / "golden_logits.json"
 # worktree 등 outputs/ 가 없는 체크아웃에서는 env 로 모델 위치를 지정
