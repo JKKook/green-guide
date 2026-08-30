@@ -127,7 +127,7 @@ class _GalleryConfirmScreenState extends State<GalleryConfirmScreen> {
                 border: Border(top: BorderSide(color: t.border)),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1D1F20).withValues(alpha: 0.08),
+                    color: kInkShadow.withValues(alpha: 0.08),
                     offset: const Offset(0, -6),
                     blurRadius: 20,
                   ),
@@ -153,9 +153,9 @@ class _GalleryConfirmScreenState extends State<GalleryConfirmScreen> {
                   const SizedBox(height: 12),
                   Material(
                     color: kAccent700,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(kRadiusMedium),
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(kRadiusMedium),
                       onTap: _analyzing ? null : _analyze,
                       child: const SizedBox(
                         height: 52,

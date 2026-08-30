@@ -293,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(20),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF2B2B2D)
+                                    color: kInkCardShadow
                                         .withValues(alpha: 0.14),
                                     offset: const Offset(0, 1),
                                     blurRadius: 2,
@@ -371,7 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 14),
                         InkWell(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(kRadiusMedium),
                           onTap: _openSchedule,
                           child: _WeekStrip(tokens: t, todayIdx: todayIdx),
                         ),
@@ -549,7 +549,7 @@ class _WeekStrip extends StatelessWidget {
                   color: isToday ? kAccent700 : tokens.surface,
                   border:
                       isToday ? null : Border.all(color: tokens.border),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(kRadiusMedium),
                 ),
                 child: Column(
                   children: [
@@ -617,10 +617,10 @@ class _HowSheet extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                   onTap: () => Navigator.of(context).pop(),
                   child: Padding(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(kSpaceXS),
                     child: Icon(Icons.close,
                         size: 20,
-                        color: t.dark ? const Color(0xFF8C9199) : kNeutral400),
+                        color: t.iconMuted),
                   ),
                 ),
               ],
@@ -632,11 +632,11 @@ class _HowSheet extends StatelessWidget {
                 for (var i = 0; i < steps.length; i++) ...[
                   if (i > 0)
                     Padding(
-                      padding: const EdgeInsets.only(top: 16),
+                      padding: const EdgeInsets.only(top: kSpaceL),
                       child: Icon(Icons.chevron_right,
                           size: 14,
                           color:
-                              t.dark ? const Color(0xFF8C9199) : kNeutral400),
+                              t.iconMuted),
                     ),
                   Expanded(
                     child: Column(
@@ -677,7 +677,7 @@ class _HowSheet extends StatelessWidget {
               children: [
                 Icon(Icons.subdirectory_arrow_right,
                     size: 15,
-                    color: t.dark ? const Color(0xFF8C9199) : kNeutral400),
+                    color: t.iconMuted),
                 const SizedBox(width: 8),
                 DsCard(
                   tinted: true,
@@ -741,9 +741,9 @@ class _HowSheet extends StatelessWidget {
             const SizedBox(height: 18),
             Material(
               color: kAccent700,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(kRadiusMedium),
               child: InkWell(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(kRadiusMedium),
                 onTap: () => Navigator.of(context).pop(),
                 child: const SizedBox(
                   height: 52,

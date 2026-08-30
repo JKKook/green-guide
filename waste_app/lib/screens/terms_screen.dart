@@ -124,7 +124,7 @@ class TermsDetailScreen extends StatelessWidget {
                     color: doc.required ? t.accentChipBg : t.surface,
                     border: Border.all(
                       color: doc.required
-                          ? (t.dark ? kAccent700 : kAccent300)
+                          ? (t.accentChipBorder)
                           : t.border,
                     ),
                     borderRadius: BorderRadius.circular(999),
@@ -168,7 +168,7 @@ class TermsDetailScreen extends StatelessWidget {
               const SizedBox(height: 8),
               for (final (i, item) in section.items.indexed)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: kSpaceS),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

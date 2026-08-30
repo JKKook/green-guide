@@ -330,7 +330,7 @@ class _DayStackCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF2B2B2D).withValues(alpha: 0.14),
+                color: kInkCardShadow.withValues(alpha: 0.14),
                 offset: const Offset(0, 1),
                 blurRadius: 2,
               ),
@@ -473,7 +473,7 @@ class _Thumb extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2B2B2D).withValues(alpha: 0.18),
+            color: kInkCardShadow.withValues(alpha: 0.18),
             offset: const Offset(0, 2),
             blurRadius: 6,
           ),
@@ -567,7 +567,7 @@ class _DayPickerSheet extends StatelessWidget {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF131518)
+                                      color: kInkDeep
                                           .withValues(alpha: 0.6),
                                       borderRadius: BorderRadius.circular(999),
                                     ),
@@ -709,7 +709,7 @@ class _RangeSheetState extends State<_RangeSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 18),
                 decoration: BoxDecoration(
-                  color: t.dark ? const Color(0xFF5D5D60) : kNeutral300,
+                  color: t.handle,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -725,7 +725,7 @@ class _RangeSheetState extends State<_RangeSheet> {
                   borderRadius: BorderRadius.circular(999),
                   onTap: () => Navigator.of(context).pop(),
                   child: Padding(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(kSpaceXS),
                     child: Icon(Icons.close, size: 20, color: t.muted),
                   ),
                 ),
@@ -826,7 +826,7 @@ class _RangeSheetState extends State<_RangeSheet> {
                   Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(kRadiusSmall),
                       onTap: () => _applyPreset(p),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -836,7 +836,7 @@ class _RangeSheetState extends State<_RangeSheet> {
                           border: _preset == p
                               ? null
                               : Border.all(color: t.border),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(kRadiusSmall),
                         ),
                         child: Text(
                           p,
@@ -861,7 +861,7 @@ class _RangeSheetState extends State<_RangeSheet> {
                   onTap: () => setState(() =>
                       _month = DateTime(_month.year, _month.month - 1)),
                   child: Padding(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(kSpaceXS),
                     child:
                         Icon(Icons.chevron_left, size: 18, color: t.muted),
                   ),
@@ -879,7 +879,7 @@ class _RangeSheetState extends State<_RangeSheet> {
                   onTap: () => setState(() =>
                       _month = DateTime(_month.year, _month.month + 1)),
                   child: Padding(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(kSpaceXS),
                     child:
                         Icon(Icons.chevron_right, size: 18, color: t.muted),
                   ),
@@ -964,7 +964,7 @@ class _RangeSheetState extends State<_RangeSheet> {
               children: [
                 Expanded(
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(kRadiusMedium),
                     onTap: () => Navigator.of(context).pop(
                       DateTimeRange(
                         start: DateTime.fromMillisecondsSinceEpoch(0),
@@ -977,9 +977,9 @@ class _RangeSheetState extends State<_RangeSheet> {
                       decoration: BoxDecoration(
                         border: Border.all(
                           color:
-                              t.dark ? const Color(0xFF5D5D60) : kNeutral300,
+                              t.handle,
                         ),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(kRadiusMedium),
                       ),
                       child: Text(
                         '전체 보기',
@@ -999,9 +999,9 @@ class _RangeSheetState extends State<_RangeSheet> {
                     color: _start != null && _end != null
                         ? kAccent700
                         : t.border,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(kRadiusMedium),
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(kRadiusMedium),
                       onTap: _start != null && _end != null
                           ? () => Navigator.of(context).pop(
                                 DateTimeRange(start: _start!, end: _end!),

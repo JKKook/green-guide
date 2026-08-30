@@ -39,6 +39,12 @@ const Color kAccent2500 = Color(0xFF7E9CB8);
 const Color kAccent2700 = Color(0xFF486077);
 const Color kAccent2900 = Color(0xFF1F2D3A);
 
+/// 잉크(밝기 무관 고정색) — 카메라/썸네일 바탕, 스크림·그림자 기저색.
+const Color kInkDeep = Color(0xFF131518);
+const Color kInkDeep2 = Color(0xFF1D2023);
+const Color kInkShadow = Color(0xFF1D1F20);
+const Color kInkCardShadow = Color(0xFF2B2B2D);
+
 /// 모션
 const Duration kPageTransitionDuration = Duration(milliseconds: 380);
 const Curve kPageTransitionCurve = Curves.easeOutCubic;

@@ -243,7 +243,7 @@ class _FeedbackCardState extends State<FeedbackCard> {
                       const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: t.dark ? const Color(0xFF5D5D60) : kNeutral300,
+                      color: t.handle,
                     ),
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -252,7 +252,7 @@ class _FeedbackCardState extends State<FeedbackCard> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: t.dark ? t.muted2 : const Color(0xFF5D5D60),
+                      color: t.body,
                     ),
                   ),
                 ),
@@ -358,7 +358,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                     borderRadius: BorderRadius.circular(999),
                     onTap: () => Navigator.of(context).pop(),
                     child: Padding(
-                      padding: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(kSpaceXS),
                       child: Icon(Icons.close, size: 20, color: t.faint),
                     ),
                   ),
@@ -439,13 +439,13 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
             const SizedBox(height: 16),
             Container(
               height: 54,
-              padding: const EdgeInsets.only(left: 16, right: 12),
+              padding: const EdgeInsets.only(left: kSpaceL, right: kSpaceM),
               decoration: BoxDecoration(
                 color: t.surface,
                 border: Border.all(
-                  color: t.dark ? const Color(0xFF5D5D60) : kNeutral300,
+                  color: t.handle,
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(kRadiusMedium),
               ),
               child: Row(
                 children: [
@@ -475,9 +475,9 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
             const SizedBox(height: 14),
             Material(
               color: canSend ? kAccent700 : t.border,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(kRadiusMedium),
               child: InkWell(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(kRadiusMedium),
                 onTap: canSend
                     ? () {
                         Haptics.medium();

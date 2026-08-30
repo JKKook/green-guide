@@ -85,7 +85,7 @@ class _CaptureEntrySheet extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                     onTap: () => Navigator.of(context).pop(),
                     child: Padding(
-                      padding: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(kSpaceXS),
                       child: Icon(Icons.close, size: 20, color: t.faint),
                     ),
                   ),
@@ -107,7 +107,7 @@ class _CaptureEntrySheet extends StatelessWidget {
                 onTap: () =>
                     Navigator.of(context).pop(_EntryChoice.smartCapture),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(kSpaceL),
                   child: Row(
                     children: [
                       Container(
@@ -115,7 +115,7 @@ class _CaptureEntrySheet extends StatelessWidget {
                         height: 46,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(kRadiusMedium),
                         ),
                         child: const Icon(Icons.photo_camera_outlined,
                             size: 23, color: kNeutral100),
@@ -161,7 +161,7 @@ class _CaptureEntrySheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 onTap: () => Navigator.of(context).pop(_EntryChoice.gallery),
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(kSpaceL),
                   decoration: BoxDecoration(
                     border: Border.all(color: t.border),
                     borderRadius: BorderRadius.circular(20),
@@ -174,7 +174,7 @@ class _CaptureEntrySheet extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: t.accentChipBg,
                           border: Border.all(color: t.accentChipBorder),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(kRadiusMedium),
                         ),
                         child: Icon(Icons.image_outlined,
                             size: 22, color: t.accentChipText),

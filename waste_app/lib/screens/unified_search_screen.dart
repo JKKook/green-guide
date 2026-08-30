@@ -478,7 +478,7 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
                   ),
                   if (q.isEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.only(right: kSpaceS),
                       child: Icon(Icons.search, size: 20, color: t.faint),
                     )
                   else

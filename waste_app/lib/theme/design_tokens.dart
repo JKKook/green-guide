@@ -20,7 +20,19 @@ class DsTokens {
   Color get accentDeep => dark ? kAccent200 : kAccent900;
   Color get accentChipBg =>
       dark ? kAccent400.withValues(alpha: 0.16) : kAccent100;
-  Color get accentChipBorder => dark ? kAccent700 : kAccent200;
+  /// 강조 패널·칩 테두리 — 화면 다수가 쓰던 kAccent300 으로 통일 (구 kAccent200).
+  Color get accentChipBorder => dark ? kAccent700 : kAccent300;
   Color get accentChipText => dark ? kAccent200 : kAccent800;
   Color get bannerBg => dark ? kAccent900 : kAccent200;
+
+  /// 시트 드래그 핸들·연한 구분선·비활성 도트.
+  Color get handle => dark ? const Color(0xFF5D5D60) : kNeutral300;
+  /// 본문 설명 텍스트 (라이트에서 muted 보다 한 단계 진함).
+  Color get body => dark ? muted2 : const Color(0xFF5D5D60);
+  /// 보조 아이콘 (라이트 kNeutral400 — muted 보다 옅음).
+  Color get iconMuted => dark ? const Color(0xFF8C9199) : kNeutral400;
+  /// accent-2 램프의 텍스트/아이콘.
+  Color get accent2Text => dark ? kAccent2300 : kAccent2900;
+  /// 은은한 accent 채움(도트·배지 배경).
+  Color get accentSoft => dark ? kAccent700 : kAccent400;
 }

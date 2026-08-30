@@ -16,8 +16,6 @@ import '../theme/app_theme.dart';
 import '../widgets/capture_entry_sheet.dart' show pickFromGalleryAndAnalyze;
 import '../widgets/result_modal.dart';
 
-const Color _kCamBg = Color(0xFF131518);
-const Color _kViewBg = Color(0xFF1D2023);
 const Duration _kCountdown = Duration(seconds: 5);
 const Duration _kStableGrace = Duration(seconds: 3);
 
@@ -280,11 +278,11 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: _kCamBg,
+        systemNavigationBarColor: kInkDeep,
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: _kCamBg,
+        backgroundColor: kInkDeep,
         body: SafeArea(
           child: Column(
             children: [
@@ -332,7 +330,7 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(24),
                     child: Container(
-                      color: _kViewBg,
+                      color: kInkDeep2,
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
@@ -395,7 +393,7 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 14, vertical: 7),
                                     decoration: BoxDecoration(
-                                      color: _kCamBg.withValues(alpha: 0.65),
+                                      color: kInkDeep.withValues(alpha: 0.65),
                                       borderRadius: BorderRadius.circular(999),
                                     ),
                                     child: Text(
@@ -519,7 +517,7 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                           shape: BoxShape.circle,
                           border: Border.all(color: kNeutral100, width: 4),
                         ),
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(kSpaceXS),
                         child: Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
@@ -687,7 +685,7 @@ class _ErrorOverlay extends StatelessWidget {
                     foregroundColor: kNeutral100,
                     side: const BorderSide(color: Colors.white54),
                     minimumSize: const Size(0, 44),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: kSpaceL),
                   ),
                   child: const Text('돌아가기'),
                 ),
@@ -697,7 +695,7 @@ class _ErrorOverlay extends StatelessWidget {
                     onPressed: onRetry,
                     style: FilledButton.styleFrom(
                       minimumSize: const Size(0, 44),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: kSpaceL),
                     ),
                     child: const Text('다시 시도'),
                   ),

@@ -23,8 +23,9 @@ void showAppSnackBar(
   messenger.showSnackBar(
     SnackBar(
       content: Text(message),
-      backgroundColor:
-          kind == AppSnackKind.error ? Theme.of(context).colorScheme.error : null,
+      backgroundColor: kind == AppSnackKind.error
+          ? Theme.of(context).colorScheme.error
+          : null,
       duration: duration ?? const Duration(milliseconds: 4000),
     ),
   );

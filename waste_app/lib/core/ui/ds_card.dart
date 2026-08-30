@@ -9,7 +9,6 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../theme/app_theme.dart';
 import '../../theme/design_tokens.dart';
 
 /// 시안 카드 그림자 — 라이트/다크 공통.
@@ -52,10 +51,7 @@ class DsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = DsTokens.of(context);
-    // tinted 테두리는 화면 다수가 쓰던 값(kAccent300)을 따른다 —
-    // DsTokens.accentChipBorder(kAccent200) 와의 불일치는 Phase 3 토큰 정리에서 통일.
-    final borderColor =
-        tinted ? (t.dark ? kAccent700 : kAccent300) : t.border;
+    final borderColor = tinted ? (t.accentChipBorder) : t.border;
     return Container(
       width: width,
       height: height,

@@ -43,7 +43,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final t = DsTokens.of(context);
-    final barColor = t.dark ? const Color(0xFF1A2027) : kNeutral100;
+    final barColor = t.surface;
 
     return Scaffold(
       body: IndexedStack(
@@ -110,7 +110,7 @@ class _MainShellState extends State<MainShell> {
               const BorderRadius.vertical(top: Radius.circular(26)),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1D1F20)
+              color: kInkShadow
                   .withValues(alpha: t.dark ? 0.3 : 0.08),
               offset: const Offset(0, -4),
               blurRadius: 14,

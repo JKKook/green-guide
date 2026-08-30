@@ -378,7 +378,7 @@ class _ResultModalState extends State<_ResultModal> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       color: loading
-          ? const Color(0xFF131518)
+          ? kInkDeep
           : Theme.of(context).scaffoldBackgroundColor,
       child: Column(
         children: [
@@ -508,7 +508,7 @@ class _ResultModalState extends State<_ResultModal> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 11, vertical: 6),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF131518)
+                                          color: kInkDeep
                                               .withValues(alpha: 0.6),
                                           borderRadius:
                                               BorderRadius.circular(999),
@@ -549,7 +549,7 @@ class _ResultModalState extends State<_ResultModal> {
                                                     horizontal: 11,
                                                     vertical: 5),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF131518)
+                                              color: kInkDeep
                                                   .withValues(alpha: 0.6),
                                               borderRadius:
                                                   BorderRadius.circular(999),
@@ -569,7 +569,7 @@ class _ResultModalState extends State<_ResultModal> {
                                         right: 12,
                                         top: 12,
                                         child: Material(
-                                          color: const Color(0xFF131518)
+                                          color: kInkDeep
                                               .withValues(alpha: 0.6),
                                           borderRadius:
                                               BorderRadius.circular(999),
@@ -825,7 +825,7 @@ class _ObjectTile extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding:
-              const EdgeInsets.symmetric(horizontal: kSpaceS, vertical: 8),
+              const EdgeInsets.symmetric(horizontal: kSpaceS, vertical: kSpaceS),
           decoration: BoxDecoration(
             color: selected ? color.withValues(alpha: 0.10) : null,
             borderRadius: BorderRadius.circular(kRadiusSmall),
@@ -1264,7 +1264,7 @@ class _AnalysisLoadingState extends State<_AnalysisLoading>
 
   @override
   Widget build(BuildContext context) {
-    const inner = Color(0xFF1D2023);
+    const inner = kInkDeep2;
     return Column(
       children: [
         Expanded(
@@ -1718,9 +1718,9 @@ class _LoadedContent extends StatelessWidget {
           index: 4,
           child: Material(
             color: DsTokens.of(context).surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(kRadiusMedium),
             child: InkWell(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(kRadiusMedium),
               onTap: () {
                 Haptics.selection();
                 Navigator.of(context).pop(false);
@@ -1729,9 +1729,9 @@ class _LoadedContent extends StatelessWidget {
                 height: 54,
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: DsTokens.of(context).dark ? kAccent700 : kAccent400,
+                    color: DsTokens.of(context).accentSoft,
                   ),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(kRadiusMedium),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -2451,7 +2451,7 @@ class _GuideCard extends StatelessWidget {
       if (info.howTo.isEmpty && info.bin.isNotEmpty) info.bin,
       ...info.howTo.take(3),
     ];
-    final bodyColor = t.dark ? t.muted2 : const Color(0xFF5D5D60);
+    final bodyColor = t.body;
 
     return DsCard(
       radius: 20,
@@ -2475,7 +2475,7 @@ class _GuideCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: t.accentChipBg,
                     border: Border.all(
-                      color: t.dark ? kAccent700 : kAccent300,
+                      color: t.accentChipBorder,
                     ),
                     borderRadius: BorderRadius.circular(999),
                   ),

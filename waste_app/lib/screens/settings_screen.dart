@@ -137,7 +137,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       applicationName: '그린가이드',
       applicationVersion: '${info.version} (build ${info.buildNumber})',
       applicationIcon: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(kRadiusSmall),
         child: Image.asset('assets/icon/icon.png', width: 48, height: 48),
       ),
       applicationLegalese:
@@ -305,7 +305,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 children: [
                   const Padding(
-                    padding: EdgeInsets.only(bottom: 16),
+                    padding: EdgeInsets.only(bottom: kSpaceL),
                     child: Text(
                       '설정',
                       style:
@@ -571,7 +571,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     DsCard(
                       elevated: true,
                       clipBehavior: Clip.antiAlias,
-                      margin: const EdgeInsets.only(top: 8),
+                      margin: const EdgeInsets.only(top: kSpaceS),
                       child: Column(
                         children: [
                           _DsRow(

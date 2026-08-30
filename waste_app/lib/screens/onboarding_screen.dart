@@ -110,9 +110,9 @@ class _PrimaryButton extends StatelessWidget {
     final enabled = onTap != null;
     return Material(
       color: enabled ? kAccent700 : t.border,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(kRadiusMedium),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(kRadiusMedium),
         onTap: onTap,
         child: SizedBox(
           height: 52,
@@ -173,7 +173,7 @@ class _SheetCard extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1D1F20).withValues(alpha: 0.3),
+            color: kInkShadow.withValues(alpha: 0.3),
             offset: const Offset(0, -10),
             blurRadius: 34,
           ),
@@ -191,7 +191,7 @@ class _SheetCard extends StatelessWidget {
               height: 4,
               margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                color: t.dark ? const Color(0xFF5D5D60) : kNeutral300,
+                color: t.handle,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -260,7 +260,7 @@ class _ConsentStepState extends State<_ConsentStep> {
                 height: 88,
                 decoration: BoxDecoration(
                   color: kAccent700,
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(kRadiusXL),
                 ),
                 child: const Icon(Icons.recycling, size: 46, color: kNeutral100),
               ),
@@ -283,7 +283,7 @@ class _ConsentStepState extends State<_ConsentStep> {
           ),
         ),
         // 스크림 + 동의 시트
-        Container(color: const Color(0xFF1D1F20).withValues(alpha: 0.42)),
+        Container(color: kInkShadow.withValues(alpha: 0.42)),
         Align(
           alignment: Alignment.bottomCenter,
           child: SingleChildScrollView(
@@ -303,7 +303,7 @@ class _ConsentStepState extends State<_ConsentStep> {
                   const SizedBox(height: 18),
                   // 전체 동의
                   InkWell(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(kRadiusMedium),
                     onTap: _toggleAll,
                     child: Container(
                       padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
@@ -315,7 +315,7 @@ class _ConsentStepState extends State<_ConsentStep> {
                               : t.border,
                           width: 1.5,
                         ),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(kRadiusMedium),
                       ),
                       child: Row(
                         children: [
@@ -347,13 +347,13 @@ class _ConsentStepState extends State<_ConsentStep> {
                   const SizedBox(height: 6),
                   for (final (i, item) in _items.indexed)
                     InkWell(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(kRadiusSmall),
                       onTap: () {
                         Haptics.selection();
                         setState(() => _checked[i] = !_checked[i]);
                       },
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+                        padding: const EdgeInsets.fromLTRB(kSpaceL, kSpaceM, kSpaceS, kSpaceM),
                         child: Row(
                           children: [
                             Icon(
@@ -549,7 +549,7 @@ class _RegionStepState extends State<_RegionStep> {
                     children: [
                       Expanded(child: Container(height: 1, color: t.border)),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: kSpaceM),
                         child: Text(
                           '또는 지도에서 선택',
                           style: TextStyle(
@@ -571,7 +571,7 @@ class _RegionStepState extends State<_RegionStep> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(6, 4, 6, 0),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(kRadiusMedium),
                 child: InteractiveViewer(
                   maxScale: 6,
                   child: Center(
@@ -688,7 +688,7 @@ class _SigunguSheetState extends State<_SigunguSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: t.dark ? const Color(0xFF5D5D60) : kNeutral300,
+                  color: t.handle,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -706,7 +706,7 @@ class _SigunguSheetState extends State<_SigunguSheet> {
                   borderRadius: BorderRadius.circular(999),
                   onTap: () => Navigator.of(context).pop(),
                   child: Padding(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(kSpaceXS),
                     child: Icon(Icons.close, size: 20, color: t.faint),
                   ),
                 ),
@@ -777,7 +777,7 @@ class _SigunguSheetState extends State<_SigunguSheet> {
                           horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: t.dark ? const Color(0xFF5D5D60) : kNeutral300,
+                          color: t.handle,
                         ),
                         borderRadius: BorderRadius.circular(999),
                       ),
@@ -871,7 +871,7 @@ class _HousingTypeSheetState extends State<_HousingTypeSheet> {
         setState(() => _value = type);
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(kSpaceL),
         decoration: BoxDecoration(
           color: selected ? t.accentChipBg : t.surface,
           border: Border.all(
@@ -889,10 +889,10 @@ class _HousingTypeSheetState extends State<_HousingTypeSheet> {
                 color: selected ? t.bannerBg : t.surface,
                 border: Border.all(
                   color: selected
-                      ? (t.dark ? kAccent700 : kAccent300)
+                      ? (t.accentChipBorder)
                       : t.border,
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(kRadiusMedium),
               ),
               child: Icon(icon,
                   size: 22, color: selected ? t.accentChipText : t.muted2),
@@ -919,7 +919,7 @@ class _HousingTypeSheetState extends State<_HousingTypeSheet> {
                 border: selected
                     ? null
                     : Border.all(
-                        color: t.dark ? const Color(0xFF5D5D60) : kNeutral300,
+                        color: t.handle,
                         width: 1.5),
                 shape: BoxShape.circle,
               ),

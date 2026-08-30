@@ -100,7 +100,7 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
             borderRadius: BorderRadius.circular(kRadiusSmall),
             onTap: _changeRegion,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: kSpaceS, vertical: kSpaceS),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -140,12 +140,12 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                       : [kAccent100, kAccent200],
                 ),
                 border: Border.all(
-                  color: t.dark ? kAccent700 : kAccent300,
+                  color: t.accentChipBorder,
                 ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF2B2B2D).withValues(alpha: 0.16),
+                    color: kInkCardShadow.withValues(alpha: 0.16),
                     offset: const Offset(0, 3),
                     blurRadius: 10,
                   ),
@@ -194,7 +194,7 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                           decoration: BoxDecoration(
                             color: t.surface,
                             border: Border.all(
-                              color: t.dark ? kAccent700 : kAccent400,
+                              color: t.accentSoft,
                             ),
                             borderRadius: BorderRadius.circular(999),
                           ),
@@ -237,7 +237,7 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                   const SizedBox(height: 10),
                   Container(
                     height: 1,
-                    color: t.dark ? kAccent700 : kAccent300,
+                    color: t.accentChipBorder,
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -281,7 +281,7 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                             color: isToday ? brandSeed : t.border,
                             width: isToday ? 1.5 : 1,
                           ),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(kRadiusSmall),
                         ),
                         child: Column(
                           children: [
@@ -324,7 +324,7 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
             const SizedBox(height: 10),
             // 범례
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: kSpaceXS),
               child: Row(
                 children: [
                   for (final (label, color) in [
@@ -365,7 +365,7 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                   final isToday = i == 0;
                   return DsCard(
                     elevated: true,
-                    margin: const EdgeInsets.only(bottom: 8),
+                    margin: const EdgeInsets.only(bottom: kSpaceS),
                     padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
                     child: Row(
                       children: [
@@ -444,7 +444,7 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                 border: Border.all(
                   color: t.dark ? kAccent2700 : kAccent2300,
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(kRadiusMedium),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,7 +454,7 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                     child: Icon(
                       Icons.warning_amber_outlined,
                       size: 17,
-                      color: t.dark ? kAccent2300 : kAccent2900,
+                      color: t.accent2Text,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -467,7 +467,7 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color: t.dark ? kAccent2300 : kAccent2900,
+                            color: t.accent2Text,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -478,7 +478,7 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                           style: TextStyle(
                             fontSize: 11.5,
                             height: 1.5,
-                            color: t.dark ? kAccent2300 : kAccent2900,
+                            color: t.accent2Text,
                           ),
                         ),
                       ],
@@ -622,10 +622,10 @@ class _ReminderSheetState extends State<_ReminderSheet> {
             Container(
               width: 38,
               height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
+              margin: const EdgeInsets.only(bottom: kSpaceL),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: t.dark ? const Color(0xFF5D5D60) : kNeutral300,
+                color: t.handle,
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
@@ -640,7 +640,7 @@ class _ReminderSheetState extends State<_ReminderSheet> {
                   borderRadius: BorderRadius.circular(999),
                   onTap: () => Navigator.of(context).pop(),
                   child: Padding(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(kSpaceXS),
                     child: Icon(Icons.close, size: 18, color: t.muted),
                   ),
                 ),
@@ -665,7 +665,7 @@ class _ReminderSheetState extends State<_ReminderSheet> {
                           setState(() => _weekday = i + 1);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          padding: const EdgeInsets.symmetric(vertical: kSpaceS),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: _weekday == i + 1
@@ -735,7 +735,7 @@ class _ReminderSheetState extends State<_ReminderSheet> {
               children: [
                 for (final (label, value) in [('당일 알림', false), ('하루 전 알림', true)])
                   Padding(
-                    padding: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.only(right: kSpaceS),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(999),
                       onTap: () {
@@ -796,7 +796,7 @@ class _ReminderSheetState extends State<_ReminderSheet> {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: t.dark ? const Color(0xFF5D5D60) : kNeutral300,
+                          color: t.handle,
                         ),
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -956,7 +956,7 @@ class _CollectionRemindersScreenState extends State<CollectionRemindersScreen> {
               decoration: BoxDecoration(
                 color: t.surface,
                 border: Border.all(
-                  color: t.dark ? kAccent700 : kAccent400,
+                  color: t.accentSoft,
                 ),
                 borderRadius: BorderRadius.circular(999),
               ),
@@ -1016,10 +1016,10 @@ class _CollectionRemindersScreenState extends State<CollectionRemindersScreen> {
                       background: Container(
                         alignment: Alignment.centerRight,
                         padding: const EdgeInsets.only(right: 20),
-                        margin: const EdgeInsets.only(bottom: 8),
+                        margin: const EdgeInsets.only(bottom: kSpaceS),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.errorContainer,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(kRadiusMedium),
                         ),
                         child: Icon(
                           Icons.delete_outline,
@@ -1031,9 +1031,9 @@ class _CollectionRemindersScreenState extends State<CollectionRemindersScreen> {
                         opacity: r.enabled ? 1 : 0.62,
                         child: DsCard(
                                  elevated: true,
-                                 margin: const EdgeInsets.only(bottom: 8),
+                                 margin: const EdgeInsets.only(bottom: kSpaceS),
                                  child: InkWell(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(kRadiusMedium),
                             onTap: () => _edit(r),
                             child: Padding(
                               padding:
@@ -1197,9 +1197,9 @@ class _PickupWeekdaysSheetState extends State<_PickupWeekdaysSheet> {
             const SizedBox(height: 18),
             Material(
               color: kAccent700,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(kRadiusMedium),
               child: InkWell(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(kRadiusMedium),
                 onTap: () => Navigator.of(context).pop(_days.toList()..sort()),
                 child: const SizedBox(
                   height: 52,
