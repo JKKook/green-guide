@@ -27,6 +27,7 @@ from greenguide_classifier.hier_dataset import (
     build_hier_items,
     load_or_build_hier_splits,
 )
+from greenguide_classifier.infer import load_session
 
 MODELS_DIR = config.MODELS_DIR / "cnn_hier"
 ONNX_PATH = MODELS_DIR / "classifier.onnx"
@@ -55,7 +56,7 @@ def _extract_embeddings(sess: ort.InferenceSession, items: list[dict]) -> np.nda
 
 def main() -> None:
     rng = np.random.default_rng(SEED)
-    sess = ort.InferenceSession(str(ONNX_PATH), providers=["CPUExecutionProvider"])
+    sess = load_session(ONNX_PATH)
 
     items = build_hier_items()
     splits = load_or_build_hier_splits(items)

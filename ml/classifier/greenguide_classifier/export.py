@@ -5,11 +5,11 @@ from pathlib import Path
 
 import numpy as np
 import onnx
-import onnxruntime as ort
 import torch
 from greenguide_common.logging import get_logger
 
 from greenguide_classifier import config
+from greenguide_classifier.infer import load_session
 from greenguide_classifier.model import CamWasteClassifierCNN, WasteClassifierCNN, build_model
 from greenguide_classifier.train import model_kind
 
@@ -91,7 +91,7 @@ def export_onnx(arch: str = "mlp", opset: int = 17) -> Path:
         torch_out_all = export_model(torch.from_numpy(test_batch))
         torch_logits = (torch_out_all[0] if isinstance(torch_out_all, tuple)
                         else torch_out_all).numpy()
-    session = ort.InferenceSession(str(out_path), providers=["CPUExecutionProvider"])
+    session = load_session(out_path)
     onnx_logits = session.run(["logits"], {in_name: test_batch})[0]
 
     diff = float(np.abs(torch_logits - onnx_logits).max())

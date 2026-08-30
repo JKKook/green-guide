@@ -20,6 +20,7 @@ from PIL import Image
 
 from greenguide_classifier import config
 from greenguide_classifier.dataset import load_manifest
+from greenguide_classifier.infer import load_session
 from greenguide_classifier.split import load_splits, subset_items
 
 log = get_logger(__name__)
@@ -44,7 +45,7 @@ def _prep(path: str) -> np.ndarray:
 
 
 def _session() -> ort.InferenceSession:
-    return ort.InferenceSession(str(ONNX_PATH), providers=["CPUExecutionProvider"])
+    return load_session(ONNX_PATH)
 
 
 def _embed(paths: list[str], sess: ort.InferenceSession, batch: int = 64) -> np.ndarray:

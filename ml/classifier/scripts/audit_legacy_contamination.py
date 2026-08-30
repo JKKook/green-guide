@@ -13,8 +13,6 @@ from __future__ import annotations
 from collections import Counter
 
 import _base  # noqa: F401 — sys.path 설정
-import numpy as np
-import onnxruntime as ort
 from greenguide_common.taxonomy import FINE_LABELS
 from torch.utils.data import DataLoader
 
@@ -24,6 +22,7 @@ from greenguide_classifier.hier_dataset import (
     build_hier_items,
     load_or_build_hier_splits,
 )
+from greenguide_classifier.infer import load_session, softmax
 
 TARGETS = {
     "paper_other": ["carton", "paper_cup", "cardboard"],
@@ -33,9 +32,7 @@ TARGETS = {
 CONF = 0.70
 
 def main() -> None:
-    sess = ort.InferenceSession(
-        str(config.MODELS_DIR / "cnn_hier" / "classifier.onnx"),
-        providers=["CPUExecutionProvider"])
+    sess = load_session(config.MODELS_DIR / "cnn_hier" / "classifier.onnx")
     items = build_hier_items()
     splits = load_or_build_hier_splits(items)
     train = set(splits["train"])
@@ -52,8 +49,7 @@ def main() -> None:
         hits = Counter(); n = 0
         for x, _, _ in loader:
             (lg,) = sess.run(["logits"], {"image": x.numpy()})
-            e = np.exp(lg - lg.max(axis=1, keepdims=True))
-            p = e / e.sum(axis=1, keepdims=True)
+            p = softmax(lg, axis=1)
             top = p.argmax(axis=1); conf = p.max(axis=1)
             for t, c in zip(top, conf):
                 n += 1

@@ -118,10 +118,10 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 
 ```
 grep -rn "sys.path"                  --include='*.py' . | wc -l   # 0
-grep -rn "InferenceSession("         --include='*.py' . | wc -l   # 1 (common/onnx.py)
+grep -rn "InferenceSession("         --include='*.py' . | wc -l   # 2 (infer.py + tests/test_golden_inference.py)
 grep -rn "def _softmax"              --include='*.py' . | wc -l   # 0
-grep -rn "create_client("            --include='*.py' . | wc -l   # 1 (common/supabase.py)
-grep -rn "0.485"                     --include='*.py' . | wc -l   # 1 (common/image.py)
+grep -rn "create_client("            --include='*.py' . | wc -l   # 0 (greenguide_common.supabase 로 이관)
+grep -rn "0.485"                     --include='*.py' . | wc -l   # 0 (greenguide_common.imaging 로 이관)
 pytest && ruff check . && pyright                                 # 통과, pyright 에러 수 ≤ Phase 0 기준선
 python tests/test_golden_inference.py                             # golden 일치
 ```

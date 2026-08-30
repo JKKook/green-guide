@@ -30,7 +30,6 @@ from collections import Counter
 from datetime import UTC, datetime
 
 import numpy as np
-import onnxruntime as ort
 import requests
 from greenguide_common import imaging
 from greenguide_common.logging import get_logger
@@ -39,6 +38,7 @@ from PIL import Image
 
 from feedback_monitor import REJECT_THRESHOLD
 from greenguide_classifier import config
+from greenguide_classifier.infer import load_session, softmax
 
 log = get_logger(__name__)
 
@@ -58,11 +58,6 @@ def _prep(img: Image.Image, center_frac: float | None) -> np.ndarray:
     return np.ascontiguousarray(((np.asarray(im, np.float32) / 255 - _MEAN) / _STD).transpose(2, 0, 1))[None]
 
 
-def _softmax(o: np.ndarray) -> np.ndarray:
-    e = np.exp(o - o.max())
-    return e / e.sum()
-
-
 def main() -> int:
     ap = argparse.ArgumentParser(prog="revalidate")
     ap.add_argument("--model", default=str(DEFAULT_MODEL), help="재검증에 쓸 ONNX 경로(신 모델)")
@@ -75,15 +70,15 @@ def main() -> int:
     config.refresh_classes_from_manifest()
     labels = list(config.CLASS_LABELS)
 
-    sess = ort.InferenceSession(args.model, providers=["CPUExecutionProvider"])
+    sess = load_session(args.model)
     inp = sess.get_inputs()[0].name
-    base_sess = (ort.InferenceSession(args.baseline, providers=["CPUExecutionProvider"])
+    base_sess = (load_session(args.baseline)
                  if args.baseline else None)
     base_inp = base_sess.get_inputs()[0].name if base_sess else None
 
     def _run(s, iname, img: Image.Image) -> tuple[str, float, float]:
         o = s.run(["logits"], {iname: _prep(img, args.center_crop)})[0][0]
-        p = _softmax(o)
+        p = softmax(o)
         i = int(p.argmax())
         nz = p[p > 0]
         h = float(-(nz * np.log(nz)).sum() / math.log(len(p))) if len(p) > 1 else 0.0

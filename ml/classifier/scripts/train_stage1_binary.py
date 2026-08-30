@@ -26,6 +26,8 @@ from greenguide_common import imaging
 from PIL import Image, ImageFile
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 
+from greenguide_classifier.infer import pick_device
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 MANIFEST_PATH = PREPROCESSOR_ROOT / "data" / "processed" / "manifest.json"
@@ -122,7 +124,7 @@ def train(args) -> int:
     sampler = WeightedRandomSampler(weights=weights, num_samples=min(len(train_items), 2*n_train_waste),
                                     replacement=True)
 
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = pick_device()
     print(f"[stage1] device: {device}")
 
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, sampler=sampler,

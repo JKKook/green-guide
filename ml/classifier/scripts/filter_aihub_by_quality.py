@@ -30,6 +30,8 @@ from _base import PROJECT_ROOT, RAW_DIR
 from greenguide_common import imaging, settings
 from PIL import Image
 
+from greenguide_classifier.infer import load_session, pick_device, softmax
+
 U2NETP_PATH = settings.API_ROOT / "models" / "u2netp.onnx"
 CLASSIFIER_PATH = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx"
 
@@ -48,7 +50,7 @@ _CLF_STD = imaging.STD_ARRAY
 def load_u2netp() -> ort.InferenceSession:
     if not U2NETP_PATH.exists():
         sys.exit(f"u2netp 없음: {U2NETP_PATH}")
-    return ort.InferenceSession(str(U2NETP_PATH), providers=["CPUExecutionProvider"])
+    return load_session(U2NETP_PATH)
 
 
 # ─── CLIP zero-shot (외부 심판자) ───────────────────────────────
@@ -79,7 +81,7 @@ def load_clip():
     print(f"  [clip] loading {name}...")
     proc = CLIPProcessor.from_pretrained(name)
     mdl = CLIPModel.from_pretrained(name).eval()
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    device = pick_device()
     mdl = mdl.to(device)
     labels = sorted(_CLIP_PROMPTS.keys())
     prompts = [_CLIP_PROMPTS[c] for c in labels]
@@ -109,7 +111,7 @@ def clip_probs(mdl, proc, txt_emb, device, img_path: Path) -> np.ndarray | None:
 def load_classifier() -> tuple[ort.InferenceSession, list[str]]:
     if not CLASSIFIER_PATH.exists():
         sys.exit(f"classifier 없음: {CLASSIFIER_PATH}")
-    sess = ort.InferenceSession(str(CLASSIFIER_PATH), providers=["CPUExecutionProvider"])
+    sess = load_session(CLASSIFIER_PATH)
     # config 에서 라벨 순서 가져옴 (manifest 기반 — 학습과 동기)
     from greenguide_classifier import config  # noqa: PLC0415
     config.refresh_classes_from_manifest()
@@ -132,8 +134,7 @@ def model_probs(sess: ort.InferenceSession, img_path: Path) -> np.ndarray | None
         return None
     name = sess.get_inputs()[0].name
     logits = sess.run(None, {name: inp})[0][0]  # (NUM_CLASSES,)
-    e = np.exp(logits - logits.max())
-    return e / e.sum()
+    return softmax(logits)
 
 
 def _preprocess(img: Image.Image) -> np.ndarray:

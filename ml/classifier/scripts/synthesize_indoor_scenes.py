@@ -18,10 +18,11 @@ import random
 from pathlib import Path
 
 import numpy as np
-import onnxruntime as ort
 from _base import make_parser
 from greenguide_common import imaging, settings
 from PIL import Image, ImageFilter, ImageOps
+
+from greenguide_classifier.infer import load_session
 
 FINE_STAGING = settings.PREPROCESSOR_ROOT / "data" / "raw" / "fine-staging"
 REALWORLD_DIR = Path(
@@ -38,7 +39,7 @@ _U2_STD = imaging.IMAGENET_STD
 
 class Saliency:
     def __init__(self) -> None:
-        self.sess = ort.InferenceSession(str(U2NETP), providers=["CPUExecutionProvider"])
+        self.sess = load_session(U2NETP)
         self.inp = self.sess.get_inputs()[0].name
 
     def mask(self, img: Image.Image) -> np.ndarray:

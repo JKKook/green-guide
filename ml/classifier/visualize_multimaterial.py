@@ -19,7 +19,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import onnxruntime as ort
 import torch
 from greenguide_common import imaging, settings
 from greenguide_common.logging import get_logger
@@ -27,6 +26,7 @@ from PIL import Image
 from torchvision import transforms
 
 from greenguide_classifier import config
+from greenguide_classifier.infer import load_session, pick_device, softmax
 from greenguide_classifier.model import CamWasteClassifierCNN, WasteClassifierCNN
 
 log = get_logger(__name__)
@@ -78,12 +78,6 @@ def _object_mask(u2_session, pil: Image.Image, grid: int) -> np.ndarray:
     return np.array(m).astype(np.float32) / 255.0
 
 
-def _softmax_axis0(x: np.ndarray) -> np.ndarray:
-    m = x.max(axis=0, keepdims=True)
-    e = np.exp(x - m)
-    return e / e.sum(axis=0, keepdims=True)
-
-
 def analyze(image_path: Path, cam_model, u2_session, out_path: Path,
             mask_thresh: float = 0.35, conf_thresh: float = 0.35):
     device = next(cam_model.parameters()).device
@@ -97,7 +91,7 @@ def analyze(image_path: Path, cam_model, u2_session, out_path: Path,
     global_idx = int(probs_global.argmax())
 
     # 셀별 클래스 분포 (softmax across classes)
-    cell_probs = _softmax_axis0(cam)         # (C, h, w)
+    cell_probs = softmax(cam, axis=0)         # (C, h, w)
     cell_class = cell_probs.argmax(axis=0)   # (h, w)
     cell_conf = cell_probs.max(axis=0)       # (h, w)
 
@@ -160,12 +154,12 @@ def main() -> int:
     ap.add_argument("--out", type=Path, default=OUTPUT_DIR)
     args = ap.parse_args()
 
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = pick_device()
     log.info(f"device: {device}, classes: {list(config.CLASS_LABELS)}")
     if not CKPT_PATH.exists():
         sys.exit(f"체크포인트 없음: {CKPT_PATH}")
     cam_model = _load_cnn(device)
-    u2 = ort.InferenceSession(str(U2NETP_PATH), providers=["CPUExecutionProvider"]) \
+    u2 = load_session(U2NETP_PATH) \
         if U2NETP_PATH.exists() else None
     log.info(f"u2netp: {'OK' if u2 else '없음 (객체 mask 생략)'}")
 

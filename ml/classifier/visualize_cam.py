@@ -33,6 +33,7 @@ from PIL import Image
 from torchvision import transforms
 
 from greenguide_classifier import config
+from greenguide_classifier.infer import pick_device
 from greenguide_classifier.model import WasteClassifierCNN
 
 log = get_logger(__name__)
@@ -219,12 +220,7 @@ def main() -> int:
     args = parser.parse_args()
 
     # device
-    if torch.backends.mps.is_available():
-        device = torch.device("mps")
-    elif torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
+    device = pick_device()
     log.info(f"device: {device}")
 
     # 체크포인트 로드

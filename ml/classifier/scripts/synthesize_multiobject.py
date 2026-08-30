@@ -23,10 +23,11 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import onnxruntime as ort
 from _base import make_parser
 from greenguide_common import imaging, settings
 from PIL import Image, ImageFilter
+
+from greenguide_classifier.infer import load_session
 
 STAGING_CROPS = settings.WASTE_ROOT / "ml" / "data" / "raw" / "aihub_71385" / "crops"
 BACKGROUNDS = (settings.PREPROCESSOR_ROOT / "data" / "raw"
@@ -58,7 +59,7 @@ _U2_STD = imaging.IMAGENET_STD
 
 class Cutter:
     def __init__(self) -> None:
-        self.sess = ort.InferenceSession(str(U2NETP), providers=["CPUExecutionProvider"])
+        self.sess = load_session(U2NETP)
         self.inp = self.sess.get_inputs()[0].name
 
     def cutout(self, img: Image.Image) -> tuple[Image.Image, tuple[int, int, int, int]] | None:

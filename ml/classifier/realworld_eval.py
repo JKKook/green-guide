@@ -14,7 +14,6 @@ from collections import Counter, defaultdict
 from datetime import UTC, datetime
 
 import numpy as np
-import onnxruntime as ort
 import requests
 from greenguide_common import imaging
 from greenguide_common.logging import get_logger
@@ -22,6 +21,7 @@ from greenguide_common.supabase import Bucket, get_client
 from PIL import Image
 
 from greenguide_classifier import config
+from greenguide_classifier.infer import load_session, softmax
 
 log = get_logger(__name__)
 
@@ -44,12 +44,12 @@ def _prep(img: Image.Image, center_frac: float | None = None) -> np.ndarray:
 def main() -> int:
     config.refresh_classes_from_manifest()
     labels = list(config.CLASS_LABELS)
-    sess = ort.InferenceSession(str(ONNX_PATH), providers=["CPUExecutionProvider"])
+    sess = load_session(ONNX_PATH)
     inp = sess.get_inputs()[0].name
 
     def classify(img, center_frac=None) -> tuple[str, float]:
         o = sess.run(["logits"], {inp: _prep(img, center_frac)})[0][0]
-        e = np.exp(o - o.max()); p = e / e.sum()
+        p = softmax(o)
         i = int(p.argmax())
         return labels[i], float(p[i])
 
