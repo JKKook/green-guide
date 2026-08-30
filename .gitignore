@@ -1,0 +1,48 @@
+# ── 시크릿 (절대 커밋 금지) ─────────────────────────────────────────
+.env
+.env.*
+!.env.example
+**/key.properties
+**/*.jks
+**/*.keystore
+**/local.properties
+
+# ── 대용량 데이터·모델 (로컬 전용) ──────────────────────────────────
+aihub_71385_staging/
+aihub_71647_staging/
+aihub_staging/
+openimages_staging/
+synth_indoor_staging/
+taco_staging/
+data/
+**/data/raw/
+**/data/processed/
+**/cache/
+**/local_feedback/
+**/models/*.onnx
+**/models/*.npz
+**/outputs/
+**/logs/
+*.onnx
+*.pt
+*.pth
+*.npz
+*.tar
+*.zip
+
+# ── 빌드·의존성 ─────────────────────────────────────────────────────
+**/build/
+**/.dart_tool/
+**/.venv/
+**/.venv_*/
+**/__pycache__/
+**/.pytest_cache/
+**/node_modules/
+**/.flutter-plugins-dependencies
+**/*.iml
+**/.idea/
+
+# ── OS·에디터 ───────────────────────────────────────────────────────
+.DS_Store
+*.swp
+*.log
