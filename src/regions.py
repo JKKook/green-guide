@@ -124,7 +124,6 @@ def render_hatching(
                            outline=color + (160,), width=1)
             # 대각선 빗금 (셀 안에 2-3줄)
             step = max(8, int(cw / 4))
-            d = x0 - y0
             xx = x0
             while xx < x1 + (y1 - y0):
                 draw.line([(xx, y0), (xx - (y1 - y0), y1)], fill=line, width=1)

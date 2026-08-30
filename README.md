@@ -248,11 +248,13 @@ CNN 의 전체 test accuracy 92.35% 와 일치하는 결과. plastic/glass 혼�
 
 | 파일 | 역할 | 핵심 |
 |---|---|---|
-| `src/config.py` | 상수·환경변수 | 모델 경로, 클래스 목록, 이미지 크기·정규화 통계 |
+| `src/core/` | 공통단 | `config`(모든 env 의 SSOT·`.env` 로드), `log`(로거), `singleton`(`@lazy_singleton`), `errors`(도메인 예외→HTTP) |
+| `src/services/` | 비즈니스 로직 | `image_io`(읽기·검증·크롭), `cascade`(손/이진 게이트→분류), `regions_service`(다중재질 영역), `recording`(업로드 기록) |
+| `src/routers/` | 얇은 라우터 | `meta`·`inference`·`admin`·`learning` — 입력 읽기 → 서비스 호출 → 응답 조립 |
+| `src/api.py` | app 조립 | lifespan(모델 lazy load·정리 루프) + 미들웨어 + 라우터 include |
 | `src/preprocess.py` | bytes → 텐서 | waste-preprocessor 와 **완전히 동일한** RGB→resize→normalize→reshape |
-| `src/inference.py` | ONNX wrapper | 싱글톤 `WasteClassifier`, softmax + argmax |
+| `src/inference.py` 외 모델 모듈 | ONNX wrapper | `hier_inference`·`segment`·`clip_identity`·`dinov2_classifier`·`stage1_classifier`·`hand_detector` 등 |
 | `src/schemas.py` | Pydantic 모델 | 자동 검증·OpenAPI 스키마 생성 |
-| `src/api.py` | FastAPI 라우트 | lifespan 으로 모델 lazy load, 4개 엔드포인트 |
 | `main.py` | uvicorn 진입점 | host/port/reload/workers CLI 인자 |
 
 ---
@@ -312,16 +314,19 @@ waste-api/
 ├── pytest.ini
 ├── requirements.txt
 ├── main.py                       # uvicorn CLI
+├── ruff.toml                     # 린트 게이트 (ruff check src/ tests/)
+├── docs/REFACTORING_GUIDE.md     # 구조 원칙·리팩토링 이력
 ├── src/
-│   ├── __init__.py
-│   ├── config.py                 # 경로·상수·환경변수
+│   ├── api.py                    # app 조립 (lifespan·미들웨어·라우터 include)
+│   ├── core/                     # 공통단: config · log · singleton · errors
+│   ├── routers/                  # meta · inference · admin · learning
+│   ├── services/                 # image_io · cascade · regions_service · recording
 │   ├── preprocess.py             # bytes → tensor (preprocessor 와 동일 변환)
-│   ├── inference.py              # ONNX Runtime 싱글톤
-│   ├── schemas.py                # Pydantic 요청/응답
-│   └── api.py                    # FastAPI app + 라우트
+│   ├── inference.py              # ONNX Runtime 싱글톤 (+ hier_inference, segment, clip_identity …)
+│   └── schemas.py                # Pydantic 요청/응답
 └── tests/
-    ├── __init__.py
     ├── conftest.py               # TestClient + 샘플 이미지 fixture
+    ├── test_characterization.py  # 엔드포인트 경로·응답 필드 동결 (리팩토링 안전망)
     ├── test_preprocess.py
     └── test_api.py
 ```

@@ -1,6 +1,7 @@
 # waste-api 리팩토링 가이드 — 코드 품질 최적화 + 공통단 구성
 
 > 작성일 2026-08-30. 대상: `src/` 5,279 LOC (api.py 1,463 LOC = 28%).
+> **상태 (2026-08-30): P0~P3 완료.** 편차·후속 과제는 §6 참조.
 > 원칙: **동작 불변** (엔드포인트 응답 스키마·값 동일), **단계별 커밋**, **매 단계 테스트 그린**.
 
 ## 0. 현재 진단 (근거 수치)
@@ -119,3 +120,27 @@ src/
 - DB 스키마·마이그레이션 변경
 - 성능 최적화 (별도 작업)
 - `scripts/`, `local_feedback/` 정리
+
+## 6. 실행 결과 (2026-08-30)
+
+| 지표 | Before | After |
+|---|---|---|
+| `api.py` LOC | 1,463 | 91 (routers 합계 727) |
+| 업로드 기록 중복 | 7 | 1 (`services/recording`) |
+| `print` | 100 | 0 |
+| `config.py` 밖 `os.getenv` | 18 | 0 |
+| 싱글톤 `global` 패턴 | 10 | 0 (`cam_renderer._JET_LUT` 캐시 1건은 대상 아님) |
+| `ImageDecodeError→400` 반복 | 6 | 0 (전역 핸들러) |
+| hand/stage1 fail-open 반복 | 5 | 0 (`cascade.non_object_gate`) |
+| 테스트 | 실행 불가 | 42 passed (특성 테스트 7 추가) |
+
+**계획 대비 편차**
+- `core/logging.py` → `core/log.py` (stdlib `logging` 이름 충돌 회피).
+- venv 원인은 numpy 손상이 아니라 **arm64/x86_64 패키지 혼재** → `pip install --force-reinstall -r requirements.txt` 로 복구.
+- P3-1: `except Exception` 59곳 전수 검토 결과 전부 "보조 단계 실패 → 경고 후 강등 결과" 의 일관된 fail-open 이고 `# noqa: BLE001` 이 이미 명시돼 있어 **코드 변경 없음**. 조용히 삼키는 4곳(EXIF 태그·bbox·host 파싱 등)은 선택 정보 폴백으로 무해.
+- P3-2: mypy 는 레거시 모델 모듈 타입 오류 23건(PIL `Image | None` 등)으로 **도입 보류**. ruff 만 게이트로 채택하고 기존 스타일 규칙(B905/E702/E741/B007/B017)은 `ruff.toml` 에 명시적 ignore.
+
+**후속 과제 (스코프 밖으로 남긴 것)**
+- `routers/inference.py::predict_hier` 가 여전히 ~200줄 (시맨틱 증거 융합·VLM 폴백 블록). `services/hier_pipeline.py` 로 추출 후보.
+- `predict_objects` 도 같은 패턴 (~100줄).
+- mypy 도입 시 `uploads.py:70`, `regions.py:108` 의 PIL 타입 이슈부터.

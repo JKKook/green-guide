@@ -18,7 +18,11 @@ from src.schemas import (
 )
 from src.segment import get_segmenter
 from src.services.cascade import force_non_object_result, non_object_gate, run_cascade, stage1_gate
-from src.services.image_io import crop_at_tap, read_and_validate_image, read_validate_with_orientation
+from src.services.image_io import (
+    crop_at_tap,
+    read_and_validate_image,
+    read_validate_with_orientation,
+)
 from src.services.recording import record_safely
 from src.services.regions_service import analyze_regions, evidence_conflicts
 
