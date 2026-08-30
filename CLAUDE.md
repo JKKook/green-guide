@@ -20,7 +20,10 @@
   # 그 경로 안에서 편집·테스트·커밋
   git -C .worktrees/feature-<scope>-<topic> push -u origin feature/<scope>-<topic>
   ```
-  끝나면 `develop` 으로 PR(또는 `git merge --no-ff`) → worktree 제거(`git worktree remove`).
+  끝나면 `git push -u origin feature/<scope>-<topic>` 까지만 하고 **상위 구조 세션(waste-ba)에 "PR 요청"을 보낸다** → worktree 제거(`git worktree remove`).
+- **`develop` 병합은 PR 로만, 상위 구조 세션이 수행한다.** 폴더 세션은 `git merge`·`gh pr create/merge` 를 하지 않는다
+  (폴더 세션의 gh 활성 계정은 협업자가 아니고, 병합 권한도 상위 구조 세션에만 둔다). 요청 시 검증 결과(테스트·린트)를 함께 적는다.
+  상위 구조 세션은 JKKook 계정으로 PR 생성 → 검증 확인 → `gh pr merge --merge`(merge commit) → 공유 트리 `develop` 을 `git pull --ff-only`.
 - scope 는 폴더명: `feature/app-…`, `feature/api-…`, `feature/classifier-…`, `feature/preprocessor-…`, `feature/repo-…`.
 - 긴급 수정은 `main` 에서 `hotfix/*` 분기 → `main` 과 `develop` 양쪽 병합.
 
