@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  debug 빌드 전용 네트워크 보안 규칙 (release 는 main/res 의 HTTPS-only 설정 사용).
+  로컬 waste-api 개발 서버 연결을 위해 localhost / 에뮬레이터 host alias 만 HTTP 허용.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>     <!-- 에뮬레이터 호스트 alias -->
+    </domain-config>
+</network-security-config>

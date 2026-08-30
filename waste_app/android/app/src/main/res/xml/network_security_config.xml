@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network 보안 규칙 (release 기본): HTTPS 만 허용 — production HF Spaces.
+  로컬 개발용 HTTP(localhost/에뮬레이터) 예외는 src/debug/res/xml 의 동명 파일이
+  debug 빌드에서만 이 파일을 덮어쓴다.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
