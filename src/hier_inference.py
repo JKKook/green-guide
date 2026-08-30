@@ -23,6 +23,9 @@ import numpy as np
 import onnxruntime as ort
 
 from src.inference import _softmax
+from src.core.log import get_logger
+
+log = get_logger(__name__)
 
 # 모델 경로 해석: env → 번들 → 자매 레포 (기존 config.MODEL_PATH 관례와 동일)
 _ENV_PATH = os.getenv("WASTE_API_HIER_MODEL_PATH")
@@ -80,9 +83,9 @@ class HierWasteClassifier:
                     try:
                         self.dino_session = ort.InferenceSession(
                             str(cand), providers=["CPUExecutionProvider"])
-                        print(f"[hier] dinov2 앙상블 활성: {cand.name} (w={self.dino_weight})")
+                        log.info(f"dinov2 앙상블 활성: {cand.name} (w={self.dino_weight})")
                     except Exception as exc:  # noqa: BLE001
-                        print(f"[hier] dinov2 로드 실패(단독 모드): {exc}")
+                        log.info(f"dinov2 로드 실패(단독 모드): {exc}")
                     break
 
         # OOD 프로토타입 (선택) — build_hier_prototypes.py 산출물.
@@ -110,7 +113,7 @@ class HierWasteClassifier:
             (cam,) = self.session.run(["cam"], {"image": color_input_hi})
             return cam[0]  # (C, h, w)
         except Exception as exc:  # noqa: BLE001
-            print(f"[hier] hi-res cam 미지원(구 ONNX?): {exc}")
+            log.info(f"hi-res cam 미지원(구 ONNX?): {exc}")
             return None
 
     def material_class_indices(self) -> list[int]:
@@ -166,7 +169,7 @@ class HierWasteClassifier:
                 e = np.exp(dl - dl.max(axis=1, keepdims=True))
                 dino_probs = e / e.sum(axis=1, keepdims=True)
             except Exception as exc:  # noqa: BLE001
-                print(f"[hier] dinov2 추론 실패(단독 진행): {exc}")
+                log.info(f"dinov2 추론 실패(단독 진행): {exc}")
         if mask_non_object and "non_object" in self.fine_labels:
             logits = logits.copy()
             logits[:, self.fine_labels.index("non_object")] = -1e9
@@ -296,7 +299,7 @@ def cam_region_prior(
                 prior[cls_i] = min(share / uniform, 6.0) ** weight
         return prior
     except Exception as exc:  # noqa: BLE001
-        print(f"[hier] cam region prior 실패 (증거 없이 진행): {exc}")
+        log.info(f"cam region prior 실패 (증거 없이 진행): {exc}")
         return None
 
 

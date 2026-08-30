@@ -19,6 +19,9 @@ from typing import Any
 
 import numpy as np
 from PIL import Image
+from src.core.log import get_logger
+
+log = get_logger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _OCR_DIR = _PROJECT_ROOT / "models" / "ocr"
@@ -112,12 +115,12 @@ class SemanticEvidence:
         self.available = False
         self._ocr = None
         if os.getenv("WASTE_API_OCR", "1") == "0":
-            print("[evidence] OCR 비활성 (WASTE_API_OCR=0)")
+            log.info("OCR 비활성 (WASTE_API_OCR=0)")
             return
         det = _OCR_DIR / "det.onnx"
         rec = _OCR_DIR / "korean_rec_v5.onnx"
         if not (det.exists() and rec.exists()):
-            print(f"[evidence] OCR 모델 미배치 ({_OCR_DIR}) — 증거 없이 진행")
+            log.info(f"OCR 모델 미배치 ({_OCR_DIR}) — 증거 없이 진행")
             return
         try:
             from rapidocr import LangRec, ModelType, OCRVersion, RapidOCR
@@ -130,9 +133,9 @@ class SemanticEvidence:
                 "Global.use_cls": False,     # 회전 분류 생략 — 속도 (EXIF 는 이미 정규화됨)
             })
             self.available = True
-            print("[evidence] OCR 활성 (PP-OCRv5 korean)")
+            log.info("OCR 활성 (PP-OCRv5 korean)")
         except Exception as exc:  # noqa: BLE001
-            print(f"[evidence] OCR 초기화 실패 (증거 없이 진행): {exc}")
+            log.info(f"OCR 초기화 실패 (증거 없이 진행): {exc}")
 
     def read_texts(self, image_bytes: bytes) -> list[dict[str, Any]]:
         """이미지 → [{text, score, bbox_norm}]. bbox 는 물건 crop 귀속용."""
@@ -159,7 +162,7 @@ class SemanticEvidence:
                 })
             return out
         except Exception as exc:  # noqa: BLE001
-            print(f"[evidence] OCR 실행 실패 (증거 없이 진행): {exc}")
+            log.info(f"OCR 실행 실패 (증거 없이 진행): {exc}")
             return []
 
 

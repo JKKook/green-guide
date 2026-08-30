@@ -17,6 +17,9 @@ import onnxruntime as ort
 from PIL import Image
 
 from src import config
+from src.core.log import get_logger
+
+log = get_logger(__name__)
 
 
 _STAGE1_PATH = config.PROJECT_ROOT / "cache" / "stage1_binary.onnx"
@@ -43,11 +46,11 @@ class Stage1Classifier:
                         str(path), providers=["CPUExecutionProvider"],
                     )
                     self._input_name = self._session.get_inputs()[0].name
-                    print(f"[stage1] loaded: {path}")
+                    log.info(f"loaded: {path}")
                     return
                 except Exception as exc:  # noqa: BLE001
-                    print(f"[stage1] load failed {path}: {exc}")
-        print(f"[stage1] WARN: no stage1 model found (checked {_STAGE1_PATH}, {_FALLBACK_PATH})")
+                    log.info(f"load failed {path}: {exc}")
+        log.info(f"WARN: no stage1 model found (checked {_STAGE1_PATH}, {_FALLBACK_PATH})")
 
     @property
     def available(self) -> bool:
@@ -67,7 +70,7 @@ class Stage1Classifier:
         try:
             inp = self._preprocess(raw)
         except Exception as exc:  # noqa: BLE001
-            print(f"[stage1] preprocess failed: {exc}")
+            log.info(f"preprocess failed: {exc}")
             return True, 1.0
         with self._lock:
             logits = self._session.run(None, {self._input_name: inp})[0][0]

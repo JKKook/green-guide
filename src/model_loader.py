@@ -19,6 +19,9 @@ from typing import Any
 import httpx
 
 from src import config
+from src.core.log import get_logger
+
+log = get_logger(__name__)
 
 
 CACHE_ROOT: Path = config.PROJECT_ROOT / "cache" / "models"
@@ -72,7 +75,7 @@ def _supabase_client():
     try:
         return create_client(url, key)
     except Exception as exc:  # noqa: BLE001
-        print(f"[model_loader] supabase client init failed: {exc}")
+        log.info(f"supabase client init failed: {exc}")
         return None
 
 
@@ -91,7 +94,7 @@ def get_latest_active_version() -> RemoteModelMeta | None:
             .execute()
         )
     except Exception as exc:  # noqa: BLE001
-        print(f"[model_loader] model_versions query failed: {exc}")
+        log.info(f"model_versions query failed: {exc}")
         return None
     rows = res.data or []
     if not rows:
@@ -119,14 +122,14 @@ def _download(url: str, dest: Path, expected_sha: str | None) -> bool:
                     if chunk:
                         f.write(chunk)
     except Exception as exc:  # noqa: BLE001
-        print(f"[model_loader] download failed {url}: {exc}")
+        log.info(f"download failed {url}: {exc}")
         tmp.unlink(missing_ok=True)
         return False
 
     if expected_sha:
         got = _sha256(tmp)
         if got != expected_sha:
-            print(f"[model_loader] sha256 mismatch: expected {expected_sha} got {got}")
+            log.info(f"sha256 mismatch: expected {expected_sha} got {got}")
             tmp.unlink(missing_ok=True)
             return False
 
@@ -145,7 +148,7 @@ def ensure_cached(meta: RemoteModelMeta) -> tuple[Path | None, Path | None]:
 
     # Color
     if not color_path.exists() or _sha256(color_path) != meta.color_sha256:
-        print(f"[model_loader] downloading color ONNX v{meta.version}...")
+        log.info(f"downloading color ONNX v{meta.version}...")
         ok = _download(meta.color_url, color_path, meta.color_sha256)
         if not ok:
             return None, None
@@ -156,7 +159,7 @@ def ensure_cached(meta: RemoteModelMeta) -> tuple[Path | None, Path | None]:
         if not edge_path.exists() or (
             meta.edge_sha256 and _sha256(edge_path) != meta.edge_sha256
         ):
-            print(f"[model_loader] downloading edge ONNX v{meta.version}...")
+            log.info(f"downloading edge ONNX v{meta.version}...")
             ok = _download(meta.edge_url, edge_path, meta.edge_sha256)
             if ok:
                 edge_out = edge_path
@@ -179,10 +182,10 @@ def resolve_model_paths() -> tuple[Path, Path | None, RemoteModelMeta | None]:
     if meta is not None:
         color, edge = ensure_cached(meta)
         if color is not None:
-            print(f"[model_loader] using remote v{meta.version} (accuracy={meta.test_accuracy})")
+            log.info(f"using remote v{meta.version} (accuracy={meta.test_accuracy})")
             return color, edge, meta
-        print("[model_loader] remote fetch failed → falling back to local")
+        log.info("remote fetch failed → falling back to local")
 
     # Fallback
-    print(f"[model_loader] using local fallback: {config.MODEL_PATH}")
+    log.info(f"using local fallback: {config.MODEL_PATH}")
     return config.MODEL_PATH, config.EDGE_MODEL_PATH, None

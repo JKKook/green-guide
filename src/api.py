@@ -36,6 +36,9 @@ from src.segment import get_segmenter
 from src.dinov2_classifier import get_dinov2_classifier
 from src.stage1_classifier import get_stage1_classifier
 from src.uploads import get_recorder, reset_recorder
+from src.core.log import get_logger
+
+log = get_logger(__name__)
 
 
 @asynccontextmanager
@@ -47,27 +50,27 @@ async def lifespan(app: FastAPI):
     try:
         ClassRegistry.load()
     except Exception as exc:  # noqa: BLE001
-        print(f"[startup][warn] class registry 로드 실패 (Supabase 미접속?): {exc}")
-    print(f"[startup] color model: {classifier.model_path}")
-    print(f"[startup] edge model: {classifier.edge_model_path or '(disabled)'}")
-    print(f"[startup] inference mode: "
+        log.warning(f"class registry 로드 실패 (Supabase 미접속?): {exc}")
+    log.info(f"color model: {classifier.model_path}")
+    log.info(f"edge model: {classifier.edge_model_path or '(disabled)'}")
+    log.info(f"inference mode: "
           f"{'ensemble (color+edge)' if classifier.has_edge_stream else 'single (color)'}")
     if meta is not None:
-        print(f"[startup] remote model version: v{meta.version} "
+        log.info(f"remote model version: v{meta.version} "
               f"(accuracy={meta.test_accuracy}, feedback={meta.feedback_count})")
     else:
-        print("[startup] remote model version: (fallback — Supabase 에 active row 없음)")
+        log.info("remote model version: (fallback — Supabase 에 active row 없음)")
     try:
-        print(f"[startup] class registry: "
+        log.info(f"class registry: "
               f"{len(ClassRegistry.all_slugs())} total "
               f"({len(ClassRegistry.trained_slugs())} trained)")
     except Exception:  # noqa: BLE001
-        print("[startup] class registry: (미로드 — 요청 시 재시도)")
-    print(f"[startup] user upload collection: "
+        log.info("class registry: (미로드 — 요청 시 재시도)")
+    log.info(f"user upload collection: "
           f"{'ENABLED' if config.COLLECT_USER_UPLOADS else 'disabled'}")
     # DINOv2 미리 로드 (첫 요청 지연 회피)
     dino = get_dinov2_classifier()
-    print(f"[startup] dinov2 classifier: "
+    log.info(f"dinov2 classifier: "
           f"{'ENABLED' if dino.available else 'disabled (model 없음)'}")
 
     # 수집 정리 — 피드백 없는 업로드 7일 후 삭제 (무료 쿼터 지속성).
@@ -79,7 +82,7 @@ async def lifespan(app: FastAPI):
                 from src.uploads import prune_stale_uploads  # noqa: PLC0415
                 await asyncio.to_thread(prune_stale_uploads, 7)
             except Exception as exc:  # noqa: BLE001
-                print(f"[prune][warn] 정리 실패(다음 주기 재시도): {str(exc)[:80]}")
+                log.warning(f"정리 실패(다음 주기 재시도): {str(exc)[:80]}")
             await asyncio.sleep(24 * 3600)
 
     prune_task = None
@@ -218,14 +221,14 @@ async def predict_hier(
         if hand_area >= 0.50:
             forced_reason = f"hand area {hand_area:.2f} >= 0.50"
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] hand detection failed: {exc}")
+        log.warning(f"hand detection failed: {exc}")
     if forced_reason is None:
         try:
             is_waste, waste_prob = get_stage1_classifier().predict(raw)
             if not is_waste:
                 forced_reason = f"stage1 waste_prob={waste_prob:.3f} < 0.50"
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] stage1 failed: {exc}")  # fail-open
+            log.warning(f"stage1 failed: {exc}")  # fail-open
 
     if forced_reason is not None:
         result = {
@@ -290,7 +293,7 @@ async def predict_hier(
             prior = _mul(prior, evidence_prior(
                 evidence, clf.fine_labels, clf.taxonomy["fine_to_coarse"]))
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] semantic evidence failed: {exc}")
+            log.warning(f"semantic evidence failed: {exc}")
     if tap_region is not None:
         try:
             clip_eng = get_clip_identity()
@@ -301,12 +304,12 @@ async def predict_hier(
                 prior = _mul(prior, clip_prior)
                 evidence.extend(clip_ev)
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] clip identity failed: {exc}")
+            log.warning(f"clip identity failed: {exc}")
         try:
             from src.hier_inference import cam_region_prior  # noqa: PLC0415
             prior = _mul(prior, cam_region_prior(clf, raw, tap_region))
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] cam region prior failed: {exc}")
+            log.warning(f"cam region prior failed: {exc}")
 
     if prior is not None:
         refined = clf.predict(best_tensor, mask_non_object=True, fine_prior=prior,
@@ -324,7 +327,7 @@ async def predict_hier(
     evidence_conflict = _evidence_conflicts(
         evidence, result["coarse_class"], clf.taxonomy["fine_to_coarse"])
     if evidence_conflict:
-        print(f"[vlm] 증거-불일치 중재 발동: CNN={result['coarse_class']}")
+        log.info(f"증거-불일치 중재 발동: CNN={result['coarse_class']}")
     if (result["display_level"] == "reject"
             or result["coarse_confidence"] < 0.55 or evidence_conflict):
         try:
@@ -382,7 +385,7 @@ async def predict_hier(
                         "score": v["confidence"],
                     })
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] vlm fallback failed: {exc}")
+            log.warning(f"vlm fallback failed: {exc}")
     if evidence:
         result["evidence"] = [
             {k: ev[k] for k in ("type", "token", "matched_text",
@@ -410,7 +413,7 @@ async def predict_hier(
                 },
             )
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] upload collection failed: {exc}")
+            log.warning(f"upload collection failed: {exc}")
 
     return PredictionHierResponse(**result, upload_id=upload_id)
 
@@ -447,7 +450,7 @@ async def predict_objects(
     try:
         bboxes = all_component_bboxes(raw)
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] component split failed: {exc}")
+        log.warning(f"component split failed: {exc}")
         bboxes = []
     if not bboxes:
         bboxes = [[0.0, 0.0, 1.0, 1.0]]
@@ -462,7 +465,7 @@ async def predict_objects(
     try:
         scene_evidence = match_evidence(get_evidence_engine().read_texts(raw))
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] semantic evidence failed: {exc}")
+        log.warning(f"semantic evidence failed: {exc}")
 
     img = _Image.open(_io.BytesIO(raw)).convert("RGB")
     w, h = img.size
@@ -488,7 +491,7 @@ async def predict_objects(
                     probs, clf.fine_labels)
                 prior = clip_prior if prior is None else prior * clip_prior
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] clip identity failed: {exc}")
+            log.warning(f"clip identity failed: {exc}")
         try:
             r = predict_best_rotation(
                 clf, buf.getvalue(), mask_non_object=True, fine_prior=prior,
@@ -531,7 +534,7 @@ def region_info(sido: str, sigungu: str) -> dict:
                .execute())
         rules = res.data or []
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] region-info 조회 실패 (빈 응답): {exc}")
+        log.warning(f"region-info 조회 실패 (빈 응답): {exc}")
         rules = []
     return {"sido": sido, "sigungu": sigungu, "count": len(rules), "rules": rules}
 
@@ -662,7 +665,7 @@ async def predict(
             )
         except Exception as exc:  # noqa: BLE001
             # 수집 실패는 추론 자체를 막지 않도록 — 로그만 남기고 응답은 정상
-            print(f"[warn] upload collection failed: {exc}")
+            log.warning(f"upload collection failed: {exc}")
 
     return PredictionResponse(**result, upload_id=upload_id)
 
@@ -680,7 +683,7 @@ def _auto_crop_to_object(raw: bytes, expand: float = 0.10) -> bytes:
         seg = get_segmenter().segment(raw)
         bbox_norm = seg.get("bbox_norm")
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] segment for auto-crop failed: {exc}")
+        log.warning(f"segment for auto-crop failed: {exc}")
         return raw
 
     if not bbox_norm:
@@ -699,7 +702,7 @@ def _auto_crop_to_object(raw: bytes, expand: float = 0.10) -> bytes:
         img.crop((x0, y0, x1, y1)).save(buf, format="JPEG", quality=92)
         return buf.getvalue()
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] bbox crop failed: {exc}")
+        log.warning(f"bbox crop failed: {exc}")
         return raw
 
 
@@ -823,7 +826,7 @@ def _verify_regions(raw: bytes, regions: list[dict], hier_clf,
             ci, _ = _pb(buf.getvalue())
             r = hier_clf.predict(ci, mask_non_object=True, ood_relax=ood_relax)
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] region verify failed: {exc}")
+            log.warning(f"region verify failed: {exc}")
             verified.append(reg)
             continue
         if r["display_level"] == "reject":
@@ -915,7 +918,7 @@ def _crop_at_tap(raw: bytes, tap_x: float, tap_y: float,
         img.crop(box).save(buf, format="JPEG", quality=92)
         return buf.getvalue(), region
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] tap crop failed: {exc}")
+        log.warning(f"tap crop failed: {exc}")
         return raw, None
 
 
@@ -1014,7 +1017,7 @@ async def predict_centered(
     try:
         hand_area = get_hand_detector().hand_area_ratio(raw)
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] hand detection failed: {exc}")
+        log.warning(f"hand detection failed: {exc}")
         hand_area = 0.0
 
     if hand_area >= 0.50:
@@ -1028,14 +1031,14 @@ async def predict_centered(
                     prediction=result,
                 )
             except Exception as exc:  # noqa: BLE001
-                print(f"[warn] upload collection failed: {exc}")
+                log.warning(f"upload collection failed: {exc}")
         return PredictionResponse(**result, upload_id=upload_id)
 
     # ─ Stage 1: binary classifier — waste/non-waste 판정 ─
     try:
         is_waste, waste_prob = get_stage1_classifier().predict(raw)
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] stage1 failed: {exc}")
+        log.warning(f"stage1 failed: {exc}")
         is_waste, waste_prob = True, 1.0   # fail-open: stage2 로 위임
 
     if not is_waste:
@@ -1049,7 +1052,7 @@ async def predict_centered(
                     prediction=result,
                 )
             except Exception as exc:  # noqa: BLE001
-                print(f"[warn] upload collection failed: {exc}")
+                log.warning(f"upload collection failed: {exc}")
         return PredictionResponse(**result, upload_id=upload_id)
 
     # ─ Stage 2: 자동 크롭 + 13-class 분류 ─────────────
@@ -1069,7 +1072,7 @@ async def predict_centered(
     try:
         result = _ensemble_with_dinov2(result, cropped_raw)
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] dinov2 ensemble failed: {exc}")
+        log.warning(f"dinov2 ensemble failed: {exc}")
 
     # upload 기록 (원본 이미지 — 사용자 피드백·재학습은 원본 기준)
     upload_id = None
@@ -1081,7 +1084,7 @@ async def predict_centered(
                 prediction=result,
             )
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] upload collection failed: {exc}")
+            log.warning(f"upload collection failed: {exc}")
 
     return PredictionResponse(**result, upload_id=upload_id)
 
@@ -1118,7 +1121,7 @@ async def predict_with_cam(
         try:
             cam_b64 = render_overlay_png_base64(raw, cam_array)
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] CAM rendering failed: {exc}")
+            log.warning(f"CAM rendering failed: {exc}")
 
     # /predict 와 동일하게 upload 기록 (active learning 데이터로 동등하게 누적)
     upload_id: str | None = None
@@ -1130,7 +1133,7 @@ async def predict_with_cam(
                 prediction=result,
             )
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] upload collection failed: {exc}")
+            log.warning(f"upload collection failed: {exc}")
 
     return PredictionWithCamResponse(
         **result,
@@ -1171,7 +1174,7 @@ async def predict_with_mask(
     try:
         seg = get_segmenter().segment(raw)
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] segmentation failed: {exc}")
+        log.warning(f"segmentation failed: {exc}")
 
     upload_id: str | None = None
     if config.COLLECT_USER_UPLOADS:
@@ -1182,7 +1185,7 @@ async def predict_with_mask(
                 prediction=result,
             )
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] upload collection failed: {exc}")
+            log.warning(f"upload collection failed: {exc}")
 
     return PredictionWithMaskResponse(
         **result,
@@ -1217,7 +1220,7 @@ async def predict_with_regions(
     try:
         is_waste, waste_prob = get_stage1_classifier().predict(raw_orig)
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] stage1 failed: {exc}")
+        log.warning(f"stage1 failed: {exc}")
         is_waste, waste_prob = True, 1.0
 
     if not is_waste:
@@ -1249,7 +1252,7 @@ async def predict_with_regions(
     try:
         result = _ensemble_with_dinov2(result, raw)
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] dinov2 ensemble failed: {exc}")
+        log.warning(f"dinov2 ensemble failed: {exc}")
 
     # ── 계층 고해상 CAM 우선 (CAM_MATERIAL_UPGRADE_PLAN Stage 1) ─────────
     # 448² forward → CAM (25,14,14): 셀 16px, 세부 25클래스 재질 어휘.
@@ -1269,7 +1272,7 @@ async def predict_with_regions(
     except FileNotFoundError:
         pass  # 계층 모델 미배치 — flat CAM 유지
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] hier hi-res cam failed: {exc}")
+        log.warning(f"hier hi-res cam failed: {exc}")
 
     overlay_b64: str | None = None
     regions_out: list[MaterialRegion] = []
@@ -1283,7 +1286,7 @@ async def predict_with_regions(
                 hand_grid = get_hand_detector().mask_grid(raw, grid_h)
                 mask_grid = mask_grid * (1.0 - hand_grid).clip(0.0, 1.0)
             except Exception as exc:  # noqa: BLE001
-                print(f"[warn] hand mask grid failed: {exc}")
+                log.warning(f"hand mask grid failed: {exc}")
 
             # 탭-투-셀렉트 재분석 — 탭한 성분 bbox 밖 셀을 마스킹해 빗금·영역
             # 추출을 그 물건에 집중 (좌표계는 원본 유지 → 오버레이 정합).
@@ -1299,10 +1302,10 @@ async def predict_with_regions(
                     if gmask is not None and (gmask >= 0.35).sum() >= 1:
                         mask_grid = gmask
                         tap_grabcut_ok = True
-                        print(f"[tap-focus] grabcut bbox={[round(v,2) for v in gbox]} "
+                        log.info(f"grabcut bbox={[round(v,2) for v in gbox]} "
                               f"cells={(gmask >= 0.35).sum()}")
                 except Exception as exc:  # noqa: BLE001
-                    print(f"[warn] tap grabcut failed: {exc}")
+                    log.warning(f"tap grabcut failed: {exc}")
             if tap_x is not None and tap_y is not None and not tap_grabcut_ok:
                 try:
                     from src.segment import component_bbox_at  # noqa: PLC0415
@@ -1330,9 +1333,9 @@ async def predict_with_regions(
                     # 안 나오는 문제 방지. saliency 가 거의 없는 셀은 그대로 제외.
                     mask_grid = _np.maximum(
                         mask_grid, 0.35 * (mask_grid >= 0.12)) * focus
-                    print(f"[tap-focus] bbox={[round(v,2) for v in tb]} grid=({r0}:{r1},{c0}:{c1})")
+                    log.info(f"bbox={[round(v,2) for v in tb]} grid=({r0}:{r1},{c0}:{c1})")
                 except Exception as exc:  # noqa: BLE001
-                    print(f"[warn] tap focus mask failed: {exc}")
+                    log.warning(f"tap focus mask failed: {exc}")
             if tap_x is not None and tap_y is not None:
                 # 탭 경로: saliency 실루엣 기반 — 빗금이 탭한 물건 형태를 따라감
                 # GrabCut 실루엣은 이미 탭 물건 성분만이라 반경 제한 불필요;
@@ -1344,7 +1347,7 @@ async def predict_with_regions(
                 if not regions:  # 실루엣 실패 — 기존 CAM-argmax 방식 fallback
                     regions = extract_regions(cam, mask_grid, labels,
                                               allowed_indices=allowed_indices)
-                print(f"[regions] tap=({tap_x:.2f},{tap_y:.2f}) "
+                log.info(f"tap=({tap_x:.2f},{tap_y:.2f}) "
                       f"extract={[(r['slug'], len(r['cells'])) for r in regions]}")
             else:
                 regions = extract_regions(cam, mask_grid, labels,
@@ -1358,12 +1361,12 @@ async def predict_with_regions(
                 regions = _verify_regions(raw, regions, hier_clf,
                                           ood_relax=tap_x is not None)
                 if tap_x is not None:
-                    print(f"[regions] verify={[(r['slug'], len(r['cells'])) for r in regions]}")
+                    log.info(f"verify={[(r['slug'], len(r['cells'])) for r in regions]}")
                     # 탭 맥락 = 사용자가 지목한 물건 — 빗금(선택 피드백)이 우선.
                     # 검증이 전멸시켜도 최상위 CAM 영역은 유지해 항상 표시.
                     if not regions and pre_verify:
                         regions = pre_verify[:1]
-                        print("[regions] verify 전멸 → 탭 최상위 영역 유지")
+                        log.info("verify 전멸 → 탭 최상위 영역 유지")
             if regions:
                 overlay_b64 = render_hatching(
                     raw, regions, grid_h, grid_w, ClassRegistry.color_map(),
@@ -1376,7 +1379,7 @@ async def predict_with_regions(
                     for r in regions
                 ]
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] region analysis failed: {exc}")
+            log.warning(f"region analysis failed: {exc}")
 
     # [flat 폴백 전용 가드] regions dominant 가 flat top-1 과 다르면 overlay 제거.
     # 계층 경로(hier_clf)에서는 영역이 zoom-verify(크롭 재분류)를 이미 통과했고
@@ -1410,7 +1413,7 @@ async def segment(
     try:
         return get_segmenter().segment(raw)
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] segmentation failed: {exc}")
+        log.warning(f"segmentation failed: {exc}")
         return {"cutout_base64": None, "bbox_norm": None, "object_ratio": 0.0}
 
 

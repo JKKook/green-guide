@@ -17,6 +17,9 @@ from typing import Any
 
 import numpy as np
 from PIL import Image
+from src.core.log import get_logger
+
+log = get_logger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _CLIP_DIR = _PROJECT_ROOT / "models" / "clip"
@@ -40,12 +43,12 @@ class ClipIdentity:
     def __init__(self) -> None:
         self.available = False
         if os.getenv("WASTE_API_CLIP", "1") == "0":
-            print("[clip] 정체 인식 비활성 (WASTE_API_CLIP=0)")
+            log.info("정체 인식 비활성 (WASTE_API_CLIP=0)")
             return
         onnx_path = _CLIP_DIR / "clip_image.onnx"
         npz_path = _CLIP_DIR / "clip_concepts.npz"
         if not (onnx_path.exists() and npz_path.exists()):
-            print(f"[clip] 자산 미배치 ({_CLIP_DIR}) — 정체 증거 없이 진행")
+            log.info(f"자산 미배치 ({_CLIP_DIR}) — 정체 증거 없이 진행")
             return
         try:
             import onnxruntime as ort
@@ -61,10 +64,10 @@ class ClipIdentity:
             self.slugs: list[str] = [str(s) for s in data["slugs"]]
             self.logit_scale = float(data["logit_scale"])
             self.available = True
-            print(f"[clip] 정체 인식 활성 (컨셉 {len(self.slugs)}개, "
+            log.info(f"정체 인식 활성 (컨셉 {len(self.slugs)}개, "
                   f"w={PRIOR_WEIGHT}, scene_w={SCENE_WEIGHT})")
         except Exception as exc:  # noqa: BLE001
-            print(f"[clip] 초기화 실패 (정체 증거 없이 진행): {exc}")
+            log.info(f"초기화 실패 (정체 증거 없이 진행): {exc}")
 
     @staticmethod
     def _preprocess(img: Image.Image) -> np.ndarray:
@@ -94,7 +97,7 @@ class ClipIdentity:
             p = np.exp(z)
             return p / p.sum()
         except Exception as exc:  # noqa: BLE001
-            print(f"[clip] 추론 실패 (정체 증거 없이 진행): {exc}")
+            log.info(f"추론 실패 (정체 증거 없이 진행): {exc}")
             return None
 
     def evidence_prior(

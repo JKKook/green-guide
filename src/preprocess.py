@@ -16,6 +16,9 @@ import numpy as np
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from src import config
+from src.core.log import get_logger
+
+log = get_logger(__name__)
 
 
 def normalize_orientation(raw: bytes) -> bytes:
@@ -39,7 +42,7 @@ def normalize_orientation(raw: bytes) -> bytes:
         fixed.save(buf, format="JPEG", quality=95)  # exif 미전달 → GPS 등 메타 제거
         return buf.getvalue()
     except (UnidentifiedImageError, OSError) as exc:
-        print(f"[warn] 이미지 정규화 실패, 원본 사용: {exc}")
+        log.warning(f"이미지 정규화 실패, 원본 사용: {exc}")
         return raw
 
 

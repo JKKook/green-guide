@@ -9,6 +9,9 @@ import numpy as np
 import onnxruntime as ort
 
 from src import config
+from src.core.log import get_logger
+
+log = get_logger(__name__)
 
 
 def _softmax(logits: np.ndarray) -> np.ndarray:
@@ -168,7 +171,7 @@ class WasteClassifier:
                 result["cam"] = color_cam_all[0, idx]  # (H, W), np.ndarray
             else:
                 # 인덱스 매핑이 어긋난 비정상 상태 — silently skip cam
-                print(f"[warn] cam idx {idx} 가 모델 출력 채널 수 ({num_cam_classes}) 범위 밖")
+                log.warning(f"cam idx {idx} 가 모델 출력 채널 수 ({num_cam_classes}) 범위 밖")
         return result
 
 

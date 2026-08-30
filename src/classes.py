@@ -8,6 +8,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from src.uploads import _client as _supabase_client
+from src.core.log import get_logger
+
+log = get_logger(__name__)
 
 
 @dataclass
@@ -93,7 +96,7 @@ class ClassRegistry:
             # Supabase 불가(쿼터 제한·네트워크 등) — taxonomy 사이드카 기반
             # 오프라인 폴백. 피드백 라벨 검증·/labels 가 인프라 장애에 죽지
             # 않게 한다 (2026-07-21 제한 사태 중 도입).
-            print(f"[classes] Supabase 불가 → taxonomy 폴백: {str(exc)[:80]}")
+            log.info(f"Supabase 불가 → taxonomy 폴백: {str(exc)[:80]}")
             cls._classes = cls._fallback_classes()
 
     @classmethod
@@ -122,7 +125,7 @@ class ClassRegistry:
                     "active": True, "level": 2,
                     "parent_slug": f2c.get(slug)}))
         except Exception as exc:  # noqa: BLE001
-            print(f"[classes] 폴백 로드 실패: {exc}")
+            log.info(f"폴백 로드 실패: {exc}")
         return out
 
     @classmethod

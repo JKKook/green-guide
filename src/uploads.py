@@ -10,6 +10,9 @@ from typing import Any
 from supabase import Client, create_client
 
 from src import config
+from src.core.log import get_logger
+
+log = get_logger(__name__)
 
 
 SUPABASE_URL: str | None = config.__dict__.get("SUPABASE_URL") or None
@@ -79,7 +82,7 @@ def _recompress_for_storage(
             return out, _STORE_CONTENT_TYPE
         return image_bytes, content_type
     except Exception as exc:  # noqa: BLE001
-        print(f"[uploads] 재압축 실패(원본 저장): {str(exc)[:60]}")
+        log.info(f"재압축 실패(원본 저장): {str(exc)[:60]}")
         return image_bytes, content_type
 
 
@@ -110,9 +113,9 @@ def prune_stale_uploads(days: int = 7) -> int:
             client.table(_UPLOAD_TABLE).delete().eq("id", r["id"]).execute()
             removed += 1
         except Exception as exc:  # noqa: BLE001
-            print(f"[prune] {r.get('id')} 삭제 실패(무시): {str(exc)[:60]}")
+            log.info(f"{r.get('id')} 삭제 실패(무시): {str(exc)[:60]}")
     if removed:
-        print(f"[prune] 피드백 없는 {days}일 경과 업로드 {removed}건 삭제")
+        log.info(f"피드백 없는 {days}일 경과 업로드 {removed}건 삭제")
     return removed
 
 
@@ -191,7 +194,7 @@ class UploadRecorder:
             return self._remote_record(
                 upload_id, ext, storage_path, image_bytes, content_type, prediction)
         except Exception as exc:  # noqa: BLE001
-            print(f"[uploads] Supabase 실패 → 로컬 폴백: {str(exc)[:80]}")
+            log.info(f"Supabase 실패 → 로컬 폴백: {str(exc)[:80]}")
             return self._local_record(image_bytes, ext, prediction)
 
     def _remote_record(

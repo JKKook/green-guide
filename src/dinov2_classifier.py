@@ -21,6 +21,9 @@ import onnxruntime as ort
 from PIL import Image
 
 from src import config
+from src.core.log import get_logger
+
+log = get_logger(__name__)
 
 
 _DINOV2_PATH = config.PROJECT_ROOT / "cache" / "dinov2_classifier.onnx"
@@ -50,24 +53,24 @@ class DINOv2Classifier:
                         str(path), providers=["CPUExecutionProvider"],
                     )
                     self._input_name = self._session.get_inputs()[0].name
-                    print(f"[dinov2] loaded: {path}")
+                    log.info(f"loaded: {path}")
                     break
                 except Exception as exc:  # noqa: BLE001
-                    print(f"[dinov2] load failed {path}: {exc}")
+                    log.info(f"load failed {path}: {exc}")
         else:
-            print(f"[dinov2] WARN: no model (checked {_DINOV2_PATH}, {_FALLBACK_PATH})")
+            log.info(f"WARN: no model (checked {_DINOV2_PATH}, {_FALLBACK_PATH})")
             return
 
         # labels 로드
         if _LABELS_PATH.exists():
             try:
                 self._labels = json.loads(_LABELS_PATH.read_text())
-                print(f"[dinov2] labels: {self._labels}")
+                log.info(f"labels: {self._labels}")
             except Exception as exc:  # noqa: BLE001
-                print(f"[dinov2] labels load failed: {exc}")
+                log.info(f"labels load failed: {exc}")
                 self._session = None
         else:
-            print(f"[dinov2] WARN: labels.json missing at {_LABELS_PATH}")
+            log.info(f"WARN: labels.json missing at {_LABELS_PATH}")
             self._session = None
 
     @property
@@ -88,7 +91,7 @@ class DINOv2Classifier:
         try:
             inp = self._preprocess(raw)
         except Exception as exc:  # noqa: BLE001
-            print(f"[dinov2] preprocess failed: {exc}")
+            log.info(f"preprocess failed: {exc}")
             return None
         with self._lock:
             logits = self._session.run(None, {self._input_name: inp})[0][0]

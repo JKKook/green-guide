@@ -22,6 +22,9 @@ from typing import Any
 from PIL import Image
 
 from src.streams import is_valid_stream, prompt_lines
+from src.core.log import get_logger
+
+log = get_logger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _COUNTER_PATH = _PROJECT_ROOT / "local_feedback" / "vlm_calls.json"
@@ -42,15 +45,15 @@ class VlmFallback:
         self._client = None
         key = os.getenv("ANTHROPIC_API_KEY")
         if not key:
-            print("[vlm] ANTHROPIC_API_KEY 미설정 — 폴백 비활성")
+            log.info("ANTHROPIC_API_KEY 미설정 — 폴백 비활성")
             return
         try:
             import anthropic
             self._client = anthropic.Anthropic(api_key=key)
             self.available = True
-            print(f"[vlm] 폴백 활성 (model={MODEL}, 일일 상한 {DAILY_CAP})")
+            log.info(f"폴백 활성 (model={MODEL}, 일일 상한 {DAILY_CAP})")
         except Exception as exc:  # noqa: BLE001
-            print(f"[vlm] 초기화 실패 (비활성): {exc}")
+            log.info(f"초기화 실패 (비활성): {exc}")
 
     # ── 비용 가드 ──────────────────────────────────────────────────────────
     @staticmethod
@@ -118,7 +121,7 @@ class VlmFallback:
         if item_name and stream and is_valid_stream(str(stream)):
             return {"slug": None, "item_name": item_name[:60],
                     "stream": str(stream), **base}
-        print(f"[vlm] 검증 실패 slug={slug!r} stream={stream!r} — 무시")
+        log.info(f"검증 실패 slug={slug!r} stream={stream!r} — 무시")
         return None
 
     def classify(
@@ -135,7 +138,7 @@ class VlmFallback:
         if not self.available:
             return None
         if self._calls_today() >= DAILY_CAP:
-            print(f"[vlm] 일일 상한({DAILY_CAP}) 도달 — 스킵")
+            log.info(f"일일 상한({DAILY_CAP}) 도달 — 스킵")
             return None
         try:
             img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
@@ -184,7 +187,7 @@ class VlmFallback:
                         ensure_ascii=False) + "\n")
             return result
         except Exception as exc:  # noqa: BLE001
-            print(f"[vlm] 호출 실패 (fail-open): {str(exc)[:100]}")
+            log.info(f"호출 실패 (fail-open): {str(exc)[:100]}")
             return None
 
 
