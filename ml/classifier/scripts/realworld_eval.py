@@ -4,7 +4,7 @@ frozen test 는 AI Hub 분포(길바닥 가전·깔끔한 크롭)라 실사용�
 user_uploads 의 confirmed/corrected 피드백(=사용자 검증 라벨)을 ground truth 로
 현재 모델의 실사용 정확도·혼동을 측정한다.
 
-사용: python realworld_eval.py
+사용: python scripts/realworld_eval.py
 """
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ import json
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
 
+import _base  # noqa: F401 — sys.path 설정
 import numpy as np
 import requests
 from greenguide_common import imaging

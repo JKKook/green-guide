@@ -29,7 +29,7 @@ fi
 
 # ─── Phase 1: TACO 살아남은 파일 manifest 등재 ─────────
 echo "[overnight v2] Phase 1: extending manifest with surviving TACO files..." | tee -a "$LOG"
-.venv/bin/python scripts/extend_manifest_taco.py >> "$LOG" 2>&1 \
+.venv/bin/python scripts/archive/extend_manifest_taco.py >> "$LOG" 2>&1 \
   || fail "Phase 1 (TACO manifest extend)"
 
 # ─── Phase 2: 배경 풀 추출 ─────────────────────────────
@@ -82,7 +82,7 @@ fi
 
 # ─── Phase 6: manifest 확장 (synth) + splits 재생성 ────
 echo "[overnight v2] Phase 6: extend manifest with synth + reset splits..." | tee -a "$LOG"
-.venv/bin/python scripts/extend_manifest_synthetic.py >> "$LOG" 2>&1 \
+.venv/bin/python scripts/archive/extend_manifest_synthetic.py >> "$LOG" 2>&1 \
   || fail "Phase 6 (extend manifest)"
 mv data/splits/splits.json data/splits/splits.json.bak_pre_C1 2>/dev/null || true
 
@@ -98,7 +98,7 @@ echo "[overnight v2] Phase 8: export ONNX + measure..." | tee -a "$LOG"
 mkdir -p outputs/backups/test_C1
 cp outputs/models/cnn/classifier.onnx outputs/backups/test_C1/classifier.onnx
 
-.venv/bin/python realworld_eval.py > outputs/logs/test_C1_realworld.log 2>&1 || true
+.venv/bin/python scripts/realworld_eval.py > outputs/logs/test_C1_realworld.log 2>&1 || true
 .venv/bin/python diagnose.py --arch cnn --version test_C1 > outputs/logs/test_C1_diagnose.log 2>&1 || true
 
 # ─── Phase 9: Test A 복원 + 합성 garbage-classification 정리 ─
@@ -108,7 +108,7 @@ cp outputs/backups/test_C1_pre/manifest.json ../preprocessor/data/processed/mani
 if [ -f data/splits/splits.json.bak_pre_C1 ]; then
   mv data/splits/splits.json.bak_pre_C1 data/splits/splits.json
 fi
-.venv/bin/python scripts/extend_manifest_synthetic.py --cleanup >> "$LOG" 2>&1 || true
+.venv/bin/python scripts/archive/extend_manifest_synthetic.py --cleanup >> "$LOG" 2>&1 || true
 
 echo "[overnight v2] ALL DONE at $(date)" | tee -a "$LOG"
 touch outputs/logs/OVERNIGHT_DONE

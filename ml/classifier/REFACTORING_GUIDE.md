@@ -14,7 +14,7 @@
 | ImageNet mean/std 상수 직접 기술 | 16 파일 | `greenguide_classifier/dataset.py`, `greenguide_classifier/ood.py`, `visualize_*.py`, `scripts/*` |
 | `_softmax` 자체 구현 | 5곳 | `revalidate`, `eval_ensemble`, `eval_ensemble_weighted`, `etc_queue`, `visualize_multimaterial` |
 | `create_client(os.getenv("SUPABASE_URL"), ...)` | 8곳 | `retrain.py`(4회), `revalidate`, `realworld_eval`, `retrain_hier`, `etc_queue` |
-| PIL 이미지 로드/URL 다운로드 | 24 파일 | `etc_queue._download_image`, `scripts/integrate_taco.download_image` 등 |
+| PIL 이미지 로드/URL 다운로드 | 24 파일 | `etc_queue._download_image`, `scripts/archive/integrate_taco.download_image` 등 |
 | device 선택(cuda/mps/cpu) | 7 파일 | `greenguide_classifier/train.py`, `visualize_cam.py`, `scripts/build_dinov2_*` |
 | 진입점 스크립트 (각자 argparse) | 루트 13 + scripts/ 27 = 40개 | — |
 | 테스트 커버리지 | `src/` 5개 모듈만 (dataset/split/model/hierarchy) | 루트·scripts 는 0 |
@@ -99,12 +99,13 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 | 2-3 | `sys.path` | 10곳 (`scripts/_base.py` 방식) | **유지** — 이관 세션이 채택한 방식이고 `pip install -e .` 도 동작하므로 두 경로 모두 허용. E402 는 ruff `per-file-ignores` 로 scripts/ 한정 허용 | ruff 신규 위반 0 |
 | 2-4 ✅ | ruff 잔여 40건 | **0건** | B905 → `strict=False`(동작 보존) · B007 `_` 접두 · E741 `l`→`ln/left/i` · F841 미사용 대입 제거(`parse_args()` 호출은 유지) · E702/E701 줄 분리 · E402 `import os` 상단 이동 | pytest 41 + golden, 진입점 `--help` 9 통과 |
 
-### Phase 3 — 스크립트 정리 (1일)
-- [ ] 루트 13개 진입점 분류: 운영 파이프라인(`main`, `retrain*`, `revalidate`, `feedback_monitor`, `etc_queue`) / 분석 도구(`diagnose`, `visualize_*`, `eval_ensemble*`, `realworld_eval`)
-  → 운영은 루트 유지, 분석은 `scripts/` 로 이동. `git mv` 사용(히스토리 보존)
-- [ ] `scripts/` 27개 중 데이터 통합 완료된 1회용(`integrate_*`, `extend_manifest_*`, `extract_bg_140`) → `scripts/archive/` 이동. 삭제 X (재현성)
-- [ ] `eval_ensemble.py` vs `eval_ensemble_weighted.py` — 가중치 인자 하나로 합칠 수 있으면 통합, 아니면 그대로
-  → verify: README/HIER_TRAINING_GUIDE 의 실행 명령 전부 갱신 후 실제 실행
+### Phase 3 — 스크립트 정리 ✅ 2026-08-31 완료
+- [x] 루트 진입점 분류 — **운영(루트 유지)**: `main` `retrain` `retrain_hier` `revalidate` `feedback_monitor` `etc_queue`(retrain·ood 가 import) `diagnose`(retrain 이 import).
+  **분석(→ `scripts/`)**: `eval_ensemble` `eval_ensemble_weighted` `visualize_cam` `visualize_multimaterial` `realworld_eval`. `git mv` 로 이력 보존, `PROJECT_ROOT` 는 `_base` 에서 import
+- [x] `scripts/archive/` — `integrate_aihub` `integrate_kaggle_garbage12` `integrate_taco` `extend_manifest_synthetic` `extend_manifest_taco` `extract_bg_140` `_tau_check` (+ README: `PYTHONPATH=scripts` 로 재실행 가능)
+- [x] 실험 셸 스크립트 3개(`_overnight_pipeline` `_test_d1_pipeline` `test_b_continuation`)의 경로 갱신
+- [ ] `eval_ensemble` vs `eval_ensemble_weighted` 통합 — 보류(가중치 스윕 로직이 달라 합치면 인터페이스가 바뀜)
+- 참고: `wiki/`·`docs/plans/` 의 옛 경로 언급은 repo 범위라 손대지 않음 — 상위 구조 세션에 전달
 
 ### Phase 4 — 품질 규칙 고정 (0.5일)
 - [ ] `config.py` 의 import-time 부수효과(`refresh_classes_from_manifest()` 자동 호출, `print`) 를 **명시 호출**로 바꿀지 결정. 바꾼다면 호출부 전수 확인 — 리스크 있으니 별도 PR
