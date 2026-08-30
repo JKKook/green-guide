@@ -7,6 +7,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.core import config
+from src.core.errors import register_exception_handlers
 from src.cam_renderer import render_overlay_png_base64
 from src.classes import ClassRegistry
 from src.inference import get_active_meta, get_classifier, reset_classifier
@@ -111,6 +112,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+register_exception_handlers(app)
 
 
 @app.get("/", response_model=ServiceInfo, tags=["meta"])
@@ -258,14 +260,9 @@ async def predict_hier(
     # ── 1차 패스: EXIF 태그 기반 축소 TTA (트랙 B2 — 3×→평균 1.7×) ──────────
     # 게이트를 통과했다 = stage1 이 '폐기물'로 판정 (또는 fail-open)
     # → 분류기의 non_object 는 모순된 답이므로 마스킹 (실측 +5.9pp)
-    try:
-        result, best_tensor = predict_rotations(
-            clf, cropped_raw, degs_for_orientation(exif_tag),
-            mask_non_object=True, ood_relax=tap_x is not None)
-    except ImageDecodeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc),
-        ) from exc
+    result, best_tensor = predict_rotations(
+        clf, cropped_raw, degs_for_orientation(exif_tag),
+        mask_non_object=True, ood_relax=tap_x is not None)
 
     # ── 시맨틱 증거 융합 (SEMANTIC_FUSION_PLAN §3 + 청사진 v2 트랙 B1) ──────
     #   OCR: 탭이거나 1차 확신이 낮을 때만 (고확신 장면은 스킵 — 운영 -2~4s)
@@ -644,13 +641,7 @@ async def predict(
     raw = await _read_and_validate_image(image)
 
     classifier = get_classifier()
-    try:
-        color_input, edge_input = preprocess_both(raw)
-    except ImageDecodeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+    color_input, edge_input = preprocess_both(raw)
 
     result = classifier.predict(color_input, edge_input)
 
@@ -1058,12 +1049,7 @@ async def predict_centered(
     cropped_raw = _auto_crop_to_object(raw)
 
     classifier = get_classifier()
-    try:
-        color_input, edge_input = preprocess_both(cropped_raw)
-    except ImageDecodeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc),
-        ) from exc
+    color_input, edge_input = preprocess_both(cropped_raw)
 
     result = classifier.predict(color_input, edge_input)
 
@@ -1104,13 +1090,7 @@ async def predict_with_cam(
     raw = await _read_and_validate_image(image)
 
     classifier = get_classifier()
-    try:
-        color_input, edge_input = preprocess_both(raw)
-    except ImageDecodeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+    color_input, edge_input = preprocess_both(raw)
 
     result = classifier.predict(color_input, edge_input, want_cam=True)
     cam_array = result.pop("cam", None)
@@ -1158,13 +1138,7 @@ async def predict_with_mask(
     raw = await _read_and_validate_image(image)
 
     classifier = get_classifier()
-    try:
-        color_input, edge_input = preprocess_both(raw)
-    except ImageDecodeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+    color_input, edge_input = preprocess_both(raw)
 
     result = classifier.predict(color_input, edge_input)
 
@@ -1238,12 +1212,7 @@ async def predict_with_regions(
     raw = raw_orig
 
     classifier = get_classifier()
-    try:
-        color_input, edge_input = preprocess_both(raw)
-    except ImageDecodeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc),
-        ) from exc
+    color_input, edge_input = preprocess_both(raw)
 
     result, cam = classifier.region_cam(color_input)
 
