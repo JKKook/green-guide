@@ -387,13 +387,13 @@ def main() -> int:
         areas = [r["area"] for r in valid if isinstance(r["area"], (int, float))]
         offsets = [r["offset"] for r in valid if isinstance(r["offset"], (int, float))]
         blobs = [r["blob_count"] for r in valid if isinstance(r["blob_count"], int)]
-        print(f"\n[통계 — area]")
+        print("\n[통계 — area]")
         print(f"  min={min(areas):.3f} p25={np.percentile(areas, 25):.3f} "
               f"med={np.median(areas):.3f} p75={np.percentile(areas, 75):.3f} max={max(areas):.3f}")
-        print(f"[통계 — offset]")
+        print("[통계 — offset]")
         print(f"  min={min(offsets):.3f} p25={np.percentile(offsets, 25):.3f} "
               f"med={np.median(offsets):.3f} p75={np.percentile(offsets, 75):.3f} max={max(offsets):.3f}")
-        print(f"[통계 — blob_count]")
+        print("[통계 — blob_count]")
         for b in sorted(set(blobs)):
             print(f"  {b} blobs: {blobs.count(b)}장 ({100*blobs.count(b)/len(blobs):.1f}%)")
         # 거절 사유
@@ -402,7 +402,7 @@ def main() -> int:
             if r["decision"] == "fail":
                 for x in r["reason"].split(","):
                     fail_reasons[x] = fail_reasons.get(x, 0) + 1
-        print(f"\n[거절 사유 (다중 카운트 가능)]")
+        print("\n[거절 사유 (다중 카운트 가능)]")
         for k, v in sorted(fail_reasons.items(), key=lambda kv: -kv[1]):
             print(f"  {k}: {v}장")
     print(f"\n결과: {pass_count}/{len(files)} pass ({100*pass_count/len(files):.1f}%)")

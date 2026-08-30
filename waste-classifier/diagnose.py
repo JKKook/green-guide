@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +34,6 @@ from src.evaluate import collect_predictions
 from src.frozen_test import ensure_frozen_test, load_frozen_keys
 from src.model import build_model
 from src.train import _input_mode, _model_kind, get_hyperparams, pick_device
-
 
 # ── 임계값 ─────────────────────────────────────────────
 WEAK_F1 = 0.85               # f1 < 0.85 → 약한 클래스
@@ -156,7 +155,7 @@ def run_diagnosis(
     # manifest 가 (preprocessor 재실행 등으로) 바뀌었을 수 있어 클래스 목록 재로드
     config.refresh_classes_from_manifest()
     DIAG_DIR.mkdir(parents=True, exist_ok=True)
-    version = version or datetime.now(timezone.utc).strftime("v%Y%m%d_%H%M%S")
+    version = version or datetime.now(UTC).strftime("v%Y%m%d_%H%M%S")
     labels = list(config.CLASS_LABELS)
 
     device = pick_device()
@@ -242,7 +241,7 @@ def run_diagnosis(
     report: dict[str, Any] = {
         "version": version,
         "arch": arch,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "test_size": int(len(test_ds)),
         "num_classes": len(labels),
         "class_labels": labels,

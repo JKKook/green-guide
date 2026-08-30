@@ -11,7 +11,6 @@ blueprint §7 측정 원칙:
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import torch
 from sklearn.metrics import classification_report, confusion_matrix
@@ -22,7 +21,11 @@ from src.hier_dataset import HierImageDataset, build_hier_items, load_or_build_h
 from src.hier_train import ARCH, CKPT_DIR, LOG_DIR
 from src.model import build_hier_model
 from src.taxonomy import (
-    COARSE_LABELS, FINE_IDX_TO_COARSE_IDX, FINE_LABELS, NUM_FINE, same_guidance,
+    COARSE_LABELS,
+    FINE_IDX_TO_COARSE_IDX,
+    FINE_LABELS,
+    NUM_FINE,
+    same_guidance,
 )
 from src.train import pick_device
 

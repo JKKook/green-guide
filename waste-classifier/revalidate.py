@@ -27,7 +27,7 @@ import json
 import math
 import os
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import numpy as np
 import onnxruntime as ort
@@ -36,8 +36,8 @@ from dotenv import load_dotenv
 from PIL import Image
 from supabase import create_client
 
-from src import config
 from feedback_monitor import REJECT_THRESHOLD
+from src import config
 
 DEFAULT_MODEL = config.MODELS_DIR / "cnn" / "classifier.onnx"
 OUT_PATH = config.LOGS_DIR / "cnn" / "revalidate.json"
@@ -127,7 +127,7 @@ def main() -> int:
 
     n = len(items)
     report = {
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "model": os.path.basename(args.model),
         "baseline": os.path.basename(args.baseline) if args.baseline else "DB(predicted_class, 앙상블)",
         "center_crop": args.center_crop,

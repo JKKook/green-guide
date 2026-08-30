@@ -4,7 +4,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 
 # 자매 프로젝트인 waste-preprocessor의 산출물을 직접 참조

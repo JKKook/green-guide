@@ -7,7 +7,6 @@ import torch
 from src import config
 from src.model import WasteClassifierCNN, WasteClassifierMLP, build_model, count_parameters
 
-
 # ───── MLP ─────
 
 def test_mlp_forward_output_shape() -> None:

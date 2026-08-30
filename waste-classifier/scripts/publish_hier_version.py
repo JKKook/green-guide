@@ -87,8 +87,9 @@ def main() -> None:
         print("\n[dry-run] --apply 로 실제 게시. (운영 클라이언트에 즉시 영향)")
         return
 
-    from retrain import _load_supabase_env  # noqa: PLC0415
     from supabase import create_client  # noqa: PLC0415
+
+    from retrain import _load_supabase_env  # noqa: PLC0415
     url, key = _load_supabase_env()
     sb = create_client(url, key)
 

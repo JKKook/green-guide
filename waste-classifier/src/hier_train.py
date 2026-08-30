@@ -29,16 +29,23 @@ from tqdm import tqdm
 
 from src import config
 from src.hier_dataset import (
-    HierImageDataset, build_hier_items, load_or_build_hier_splits,
+    HierImageDataset,
+    build_hier_items,
+    load_or_build_hier_splits,
 )
-from src.model import WasteClassifierCNN, build_hier_model, count_parameters
+from src.model import build_hier_model, count_parameters
 from src.taxonomy import (
-    COARSE_LABELS, FINE_IDX_TO_COARSE_IDX, FINE_LABELS, NUM_COARSE, NUM_FINE,
+    COARSE_LABELS,
+    FINE_IDX_TO_COARSE_IDX,
+    FINE_LABELS,
+    NUM_COARSE,
+    NUM_FINE,
 )
 from src.train import ArchHyperparams, pick_device, set_seed
 
 ARCH = "cnn_hier"
 import os as _os
+
 BACKBONE = _os.getenv("WASTE_HIER_BACKBONE", "resnet18")
 LABEL_SMOOTH = float(_os.getenv("WASTE_HIER_LABEL_SMOOTH", "0.0"))
 CKPT_DIR = config.CHECKPOINTS_DIR / ARCH

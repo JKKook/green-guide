@@ -1,7 +1,6 @@
 """split 테스트."""
 from __future__ import annotations
 
-from collections import Counter
 from pathlib import Path
 
 from src import config

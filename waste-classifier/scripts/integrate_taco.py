@@ -255,12 +255,12 @@ def main() -> int:
             print(f"  [{i}/{len(anns)}] saved={saved} elapsed={elapsed:.0f}s "
                   f"cache={len(img_cache)}")
 
-    print(f"\n=== 완료 ===")
+    print("\n=== 완료 ===")
     print(f"총 처리: {len(anns)} annotation, 저장 {saved}장")
-    print(f"\n클래스별 ingest 결과:")
+    print("\n클래스별 ingest 결과:")
     for c in sorted(per_class_count.keys()):
         print(f"  {c:<14} {per_class_count[c]:>4}장")
-    print(f"\nSkip 이유:")
+    print("\nSkip 이유:")
     for reason, n in sorted(skip_count.items(), key=lambda kv: -kv[1]):
         print(f"  {reason}: {n}")
 

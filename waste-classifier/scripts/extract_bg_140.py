@@ -17,7 +17,6 @@ import random
 import shutil
 import sys
 import zipfile
-from collections import defaultdict
 from pathlib import Path
 
 from PIL import Image

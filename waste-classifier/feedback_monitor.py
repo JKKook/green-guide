@@ -20,14 +20,14 @@ import argparse
 import json
 import math
 import os
-from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from collections import Counter
+from datetime import UTC, datetime
 
 from dotenv import load_dotenv
 from supabase import create_client
 
-from src import config
 from retrain import MIN_SAMPLES_PER_CLASS
+from src import config
 
 OUT_PATH = config.LOGS_DIR / "cnn" / "feedback_status.json"
 
@@ -142,7 +142,7 @@ def main() -> int:
     ready = (not below_floor) and (new_since_active >= RETRAIN_TRIGGER_NEW or not active)
 
     report = {
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "active_model": (active or {}).get("version"),
         "active_since": (active or {}).get("created_at"),
         "total_uploads": len(rows),

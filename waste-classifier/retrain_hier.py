@@ -37,15 +37,17 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# retrain.py(flat) 의 검증된 유틸 재사용
+from retrain import (  # noqa: E402
+    download_to_raw,
+    fetch_active_labels,
+    fetch_feedback_rows,
+    quarantine_tiny_classes,
+    run_preprocessor,
+)
 from src import config  # noqa: E402
 from src.hier_train import CKPT_DIR, LOG_DIR  # noqa: E402
 from src.taxonomy import COARSE_LABELS  # noqa: E402
-
-# retrain.py(flat) 의 검증된 유틸 재사용
-from retrain import (  # noqa: E402
-    download_to_raw, fetch_active_labels, fetch_feedback_rows,
-    quarantine_tiny_classes, run_preprocessor,
-)
 
 MODELS_DIR = config.MODELS_DIR / "cnn_hier"
 HIER_SPLITS = config.SPLITS_DIR / "hier_splits.json"
@@ -190,8 +192,9 @@ def append_history(version: str, evaluation: dict, feedback_count: int) -> None:
 def record_diagnostics(version: str, evaluation: dict) -> None:
     """Supabase model_diagnostics 에 계층 지표 기록 (best-effort)."""
     try:
-        from retrain import _load_supabase_env  # noqa: PLC0415
         from supabase import create_client  # noqa: PLC0415
+
+        from retrain import _load_supabase_env  # noqa: PLC0415
         url, key = _load_supabase_env()
         client = create_client(url, key)
         fine_rep = evaluation["fine_report"]

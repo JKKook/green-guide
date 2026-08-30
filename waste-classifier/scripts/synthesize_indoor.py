@@ -17,11 +17,10 @@
 from __future__ import annotations
 
 import argparse
-import io
 import json
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import albumentations as A
@@ -92,7 +91,7 @@ def find_object_pool(our_class: str) -> list[Path]:
         return []
     kaggle_user, aihub_only = [], []
     for p in cls_dir.iterdir():
-        if not p.suffix.lower() in (".jpg", ".jpeg", ".png"):
+        if p.suffix.lower() not in (".jpg", ".jpeg", ".png"):
             continue
         n = p.name
         # synth_, taco_ 등 합성·외부 출처 자체 사용 X
@@ -290,7 +289,7 @@ def main() -> int:
                 "object_source": obj_path.name,
                 "background_source": bg_path.name,
                 "synthesis_version": SYNTHESIS_VERSION,
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
             })
         saved += 1
 
@@ -306,7 +305,7 @@ def main() -> int:
         print(f"\n✓ {saved}장 합성 → {out_dir}")
         print(f"  manifest 추가: {manifest_path}")
     else:
-        print(f"\n(dry-run) 합성만 진행, 저장 안 함")
+        print("\n(dry-run) 합성만 진행, 저장 안 함")
 
     print(f"\n총 시도: {attempts}, 채택: {saved}, 거절: {rejected}")
     return 0

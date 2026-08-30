@@ -15,7 +15,6 @@ u2netp 누끼로 얹어 "실내에 놓인 폐기물" 분포를 합성한다 (SEM
 from __future__ import annotations
 
 import argparse
-import io
 import random
 import sys
 from pathlib import Path

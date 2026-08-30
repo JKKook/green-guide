@@ -23,7 +23,9 @@ from torch.utils.data import DataLoader  # noqa: E402
 
 from src import config  # noqa: E402
 from src.hier_dataset import (  # noqa: E402
-    HierImageDataset, build_hier_items, load_or_build_hier_splits,
+    HierImageDataset,
+    build_hier_items,
+    load_or_build_hier_splits,
 )
 from src.hier_train import CKPT_DIR, LOG_DIR  # noqa: E402
 from src.model import WasteClassifierCNN  # noqa: E402
@@ -88,7 +90,7 @@ def main() -> None:
         leaks = [(k, v) for k, v in row.most_common() if k != t][:6]
         for k, v in leaks:
             print(f"    → {k:16} {v:>4} ({v / max(total,1):.1%})")
-        print(f"  조건별 오류율:")
+        print("  조건별 오류율:")
         for cond, tot in cond_tot[t].most_common():
             err = cond_err[t].get(cond, 0)
             print(f"    {cond:12} {err}/{tot} = {err / max(tot,1):.1%}")

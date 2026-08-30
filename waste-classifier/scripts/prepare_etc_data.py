@@ -26,7 +26,6 @@ import shutil
 import sys
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
 TARGET_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "garbage-classification" / "etc"
@@ -53,6 +52,7 @@ def _check_supabase_class() -> bool:
     """waste_classes 에 'etc' 가 active 인지 확인."""
     try:
         import os
+
         from dotenv import load_dotenv
         from supabase import create_client
 
@@ -190,13 +190,13 @@ def main() -> int:
     # 3. 다음 단계 안내
     print(f"\n[3/3] 완료 — 수집된 이미지: {count}장")
     if count > 0 and not args.dry_run:
-        print(f"\n다음 단계:")
-        print(f"  cd ~/ai/waste-classifier")
-        print(f"  .venv/bin/python retrain.py")
-        print(f"")
-        print(f"  retrain 이 'etc' 폴더를 자동 감지해서 7개 클래스로 학습합니다.")
-        print(f"  학습 후 새 ONNX 가 자동으로 Supabase 에 publish 되고,")
-        print(f"  앱·서버가 다음 부팅 시 새 모델을 받아옵니다.")
+        print("\n다음 단계:")
+        print("  cd ~/ai/waste-classifier")
+        print("  .venv/bin/python retrain.py")
+        print("")
+        print("  retrain 이 'etc' 폴더를 자동 감지해서 7개 클래스로 학습합니다.")
+        print("  학습 후 새 ONNX 가 자동으로 Supabase 에 publish 되고,")
+        print("  앱·서버가 다음 부팅 시 새 모델을 받아옵니다.")
     return 0
 
 

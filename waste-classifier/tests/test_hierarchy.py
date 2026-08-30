@@ -6,9 +6,18 @@ import math
 import torch
 
 from src.taxonomy import (
-    COARSE_LABELS, COARSE_TO_INDEX, FINE_IDX_TO_COARSE_IDX, FINE_LABELS,
-    FINE_TO_COARSE, LEGACY_LABEL_SUPERVISION, NUM_COARSE, NUM_FINE,
-    STAGING_DIR_SUPERVISION, TAXONOMY, rollup_fine_probs, supervision_index,
+    COARSE_LABELS,
+    COARSE_TO_INDEX,
+    FINE_IDX_TO_COARSE_IDX,
+    FINE_LABELS,
+    FINE_TO_COARSE,
+    LEGACY_LABEL_SUPERVISION,
+    NUM_COARSE,
+    NUM_FINE,
+    STAGING_DIR_SUPERVISION,
+    TAXONOMY,
+    rollup_fine_probs,
+    supervision_index,
 )
 
 
@@ -85,6 +94,7 @@ def test_hierarchical_loss_math():
 def test_hierarchical_loss_fine_matches_ce():
     """fine 감독만 있을 때 표준 CE 와 동일."""
     import torch.nn.functional as F
+
     from src.hier_train import HierarchicalLoss
 
     crit = HierarchicalLoss(torch.ones(NUM_FINE), torch.ones(NUM_COARSE))

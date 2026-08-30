@@ -20,7 +20,6 @@ from sklearn.model_selection import train_test_split
 
 from src import config
 
-
 FROZEN_PATH: Path = config.SPLITS_DIR / "frozen_test.json"
 
 _TEST_FRACTION: float = config.SPLIT_RATIOS["test"]   # 0.15

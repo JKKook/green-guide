@@ -1,0 +1,17 @@
+Metadata-Version: 2.4
+Name: waste-classifier
+Version: 0.1.0
+Summary: GreenGuide AI — 폐기물 분류기 학습 파이프라인 (PyTorch + ONNX)
+Requires-Python: >=3.12
+Requires-Dist: torch==2.4.1
+Requires-Dist: torchvision==0.19.1
+Requires-Dist: numpy==1.26.4
+Requires-Dist: scikit-learn==1.5.2
+Requires-Dist: matplotlib==3.9.2
+Requires-Dist: tqdm==4.66.5
+Requires-Dist: onnx==1.17.0
+Requires-Dist: onnxruntime==1.19.2
+Requires-Dist: pytest==8.3.3
+Requires-Dist: supabase==2.7.4
+Requires-Dist: python-dotenv==1.0.1
+Requires-Dist: requests==2.32.3

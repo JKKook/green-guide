@@ -16,7 +16,6 @@ from src import config
 from src.dataset import build_dataset, load_manifest
 from src.split import load_splits, subset_items
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent
 COLOR_ONNX = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx"
 EDGE_ONNX = PROJECT_ROOT / "outputs" / "models" / "cnn_edge" / "classifier.onnx"
@@ -100,7 +99,7 @@ def main():
         y_true, preds_color, labels=labels, zero_division=0,
     )
     print()
-    print(f"vs color-only baseline:")
+    print("vs color-only baseline:")
     print(f"  acc:      {acc_color*100:.2f}% → {best[0]*100:.2f}% "
           f"({(best[0]-acc_color)*100:+.2f}pp)")
 

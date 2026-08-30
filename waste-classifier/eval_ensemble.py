@@ -12,13 +12,12 @@ from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
-from sklearn.metrics import classification_report, precision_recall_fscore_support
+from sklearn.metrics import precision_recall_fscore_support
 from torch.utils.data import DataLoader
 
 from src import config
 from src.dataset import build_dataset, load_manifest
 from src.split import load_splits, subset_items
-
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 COLOR_ONNX = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx"

@@ -81,7 +81,7 @@ def cleanup() -> int:
     if MANIFEST_BACKUP.exists():
         shutil.copy(MANIFEST_BACKUP, MANIFEST)
         MANIFEST_BACKUP.unlink()
-        print(f"✓ manifest 복원")
+        print("✓ manifest 복원")
     else:
         print("⚠ manifest backup 없음 — skip 복원")
 

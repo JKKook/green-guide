@@ -12,7 +12,7 @@ import io
 import json
 import os
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import numpy as np
 import onnxruntime as ort
@@ -100,7 +100,7 @@ def main() -> int:
             confusions[f"{t}→{p}"] += 1
 
     report = {
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "model": ONNX_PATH.name,
         "n_eval": n,
         "skipped_untrained_label": dict(skipped_label),
@@ -117,7 +117,7 @@ def main() -> int:
     print(f"실사용 정확도 (피드백 {n}건, 12클래스 모델)")
     print("=" * 60)
     print(f"  전체이미지: {acc*100:.1f}%   |  중앙70%크롭: {acc_crop*100:.1f}%")
-    print(f"  (참고: frozen test(AI Hub 분포) = 95.9%)")
+    print("  (참고: frozen test(AI Hub 분포) = 95.9%)")
     print("  클래스별 (recall):")
     for k, v in report["per_class"].items():
         print(f"    {k:12} {v['correct']}/{v['n']} ({v['recall']*100:.0f}%)")

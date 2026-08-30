@@ -9,7 +9,6 @@ prototype 은 모델 버전마다 임베딩 공간이 바뀌므로 export 직후
 """
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 
@@ -133,8 +132,11 @@ def calibrate(percentile: float = _DEFAULT_PERCENTILE) -> dict:
 
     # 실사용 OOD 후보(user_uploads etc 피드백) 와 비교 — 네트워크 가능 시
     try:
+        import io
+
+        import requests
+
         from etc_queue import _supabase  # 재사용
-        import io, requests
         rows = (_supabase().table("user_uploads")
                 .select("image_url,feedback_label")
                 .eq("feedback_label", "etc").limit(20).execute()).data or []

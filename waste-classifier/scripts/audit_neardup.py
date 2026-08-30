@@ -16,8 +16,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import imagehash
 from PIL import Image
 
-from src.hier_dataset import build_hier_items, load_or_build_hier_splits
 from src import config
+from src.hier_dataset import build_hier_items, load_or_build_hier_splits
+
 
 def phash(p: Path):
     try:
@@ -81,7 +82,7 @@ def main() -> None:
                             leak_pairs.append((i, j, d))
                         elif ti and tj:
                             near_pairs_within += 1
-    print(f"\n=== 근사중복 (거리≤4) ===")
+    print("\n=== 근사중복 (거리≤4) ===")
     print(f"  train 내부 근사중복 쌍: {near_pairs_within:,}")
     print(f"  ★ train↔frozen-test 누수 쌍: {len(leak_pairs):,}")
     leak_by_class = Counter(items[i]['sup_slug'] for i, j, d in leak_pairs)

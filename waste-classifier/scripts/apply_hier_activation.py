@@ -42,8 +42,9 @@ NEW_COARSE_SLUGS = ("paper_pack", "hazardous")
 
 
 def _client():
-    from dotenv import load_dotenv
     import os
+
+    from dotenv import load_dotenv
     from supabase import create_client
     load_dotenv(PROJECT_ROOT.parent / "waste-preprocessor" / ".env")
     load_dotenv(PROJECT_ROOT.parent / "waste-api" / ".env")

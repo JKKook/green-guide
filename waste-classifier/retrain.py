@@ -25,12 +25,10 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlparse
 
 import requests
 from dotenv import load_dotenv
 from supabase import create_client
-
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent              # waste-classifier
 PREPROCESSOR_ROOT: Path = PROJECT_ROOT.parent / "waste-preprocessor"
@@ -507,10 +505,10 @@ def main() -> int:
     print(f"  새 ONNX (로컬): {ONNX_PATH}")
     if published_version:
         print(f"  publish 완료 — waste-api · Flutter 앱은 다음 부팅 시 자동으로 v{published_version} 로 갱신됨.")
-        print(f"  즉시 반영하려면:")
-        print(f"    curl -X POST https://<waste-api>/admin/reload-model")
+        print("  즉시 반영하려면:")
+        print("    curl -X POST https://<waste-api>/admin/reload-model")
     else:
-        print(f"  ⚠️  publish 실패 — waste-api / Flutter 앱은 옛 모델 그대로 사용.")
+        print("  ⚠️  publish 실패 — waste-api / Flutter 앱은 옛 모델 그대로 사용.")
     return 0
 
 

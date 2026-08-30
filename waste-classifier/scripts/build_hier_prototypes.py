@@ -23,14 +23,14 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 import numpy as np  # noqa: E402
 import onnxruntime as ort  # noqa: E402
-import torch  # noqa: E402
 from torch.utils.data import DataLoader  # noqa: E402
 
 from src import config  # noqa: E402
 from src.hier_dataset import (  # noqa: E402
-    HierImageDataset, build_hier_items, load_or_build_hier_splits,
+    HierImageDataset,
+    build_hier_items,
+    load_or_build_hier_splits,
 )
-from src.taxonomy import FINE_LABELS  # noqa: E402
 
 MODELS_DIR = config.MODELS_DIR / "cnn_hier"
 ONNX_PATH = MODELS_DIR / "classifier.onnx"

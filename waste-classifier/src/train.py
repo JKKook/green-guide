@@ -22,8 +22,8 @@ from tqdm import tqdm
 
 from src import config
 from src.dataset import build_dataset, load_manifest
-from src.model import build_model, count_parameters
 from src.frozen_test import build_splits
+from src.model import build_model, count_parameters
 from src.split import load_splits, save_splits, subset_items
 
 

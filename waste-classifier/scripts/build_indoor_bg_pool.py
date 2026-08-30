@@ -125,7 +125,7 @@ def extract_and_save(args) -> int:
 
     print(f"\n✓ {saved}장 추출 → {BG_DIR}")
     print(f"  skipped: {skipped}")
-    print(f"\n카테고리별 카운트 (상위 10):")
+    print("\n카테고리별 카운트 (상위 10):")
     for c, n in cat_count.most_common(10):
         print(f"  {c:<25} {n}장 (priority={CATEGORY_PRIORITY.get(c, 3)})")
     return 0

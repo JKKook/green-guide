@@ -26,7 +26,6 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
 TARGET_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "garbage-classification"
@@ -120,7 +119,7 @@ def main() -> int:
         plan[src_class] = (target_class, imgs)
 
     # 통계 출력
-    print(f"\n[plan] 매핑 결과:")
+    print("\n[plan] 매핑 결과:")
     by_target: dict[str, int] = Counter()
     skipped_total = 0
     for src_class, (target, imgs) in sorted(plan.items()):
@@ -131,7 +130,7 @@ def main() -> int:
             print(f"  {src_class:14s} ({len(imgs):>5d} 장) → {target}")
             by_target[target] += len(imgs)
 
-    print(f"\n[plan] 우리 클래스별 누적 (이번 통합으로 추가될 양):")
+    print("\n[plan] 우리 클래스별 누적 (이번 통합으로 추가될 양):")
     for tgt, n in sorted(by_target.items(), key=lambda kv: -kv[1]):
         # 기존 폴더에 이미 있는 양도 같이 보여줌
         existing_dir = TARGET_DIR / tgt
@@ -154,7 +153,7 @@ def main() -> int:
         return 0
 
     # 실제 복사
-    print(f"\n[copy] 시작...")
+    print("\n[copy] 시작...")
     TARGET_DIR.mkdir(parents=True, exist_ok=True)
     copied = 0
     skipped_existing = 0
@@ -179,13 +178,13 @@ def main() -> int:
                 failed += 1
         print(f"  {src_class:14s} → {target}: 완료")
 
-    print(f"\n[copy] 결과:")
+    print("\n[copy] 결과:")
     print(f"  copied={copied:,}  skipped(existing)={skipped_existing}  failed={failed}")
-    print(f"\n다음 단계:")
-    print(f"  cd ~/ai/waste-classifier")
-    print(f"  .venv/bin/python retrain.py")
-    print(f"\nretrain.py 가 새 데이터를 자동 감지해서 학습합니다 (시간 ~30분 예상).")
-    print(f"학습 완료 후 ONNX 가 Supabase 에 publish 되고 앱·서버가 자동 갱신됩니다.")
+    print("\n다음 단계:")
+    print("  cd ~/ai/waste-classifier")
+    print("  .venv/bin/python retrain.py")
+    print("\nretrain.py 가 새 데이터를 자동 감지해서 학습합니다 (시간 ~30분 예상).")
+    print("학습 완료 후 ONNX 가 Supabase 에 publish 되고 앱·서버가 자동 갱신됩니다.")
     return 0
 
 

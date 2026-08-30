@@ -27,7 +27,6 @@ from torchvision import transforms
 from src import config
 from src.model import CamWasteClassifierCNN, WasteClassifierCNN
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent
 CKPT_PATH = PROJECT_ROOT / "outputs" / "checkpoints" / "cnn" / "best.pt"
 U2NETP_PATH = PROJECT_ROOT.parent / "waste-api" / "models" / "u2netp.onnx"

@@ -38,7 +38,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from src import config
 from src.hier_dataset import build_hier_items, load_or_build_hier_splits
-from src.taxonomy import FINE_LABELS, FINE_IDX_TO_COARSE_IDX, NUM_FINE
+from src.taxonomy import FINE_LABELS, NUM_FINE
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -186,7 +186,6 @@ def main() -> None:
     sess = ort.InferenceSession(
         str(config.MODELS_DIR / "cnn_hier" / "classifier.onnx"),
         providers=["CPUExecutionProvider"])
-    from src.dataset import WasteImageDataset  # 변환 재사용
     ld = DataLoader(_ImgSet(te), batch_size=64, num_workers=6)
     res_logits = []
     for x, _ in ld:

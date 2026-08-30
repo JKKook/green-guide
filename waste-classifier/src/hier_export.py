@@ -21,7 +21,11 @@ from src import config
 from src.hier_train import CKPT_DIR
 from src.model import build_hier_cam_wrapper, build_hier_model
 from src.taxonomy import (
-    COARSE_LABELS, FINE_IDX_TO_COARSE_IDX, FINE_LABELS, FINE_TO_COARSE, NUM_FINE,
+    COARSE_LABELS,
+    FINE_IDX_TO_COARSE_IDX,
+    FINE_LABELS,
+    FINE_TO_COARSE,
+    NUM_FINE,
 )
 
 MODELS_DIR = config.MODELS_DIR / "cnn_hier"

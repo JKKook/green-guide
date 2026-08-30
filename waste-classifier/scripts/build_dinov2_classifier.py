@@ -35,7 +35,7 @@ import torch.nn as nn
 from PIL import Image, ImageFile
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as T
-from transformers import AutoImageProcessor, AutoModel
+from transformers import AutoModel
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 

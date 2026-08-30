@@ -25,7 +25,7 @@ from __future__ import annotations
 import io
 import os
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 import numpy as np
@@ -42,7 +42,6 @@ from src import config
 from src.dataset import load_manifest
 from src.model import build_model
 from src.train import _model_kind, pick_device
-
 
 # ── 임계값 (모두 보수적; 운영하며 보정) ──────────────────
 ETC_QUEUE_TRIGGER = 30          # etc 피드백이 이만큼 쌓이면 처리 시작

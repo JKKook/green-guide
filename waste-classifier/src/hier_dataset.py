@@ -22,8 +22,11 @@ from torch.utils.data import Dataset
 from src import config
 from src.dataset import WasteImageDataset, _load_rgb_chw01, load_manifest
 from src.taxonomy import (
-    COARSE_TO_INDEX, FINE_TO_INDEX, LEGACY_LABEL_SUPERVISION,
-    STAGING_DIR_SUPERVISION, supervision_index,
+    COARSE_TO_INDEX,
+    FINE_TO_INDEX,
+    LEGACY_LABEL_SUPERVISION,
+    STAGING_DIR_SUPERVISION,
+    supervision_index,
 )
 
 FINE_STAGING_DIR: Path = config.PREPROCESSOR_ROOT / "data" / "raw" / "fine-staging"

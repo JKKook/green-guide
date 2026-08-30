@@ -33,7 +33,6 @@ from torchvision import transforms
 from src import config
 from src.model import WasteClassifierCNN
 
-
 PROJECT_ROOT: Path = Path(__file__).resolve().parent
 CKPT_PATH: Path = PROJECT_ROOT / "outputs" / "checkpoints" / "cnn" / "best.pt"
 OUTPUT_DIR: Path = PROJECT_ROOT / "outputs" / "cam"

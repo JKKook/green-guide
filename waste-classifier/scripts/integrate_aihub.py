@@ -27,7 +27,6 @@ from pathlib import Path
 
 from PIL import Image
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
 RAW_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "garbage-classification"
@@ -39,6 +38,7 @@ IMG_EXT = (".jpg", ".jpeg", ".png")
 
 def _apikey() -> str:
     import os as _os
+
     from dotenv import load_dotenv
     load_dotenv(PREPROCESSOR_ROOT / ".env")
     key = _os.getenv("AIHUB_APIKEY")
@@ -222,8 +222,8 @@ def main() -> int:
 
     # 정리
     shutil.rmtree(src_work, ignore_errors=True)
-    print(f"\n✓ 완료. staging 정리됨.")
-    print(f"  다음: 다른 클래스도 통합 후 retrain.py 실행")
+    print("\n✓ 완료. staging 정리됨.")
+    print("  다음: 다른 클래스도 통합 후 retrain.py 실행")
     return 0
 
 

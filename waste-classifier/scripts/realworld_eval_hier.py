@@ -27,13 +27,17 @@ import onnxruntime as ort  # noqa: E402
 import requests  # noqa: E402
 from PIL import Image  # noqa: E402
 
+from retrain import fetch_feedback_rows  # noqa: E402
 from src import config  # noqa: E402
 from src.hier_train import LOG_DIR  # noqa: E402
 from src.taxonomy import (  # noqa: E402
-    COARSE_TO_INDEX, FINE_IDX_TO_COARSE_IDX, FINE_LABELS, FINE_TO_INDEX,
-    LEGACY_LABEL_SUPERVISION, same_guidance,
+    COARSE_TO_INDEX,
+    FINE_IDX_TO_COARSE_IDX,
+    FINE_LABELS,
+    FINE_TO_INDEX,
+    LEGACY_LABEL_SUPERVISION,
+    same_guidance,
 )
-from retrain import fetch_feedback_rows  # noqa: E402
 
 ONNX_PATH = config.MODELS_DIR / "cnn_hier" / "classifier.onnx"
 OUT_PATH = LOG_DIR / "realworld_eval.json"
