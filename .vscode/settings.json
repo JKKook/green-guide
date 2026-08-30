@@ -1,0 +1,4 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/ml/classifier/.venv/bin/python",
+  "liveServer.settings.port": 5502
+}
