@@ -17,7 +17,6 @@ from src.schemas import (
     FeedbackResponse,
     HealthResponse,
     LabelsResponse,
-    MaterialRegion,
     ModelVersionResponse,
     ObjectCandidate,
     PredictionHierResponse,
@@ -30,15 +29,13 @@ from src.schemas import (
     ServiceInfo,
     TaxonomyResponse,
 )
-from src.hand_detector import get_hand_detector
-from src.regions import extract_regions, render_hatching
 from src.segment import get_segmenter
 from src.services.cascade import (
-    ensemble_with_dinov2, force_non_object_result, non_object_gate, run_cascade, stage1_gate,
+    force_non_object_result, non_object_gate, run_cascade, stage1_gate,
 )
 from src.services.image_io import crop_at_tap, read_and_validate_image, read_validate_with_orientation
 from src.services.recording import record_safely
-from src.services.regions_service import evidence_conflicts, tap_silhouette_regions, verify_regions
+from src.services.regions_service import analyze_regions, evidence_conflicts
 from src.dinov2_classifier import get_dinov2_classifier
 from src.uploads import get_recorder
 from src.core.log import get_logger
@@ -718,169 +715,19 @@ async def predict_with_regions(
             overlay_base64=None, regions=[], grid_h=0, grid_w=0,
         )
 
-    # auto_crop 제거 — /predict-with-cam 과 같은 원본 입력으로 일관성 확보.
-    # 다중재질 분석은 전체 이미지가 본래 목적에 부합하고, region overlay 좌표가
-    # cropped 좌표계로 떠서 CAM 과 시각적으로 어긋나는 문제도 해결됨.
-    raw = raw_orig
-
-    classifier = get_classifier()
-    color_input, edge_input = preprocess_both(raw)
-
-    result, cam = classifier.region_cam(color_input)
-
-    # DINOv2 ensemble — confident-wrong 보정 (regions 분석은 ResNet18 CAM 그대로)
-    try:
-        result = ensemble_with_dinov2(result, raw)
-    except Exception as exc:  # noqa: BLE001
-        log.warning(f"dinov2 ensemble failed: {exc}")
-
-    # ── 계층 고해상 CAM 우선 (CAM_MATERIAL_UPGRADE_PLAN Stage 1) ─────────
-    # 448² forward → CAM (25,14,14): 셀 16px, 세부 25클래스 재질 어휘.
-    # 실패/구 ONNX 시 flat 7×7 CAM fallback (하위호환).
-    labels = list(classifier.labels)
-    allowed_indices: list[int] | None = None
-    hier_clf = None
-    try:
-        from src.hier_inference import get_hier_classifier  # noqa: PLC0415
-        from src.preprocess import color_tensor_at  # noqa: PLC0415
-        hier_clf = get_hier_classifier()
-        cam_hi = hier_clf.cam_hires(color_tensor_at(raw, 448))
-        if cam_hi is not None:
-            cam = cam_hi
-            labels = list(hier_clf.fine_labels)
-            allowed_indices = hier_clf.material_class_indices()
-    except FileNotFoundError:
-        pass  # 계층 모델 미배치 — flat CAM 유지
-    except Exception as exc:  # noqa: BLE001
-        log.warning(f"hier hi-res cam failed: {exc}")
-
-    overlay_b64: str | None = None
-    regions_out: list[MaterialRegion] = []
-    grid_h = grid_w = 0
-    if cam is not None:
-        try:
-            grid_h, grid_w = cam.shape[1], cam.shape[2]
-            mask_grid = get_segmenter().object_mask_grid(raw, grid_h)
-            # 손 mask 검출 → object mask 에서 손 영역 제외
-            try:
-                hand_grid = get_hand_detector().mask_grid(raw, grid_h)
-                mask_grid = mask_grid * (1.0 - hand_grid).clip(0.0, 1.0)
-            except Exception as exc:  # noqa: BLE001
-                log.warning(f"hand mask grid failed: {exc}")
-
-            # 탭-투-셀렉트 재분석 — 탭한 성분 bbox 밖 셀을 마스킹해 빗금·영역
-            # 추출을 그 물건에 집중 (좌표계는 원본 유지 → 오버레이 정합).
-            # "마커는 이동하는데 빗금은 안 움직인다" 사용자 리포트의 처방.
-            tap_grabcut_ok = False
-            if tap_x is not None and tap_y is not None:
-                try:
-                    # 1순위: GrabCut 전경 실루엣 — 탭한 물건의 픽셀 경계 점유.
-                    # saliency(시선 지도)는 책상 경계·이웃 물체까지 밝아 빗금이
-                    # 탭 지점과 어긋나던 문제의 처방.
-                    from src.segment import grabcut_object_at  # noqa: PLC0415
-                    gmask, gbox = grabcut_object_at(raw, tap_x, tap_y, grid_h)
-                    if gmask is not None and (gmask >= 0.35).sum() >= 1:
-                        mask_grid = gmask
-                        tap_grabcut_ok = True
-                        log.info(f"grabcut bbox={[round(v,2) for v in gbox]} "
-                              f"cells={(gmask >= 0.35).sum()}")
-                except Exception as exc:  # noqa: BLE001
-                    log.warning(f"tap grabcut failed: {exc}")
-            if tap_x is not None and tap_y is not None and not tap_grabcut_ok:
-                try:
-                    from src.segment import component_bbox_at  # noqa: PLC0415
-                    tb = component_bbox_at(raw, tap_x, tap_y)
-                    if tb is None:
-                        s = 0.25  # 성분 미검출 — 탭 중심 50% 윈도우
-                        tb = [max(0.0, tap_x - s), max(0.0, tap_y - s),
-                              min(1.0, tap_x + s), min(1.0, tap_y + s)]
-                    else:
-                        # 성분이 파편(하이라이트 등)이면 최소 창 보장 — 저대비
-                        # 물체는 saliency 성분이 조각나 창이 셀 몇 개로 줄어듦
-                        _mh = 0.12
-                        _cx, _cy = (tb[0] + tb[2]) / 2, (tb[1] + tb[3]) / 2
-                        if tb[2] - tb[0] < 2 * _mh:
-                            tb[0], tb[2] = max(0.0, _cx - _mh), min(1.0, _cx + _mh)
-                        if tb[3] - tb[1] < 2 * _mh:
-                            tb[1], tb[3] = max(0.0, _cy - _mh), min(1.0, _cy + _mh)
-                    import numpy as _np  # noqa: PLC0415
-                    focus = _np.zeros_like(mask_grid)
-                    r0 = max(0, int(tb[1] * grid_h)); r1 = min(grid_h, int(tb[3] * grid_h) + 1)
-                    c0 = max(0, int(tb[0] * grid_w)); c1 = min(grid_w, int(tb[2] * grid_w) + 1)
-                    focus[r0:r1, c0:c1] = 1.0
-                    # 탭 = 객체 존재 신호: 창 안 약한 saliency(≥0.12) 셀은 점유
-                    # 하한(0.35)을 보장 — 저대비 물체가 점유 필터에 전멸해 빗금이
-                    # 안 나오는 문제 방지. saliency 가 거의 없는 셀은 그대로 제외.
-                    mask_grid = _np.maximum(
-                        mask_grid, 0.35 * (mask_grid >= 0.12)) * focus
-                    log.info(f"bbox={[round(v,2) for v in tb]} grid=({r0}:{r1},{c0}:{c1})")
-                except Exception as exc:  # noqa: BLE001
-                    log.warning(f"tap focus mask failed: {exc}")
-            if tap_x is not None and tap_y is not None:
-                # 탭 경로: saliency 실루엣 기반 — 빗금이 탭한 물건 형태를 따라감
-                # GrabCut 실루엣은 이미 탭 물건 성분만이라 반경 제한 불필요;
-                # saliency fallback 은 번짐 방지 위해 반경 3 유지
-                regions = tap_silhouette_regions(
-                    cam, mask_grid, labels, allowed_indices,
-                    tap_x, tap_y, grid_h, grid_w,
-                    radius=max(grid_h, grid_w) if tap_grabcut_ok else 3)
-                if not regions:  # 실루엣 실패 — 기존 CAM-argmax 방식 fallback
-                    regions = extract_regions(cam, mask_grid, labels,
-                                              allowed_indices=allowed_indices)
-                log.info(f"tap=({tap_x:.2f},{tap_y:.2f}) "
-                      f"extract={[(r['slug'], len(r['cells'])) for r in regions]}")
-            else:
-                regions = extract_regions(cam, mask_grid, labels,
-                                          allowed_indices=allowed_indices)
-
-            # ── 영역 재검증 (Stage 1-4, zoom-and-verify) ────────────────
-            # CAM 은 제안자, 분류기가 심판: 각 영역을 크롭해 풀 분류로 확정.
-            # reject 영역은 폐기, 불일치 시 재분류 slug 채택.
-            if hier_clf is not None and regions:
-                pre_verify = regions
-                regions = verify_regions(raw, regions, hier_clf,
-                                          ood_relax=tap_x is not None)
-                if tap_x is not None:
-                    log.info(f"verify={[(r['slug'], len(r['cells'])) for r in regions]}")
-                    # 탭 맥락 = 사용자가 지목한 물건 — 빗금(선택 피드백)이 우선.
-                    # 검증이 전멸시켜도 최상위 CAM 영역은 유지해 항상 표시.
-                    if not regions and pre_verify:
-                        regions = pre_verify[:1]
-                        log.info("verify 전멸 → 탭 최상위 영역 유지")
-            if regions:
-                overlay_b64 = render_hatching(
-                    raw, regions, grid_h, grid_w, ClassRegistry.color_map(),
-                )
-                regions_out = [
-                    MaterialRegion(
-                        slug=r["slug"], bbox_norm=r["bbox_norm"],
-                        avg_conf=r["avg_conf"], cell_count=len(r["cells"]),
-                    )
-                    for r in regions
-                ]
-        except Exception as exc:  # noqa: BLE001
-            log.warning(f"region analysis failed: {exc}")
-
-    # [flat 폴백 전용 가드] regions dominant 가 flat top-1 과 다르면 overlay 제거.
-    # 계층 경로(hier_clf)에서는 영역이 zoom-verify(크롭 재분류)를 이미 통과했고
-    # slug 공간도 세부(25)라 flat top-1 과의 문자열 비교가 무의미 — 가드 제외.
-    if hier_clf is None and regions_out \
-            and regions_out[0].slug != result["predicted_class"]:
-        regions_out = []
-        overlay_b64 = None
-        grid_h = grid_w = 0
+    out = analyze_regions(raw_orig, tap_x, tap_y)
 
     # 업로드 기록 없음 — /predict-hier 가 같은 사진을 이미 저장·피드백 대상으로
     # 삼는다(중복 저장 방지, 2026-08-29).
     upload_id: str | None = None
 
     return PredictionWithRegionsResponse(
-        **result,
+        **out["result"],
         upload_id=upload_id,
-        overlay_base64=overlay_b64,
-        regions=regions_out,
-        grid_h=grid_h,
-        grid_w=grid_w,
+        overlay_base64=out["overlay_base64"],
+        regions=out["regions"],
+        grid_h=out["grid_h"],
+        grid_w=out["grid_w"],
     )
 
 
