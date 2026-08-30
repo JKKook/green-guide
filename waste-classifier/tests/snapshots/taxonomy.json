@@ -1,0 +1,295 @@
+{
+  "taxonomy": {
+    "paper": [
+      "paper_other",
+      "cardboard"
+    ],
+    "paper_pack": [
+      "carton",
+      "paper_cup"
+    ],
+    "glass": [
+      "glass_brown",
+      "glass_green",
+      "glass_clear",
+      "glass_deposit",
+      "glass_etc"
+    ],
+    "metal": [
+      "metal"
+    ],
+    "plastic": [
+      "pet",
+      "plastic_other"
+    ],
+    "vinyl": [
+      "vinyl_clean",
+      "vinyl_dirty"
+    ],
+    "styrofoam": [
+      "styrofoam_white",
+      "styrofoam_color",
+      "styrofoam_dirty"
+    ],
+    "clothes": [
+      "clothes"
+    ],
+    "food_waste": [
+      "food_waste"
+    ],
+    "electronics": [
+      "electronics"
+    ],
+    "hazardous": [
+      "battery"
+    ],
+    "trash": [
+      "trash_other",
+      "light_bulb"
+    ],
+    "etc": [
+      "etc"
+    ],
+    "non_object": [
+      "non_object"
+    ]
+  },
+  "coarse_labels": [
+    "paper",
+    "paper_pack",
+    "glass",
+    "metal",
+    "plastic",
+    "vinyl",
+    "styrofoam",
+    "clothes",
+    "food_waste",
+    "electronics",
+    "hazardous",
+    "trash",
+    "etc",
+    "non_object"
+  ],
+  "fine_labels": [
+    "paper_other",
+    "cardboard",
+    "carton",
+    "paper_cup",
+    "glass_brown",
+    "glass_green",
+    "glass_clear",
+    "glass_deposit",
+    "glass_etc",
+    "metal",
+    "pet",
+    "plastic_other",
+    "vinyl_clean",
+    "vinyl_dirty",
+    "styrofoam_white",
+    "styrofoam_color",
+    "styrofoam_dirty",
+    "clothes",
+    "food_waste",
+    "electronics",
+    "battery",
+    "trash_other",
+    "light_bulb",
+    "etc",
+    "non_object"
+  ],
+  "fine_idx_to_coarse_idx": [
+    0,
+    0,
+    1,
+    1,
+    2,
+    2,
+    2,
+    2,
+    2,
+    3,
+    4,
+    4,
+    5,
+    5,
+    6,
+    6,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    11,
+    12,
+    13
+  ],
+  "legacy_label_supervision": {
+    "cardboard": [
+      "fine",
+      "cardboard"
+    ],
+    "paper": [
+      "fine",
+      "paper_other"
+    ],
+    "glass": [
+      "coarse",
+      "glass"
+    ],
+    "metal": [
+      "fine",
+      "metal"
+    ],
+    "plastic": [
+      "coarse",
+      "plastic"
+    ],
+    "trash": [
+      "fine",
+      "trash_other"
+    ],
+    "vinyl": [
+      "fine",
+      "vinyl_clean"
+    ],
+    "styrofoam": [
+      "coarse",
+      "styrofoam"
+    ],
+    "clothes": [
+      "fine",
+      "clothes"
+    ],
+    "food_waste": [
+      "fine",
+      "food_waste"
+    ],
+    "electronics": [
+      "fine",
+      "electronics"
+    ],
+    "etc": [
+      "fine",
+      "etc"
+    ],
+    "non_object": [
+      "fine",
+      "non_object"
+    ]
+  },
+  "staging_dir_supervision": {
+    "battery": [
+      "fine",
+      "battery"
+    ],
+    "paper_pack": [
+      "fine",
+      "carton"
+    ],
+    "paper_cup": [
+      "fine",
+      "paper_cup"
+    ],
+    "glass_brown": [
+      "fine",
+      "glass_brown"
+    ],
+    "glass_green": [
+      "fine",
+      "glass_green"
+    ],
+    "glass_clear": [
+      "fine",
+      "glass_clear"
+    ],
+    "glass_deposit": [
+      "fine",
+      "glass_deposit"
+    ],
+    "glass_etc": [
+      "fine",
+      "glass_etc"
+    ],
+    "pet": [
+      "fine",
+      "pet"
+    ],
+    "styrofoam_white": [
+      "fine",
+      "styrofoam_white"
+    ],
+    "styrofoam_color": [
+      "fine",
+      "styrofoam_color"
+    ],
+    "styrofoam_dirty": [
+      "fine",
+      "styrofoam_dirty"
+    ],
+    "light_bulb": [
+      "fine",
+      "light_bulb"
+    ],
+    "vinyl_dirty": [
+      "fine",
+      "vinyl_dirty"
+    ],
+    "metal_boost": [
+      "fine",
+      "metal"
+    ],
+    "paper_boost": [
+      "fine",
+      "paper_other"
+    ],
+    "plastic_boost": [
+      "coarse",
+      "plastic"
+    ],
+    "electronics_boost": [
+      "fine",
+      "electronics"
+    ],
+    "cardboard_boost": [
+      "fine",
+      "cardboard"
+    ],
+    "non_object_boost": [
+      "fine",
+      "non_object"
+    ],
+    "taco_glass": [
+      "coarse",
+      "glass"
+    ],
+    "taco_vinyl": [
+      "coarse",
+      "vinyl"
+    ],
+    "taco_styrofoam": [
+      "coarse",
+      "styrofoam"
+    ],
+    "taco_trash": [
+      "fine",
+      "trash_other"
+    ],
+    "taco_food": [
+      "fine",
+      "food_waste"
+    ]
+  },
+  "guidance_groups": [
+    [
+      "carton",
+      "paper_cup"
+    ],
+    [
+      "glass_brown",
+      "glass_clear",
+      "glass_etc",
+      "glass_green"
+    ]
+  ]
+}

@@ -15,22 +15,15 @@ from __future__ import annotations
 
 import io
 import json
-import sys
 from collections import Counter
-from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-import numpy as np  # noqa: E402
-import onnxruntime as ort  # noqa: E402
-import requests  # noqa: E402
-from PIL import Image  # noqa: E402
-
-from retrain import fetch_feedback_rows  # noqa: E402
-from src import config  # noqa: E402
-from src.hier_train import LOG_DIR  # noqa: E402
-from src.taxonomy import (  # noqa: E402
+import _base  # noqa: F401 — sys.path 설정
+import numpy as np
+import onnxruntime as ort
+import requests
+from PIL import Image
+from waste_common import imaging
+from waste_common.taxonomy import (
     COARSE_TO_INDEX,
     FINE_IDX_TO_COARSE_IDX,
     FINE_LABELS,
@@ -39,11 +32,15 @@ from src.taxonomy import (  # noqa: E402
     same_guidance,
 )
 
+from retrain import fetch_feedback_rows
+from src import config
+from src.hier_train import LOG_DIR
+
 ONNX_PATH = config.MODELS_DIR / "cnn_hier" / "classifier.onnx"
 OUT_PATH = LOG_DIR / "realworld_eval.json"
 
-_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32).reshape(3, 1, 1)
-_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32).reshape(3, 1, 1)
+_MEAN = imaging.MEAN_CHW
+_STD = imaging.STD_CHW
 
 
 def _preprocess(raw: bytes) -> np.ndarray:

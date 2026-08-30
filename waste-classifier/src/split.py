@@ -9,8 +9,11 @@ from pathlib import Path
 from typing import Any
 
 from sklearn.model_selection import train_test_split
+from waste_common.logging import get_logger
 
 from src import config
+
+log = get_logger(__name__)
 
 
 def stratified_split(
@@ -52,7 +55,7 @@ def save_splits(splits: dict[str, list[int]], path: Path | None = None) -> Path:
             {k: list(map(int, v)) for k, v in splits.items()},
             f, ensure_ascii=False, indent=2,
         )
-    print(f"[split] saved → {out}  "
+    log.info(f"saved → {out}  "
           f"(train={len(splits['train'])}, val={len(splits['val'])}, test={len(splits['test'])})")
     return out
 

@@ -11,26 +11,23 @@ v2 체크포인트로 test set 을 재추론해 fine 혼동행렬을 만들고,
 from __future__ import annotations
 
 import json
-import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+import _base  # noqa: F401 — sys.path 설정
+import torch
+from torch.utils.data import DataLoader
+from waste_common.taxonomy import FINE_LABELS, NUM_FINE
 
-import torch  # noqa: E402
-from torch.utils.data import DataLoader  # noqa: E402
-
-from src import config  # noqa: E402
-from src.hier_dataset import (  # noqa: E402
+from src import config
+from src.hier_dataset import (
     HierImageDataset,
     build_hier_items,
     load_or_build_hier_splits,
 )
-from src.hier_train import CKPT_DIR, LOG_DIR  # noqa: E402
-from src.model import WasteClassifierCNN  # noqa: E402
-from src.taxonomy import FINE_LABELS, NUM_FINE  # noqa: E402
-from src.train import pick_device  # noqa: E402
+from src.hier_train import CKPT_DIR, LOG_DIR
+from src.model import WasteClassifierCNN
+from src.train import pick_device
 
 TARGETS = ("carton", "paper_cup", "glass_clear")
 

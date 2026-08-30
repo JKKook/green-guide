@@ -26,8 +26,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
+from _base import PREPROCESSOR_ROOT
+
 TARGET_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "garbage-classification"
 
 # 데이터셋 클래스명 → 우리 클래스 slug.

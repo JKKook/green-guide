@@ -15,16 +15,20 @@ from pathlib import Path
 import numpy as np
 import onnxruntime as ort
 from PIL import Image
+from waste_common import imaging
+from waste_common.logging import fail_open, get_logger
 
 from src import config
 from src.dataset import load_manifest
 from src.split import load_splits, subset_items
 
+log = get_logger(__name__)
+
 ONNX_PATH: Path = config.MODELS_DIR / "cnn" / "classifier.onnx"
 PROTO_PATH: Path = config.MODELS_DIR / "cnn" / "prototypes.npz"
 
-_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+_MEAN = imaging.MEAN_ARRAY
+_STD = imaging.STD_ARRAY
 _SAMPLE_PER_CLASS = 100
 _DEFAULT_PERCENTILE = 97.5   # τ = in-distribution 거리의 이 분위수
 
@@ -59,7 +63,7 @@ def _embed(paths: list[str], sess: ort.InferenceSession, batch: int = 64) -> np.
     for p in paths:
         try:
             buf.append(_prep(p))
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001 — fail-open: 손상 이미지 건너뜀
             continue
         if len(buf) >= batch:
             flush()
@@ -75,7 +79,7 @@ def build_prototypes(sample_per_class: int = _SAMPLE_PER_CLASS) -> dict[str, np.
     items = load_manifest()
     try:
         train = subset_items(items, load_splits()["train"])
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — fail-open: splits 없으면 전체 manifest 사용
         train = items
     by_label: dict[str, list[str]] = {}
     for it in train:
@@ -94,11 +98,11 @@ def build_prototypes(sample_per_class: int = _SAMPLE_PER_CLASS) -> dict[str, np.
             continue
         c = emb.mean(axis=0)
         centroids.append(c / (np.linalg.norm(c) + 1e-8))
-        print(f"  prototype[{lab}] ← {len(emb)} samples")
+        log.info(f"prototype[{lab}] ← {len(emb)} samples")
     arr = np.stack(centroids).astype(np.float32)
     PROTO_PATH.parent.mkdir(parents=True, exist_ok=True)
     np.savez(PROTO_PATH, labels=np.array(labels), centroids=arr)
-    print(f"[ood] prototypes 저장 → {PROTO_PATH} ({len(labels)} 클래스)")
+    log.info(f"prototypes 저장 → {PROTO_PATH} ({len(labels)} 클래스)")
     return {"labels": labels, "centroids": arr}
 
 
@@ -131,7 +135,7 @@ def calibrate(percentile: float = _DEFAULT_PERCENTILE) -> dict:
     print(f"   → 정상 {percentile:.0f}% 통과, 그보다 먼 입력은 OOD reject")
 
     # 실사용 OOD 후보(user_uploads etc 피드백) 와 비교 — 네트워크 가능 시
-    try:
+    with fail_open(log, "실사용 OOD 비교"):
         import io
 
         import requests
@@ -149,7 +153,7 @@ def calibrate(percentile: float = _DEFAULT_PERCENTILE) -> dict:
                 x = np.ascontiguousarray(a.transpose(2, 0, 1))[None]
                 e = sess.run(["embedding"], {"image": x})[0]
                 ood_emb.append(e[0] / (np.linalg.norm(e[0]) + 1e-8))
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001 — fail-open: 다운로드/디코딩 실패 건너뜀
                 continue
         if ood_emb:
             od = nearest_distance(np.stack(ood_emb), centroids)
@@ -157,8 +161,6 @@ def calibrate(percentile: float = _DEFAULT_PERCENTILE) -> dict:
             print(f"[ood] 실사용 etc 피드백 {len(od)}장 거리: "
                   f"min {od.min():.3f} / 중앙 {np.median(od):.3f} / max {od.max():.3f}")
             print(f"   τ={tau:.3f} 로 {caught}/{len(od)} 가 OOD reject 됨")
-    except Exception as exc:  # noqa: BLE001
-        print(f"[ood] 실사용 OOD 비교 생략: {exc}")
 
     return {"tau": tau, "percentiles": pcts}
 

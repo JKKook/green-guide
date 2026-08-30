@@ -17,8 +17,11 @@ from pathlib import Path
 from typing import Any
 
 from sklearn.model_selection import train_test_split
+from waste_common.logging import get_logger
 
 from src import config
+
+log = get_logger(__name__)
 
 FROZEN_PATH: Path = config.SPLITS_DIR / "frozen_test.json"
 
@@ -97,7 +100,7 @@ def _save(frozen: set[str], items: list[dict[str, Any]]) -> None:
         ),
         encoding="utf-8",
     )
-    print(f"[frozen_test] {len(frozen):,}장 동결 → {FROZEN_PATH.name} "
+    log.info(f"{len(frozen):,}장 동결 → {FROZEN_PATH.name} "
           f"({len(per_class)} 클래스)")
 
 

@@ -16,17 +16,20 @@ import numpy as np
 import onnx
 import onnxruntime as ort
 import torch
-
-from src import config
-from src.hier_train import CKPT_DIR
-from src.model import build_hier_cam_wrapper, build_hier_model
-from src.taxonomy import (
+from waste_common.logging import get_logger
+from waste_common.taxonomy import (
     COARSE_LABELS,
     FINE_IDX_TO_COARSE_IDX,
     FINE_LABELS,
     FINE_TO_COARSE,
     NUM_FINE,
 )
+
+from src import config
+from src.hier_train import CKPT_DIR
+from src.model import build_hier_cam_wrapper, build_hier_model
+
+log = get_logger(__name__)
 
 MODELS_DIR = config.MODELS_DIR / "cnn_hier"
 
@@ -90,19 +93,19 @@ def export_hier_onnx(opset: int = 17) -> Path:
         ["logits", "cam", "embedding"], {"image": batch},
     )
     diff = float(np.abs(torch_logits - onnx_logits).max())
-    print(f"[export:cnn_hier] ONNX → {out_path}")
-    print(f"[export:cnn_hier] logits max abs diff: {diff:.3e}")
+    log.info(f"ONNX → {out_path}")
+    log.info(f"logits max abs diff: {diff:.3e}")
     if diff > 1e-4:
         raise RuntimeError(f"ONNX 출력 불일치: {diff}")
     assert onnx_cam.shape == (4, NUM_FINE, 7, 7), onnx_cam.shape
     assert onnx_emb.shape[0] == 4 and onnx_emb.shape[1] in (512, 768, 2048), onnx_emb.shape
-    print(f"[export:cnn_hier] equivalence OK, cam {onnx_cam.shape}, emb {onnx_emb.shape}")
+    log.info(f"equivalence OK, cam {onnx_cam.shape}, emb {onnx_emb.shape}")
 
     # 동적 해상도 sanity — 448² 입력 시 CAM (1, C, 14, 14) (고해상 재질 맵)
     hi = rng.standard_normal((1, 3, 448, 448)).astype(np.float32)
     _, cam_hi, _ = sess.run(["logits", "cam", "embedding"], {"image": hi})
     assert cam_hi.shape == (1, NUM_FINE, 14, 14), f"hi-res cam {cam_hi.shape}"
-    print(f"[export:cnn_hier] hi-res cam OK: {cam_hi.shape} (448² 입력)")
+    log.info(f"hi-res cam OK: {cam_hi.shape} (448² 입력)")
 
     # taxonomy 사이드카 — 서빙이 DB 없이 롤업/게이트 수행하는 근거
     sidecar = {
@@ -121,7 +124,7 @@ def export_hier_onnx(opset: int = 17) -> Path:
     sidecar_path.write_text(
         json.dumps(sidecar, ensure_ascii=False, indent=2), encoding="utf-8",
     )
-    print(f"[export:cnn_hier] taxonomy sidecar → {sidecar_path}")
+    log.info(f"taxonomy sidecar → {sidecar_path}")
     return out_path
 
 

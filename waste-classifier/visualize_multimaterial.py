@@ -23,16 +23,20 @@ import onnxruntime as ort
 import torch
 from PIL import Image
 from torchvision import transforms
+from waste_common import imaging
+from waste_common.logging import get_logger
 
 from src import config
 from src.model import CamWasteClassifierCNN, WasteClassifierCNN
+
+log = get_logger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 CKPT_PATH = PROJECT_ROOT / "outputs" / "checkpoints" / "cnn" / "best.pt"
 U2NETP_PATH = PROJECT_ROOT.parent / "waste-api" / "models" / "u2netp.onnx"
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "multimaterial"
 
-_NORM = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+_NORM = transforms.Normalize(list(imaging.IMAGENET_MEAN), list(imaging.IMAGENET_STD))
 _PRE = transforms.Compose([
     transforms.Resize((config.IMAGE_SIZE, config.IMAGE_SIZE)),
     transforms.ToTensor(),
@@ -40,8 +44,8 @@ _PRE = transforms.Compose([
 ])
 
 # u2netp
-_U2_MEAN = (0.485, 0.456, 0.406)
-_U2_STD = (0.229, 0.224, 0.225)
+_U2_MEAN = imaging.IMAGENET_MEAN
+_U2_STD = imaging.IMAGENET_STD
 
 
 def _load_cnn(device):
@@ -157,13 +161,13 @@ def main() -> int:
     args = ap.parse_args()
 
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-    print(f"device: {device}, classes: {list(config.CLASS_LABELS)}")
+    log.info(f"device: {device}, classes: {list(config.CLASS_LABELS)}")
     if not CKPT_PATH.exists():
         sys.exit(f"체크포인트 없음: {CKPT_PATH}")
     cam_model = _load_cnn(device)
     u2 = ort.InferenceSession(str(U2NETP_PATH), providers=["CPUExecutionProvider"]) \
         if U2NETP_PATH.exists() else None
-    print(f"u2netp: {'OK' if u2 else '없음 (객체 mask 생략)'}")
+    log.info(f"u2netp: {'OK' if u2 else '없음 (객체 mask 생략)'}")
 
     if args.image:
         images = [args.image]

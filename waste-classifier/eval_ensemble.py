@@ -14,10 +14,13 @@ import numpy as np
 import onnxruntime as ort
 from sklearn.metrics import precision_recall_fscore_support
 from torch.utils.data import DataLoader
+from waste_common.logging import get_logger
 
 from src import config
 from src.dataset import build_dataset, load_manifest
 from src.split import load_splits, subset_items
+
+log = get_logger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 COLOR_ONNX = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx"
@@ -31,8 +34,8 @@ def _softmax(logits: np.ndarray) -> np.ndarray:
 
 
 def evaluate_ensemble():
-    print(f"color model: {COLOR_ONNX}")
-    print(f"edge  model: {EDGE_ONNX}")
+    log.info(f"color model: {COLOR_ONNX}")
+    log.info(f"edge  model: {EDGE_ONNX}")
 
     sess_color = ort.InferenceSession(str(COLOR_ONNX), providers=["CPUExecutionProvider"])
     sess_edge = ort.InferenceSession(str(EDGE_ONNX), providers=["CPUExecutionProvider"])

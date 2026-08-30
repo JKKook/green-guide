@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import json
-import statistics
 import time
 from collections import Counter
 from dataclasses import asdict
@@ -25,7 +24,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from tqdm import tqdm
+from waste_common.logging import get_logger
+from waste_common.taxonomy import (
+    COARSE_LABELS,
+    FINE_IDX_TO_COARSE_IDX,
+    FINE_LABELS,
+    NUM_COARSE,
+    NUM_FINE,
+)
 
 from src import config
 from src.hier_dataset import (
@@ -34,14 +40,9 @@ from src.hier_dataset import (
     load_or_build_hier_splits,
 )
 from src.model import build_hier_model, count_parameters
-from src.taxonomy import (
-    COARSE_LABELS,
-    FINE_IDX_TO_COARSE_IDX,
-    FINE_LABELS,
-    NUM_COARSE,
-    NUM_FINE,
-)
-from src.train import ArchHyperparams, pick_device, set_seed
+from src.train import ArchHyperparams, inverse_freq_weights, pick_device, run_epoch, set_seed
+
+log = get_logger(__name__)
 
 ARCH = "cnn_hier"
 import os as _os
@@ -124,18 +125,6 @@ class HierarchicalLoss(nn.Module):
         return losses.mean()
 
 
-def _capped_inverse_freq(
-    counts: dict[int, int], n_classes: int, cap_multiplier: float,
-) -> torch.Tensor:
-    """train.py 의 _compute_class_weights 와 동일 규칙 (감독 공간 일반화)."""
-    total = sum(counts.values()) or 1
-    raw = [total / (n_classes * counts.get(i, 1)) for i in range(n_classes)]
-    med = statistics.median(raw) if raw else 1.0
-    return torch.tensor(
-        [min(w, med * cap_multiplier) for w in raw], dtype=torch.float32,
-    )
-
-
 def compute_hier_weights(
     train_items: list[dict[str, Any]], cap_multiplier: float,
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -160,8 +149,8 @@ def compute_hier_weights(
                 fine_counts[fi] += 1 / len(children)
 
     fine_int = {k: max(1, round(v)) for k, v in fine_counts.items()}
-    fine_w = _capped_inverse_freq(fine_int, NUM_FINE, cap_multiplier)
-    coarse_w = _capped_inverse_freq(dict(coarse_counts), NUM_COARSE, cap_multiplier)
+    fine_w = inverse_freq_weights(fine_int, NUM_FINE, cap_multiplier)
+    coarse_w = inverse_freq_weights(dict(coarse_counts), NUM_COARSE, cap_multiplier)
     return fine_w, coarse_w
 
 
@@ -174,45 +163,27 @@ def _run_hier_epoch(
     desc: str = "",
 ) -> tuple[float, float, float]:
     """반환: (loss, fine_acc — fine 아이템만, coarse_acc — 전체 롤업)."""
-    training = optimizer is not None
-    model.train(training)
-
-    total_loss = 0.0
-    fine_correct = 0
-    fine_count = 0
-    coarse_correct = 0
-    total_count = 0
     f2c = torch.tensor(FINE_IDX_TO_COARSE_IDX, dtype=torch.long, device=device)
 
-    context = torch.enable_grad() if training else torch.no_grad()
-    with context:
-        for x, is_fine, sup_idx in tqdm(loader, desc=desc, leave=False):
-            x = x.to(device, non_blocking=True)
-            is_fine = is_fine.to(device, non_blocking=True)
-            sup_idx = sup_idx.to(device, non_blocking=True)
+    def step(
+        logits: torch.Tensor, is_fine: torch.Tensor, sup_idx: torch.Tensor,
+    ) -> tuple[torch.Tensor, int, int, int]:
+        loss = criterion(logits, is_fine, sup_idx)
+        pred_fine = logits.argmax(dim=1)
+        pred_coarse = f2c[pred_fine]
+        fm = is_fine.bool()
+        fine_correct = fine_count = 0
+        if fm.any():
+            fine_correct = (pred_fine[fm] == sup_idx[fm]).sum().item()
+            fine_count = int(fm.sum())
+        # coarse 정답: fine 아이템은 롤업, coarse 아이템은 그대로
+        true_coarse = torch.where(fm, f2c[sup_idx.clamp(max=NUM_FINE - 1)], sup_idx)
+        coarse_correct = (pred_coarse == true_coarse).sum().item()
+        return loss, fine_correct, fine_count, coarse_correct
 
-            logits = model(x)
-            loss = criterion(logits, is_fine, sup_idx)
-
-            if training:
-                optimizer.zero_grad(set_to_none=True)
-                loss.backward()
-                optimizer.step()
-
-            bs = x.size(0)
-            total_loss += loss.item() * bs
-            total_count += bs
-
-            pred_fine = logits.argmax(dim=1)
-            pred_coarse = f2c[pred_fine]
-            fm = is_fine.bool()
-            if fm.any():
-                fine_correct += (pred_fine[fm] == sup_idx[fm]).sum().item()
-                fine_count += int(fm.sum())
-            # coarse 정답: fine 아이템은 롤업, coarse 아이템은 그대로
-            true_coarse = torch.where(fm, f2c[sup_idx.clamp(max=NUM_FINE - 1)], sup_idx)
-            coarse_correct += (pred_coarse == true_coarse).sum().item()
-
+    total_loss, total_count, (fine_correct, fine_count, coarse_correct) = run_epoch(
+        model, loader, device, optimizer, desc, step,
+    )
     return (
         total_loss / max(total_count, 1),
         fine_correct / max(fine_count, 1),
@@ -227,17 +198,17 @@ def train_hier() -> Path:
     set_seed()
     device = pick_device()
     hp = get_hier_hyperparams()
-    print(f"[train:{ARCH}] device={device}, fine={NUM_FINE}, coarse={NUM_COARSE}")
+    log.info(f"[{ARCH}] device={device}, fine={NUM_FINE}, coarse={NUM_COARSE}")
 
     items = build_hier_items()
     splits = load_or_build_hier_splits(items)
     train_items = [items[i] for i in splits["train"]]
     val_items = [items[i] for i in splits["val"]]
-    print(f"[train:{ARCH}] items: train={len(train_items):,} val={len(val_items):,} "
+    log.info(f"[{ARCH}] items: train={len(train_items):,} val={len(val_items):,} "
           f"test={len(splits['test']):,}")
 
     sup_dist = Counter((it["sup_kind"], it["sup_slug"]) for it in train_items)
-    print(f"[train:{ARCH}] 감독 분포(train): {dict(sup_dist.most_common(10))} ...")
+    log.info(f"[{ARCH}] 감독 분포(train): {dict(sup_dist.most_common(10))} ...")
 
     train_loader = DataLoader(
         HierImageDataset(train_items, augment=True),
@@ -251,8 +222,8 @@ def train_hier() -> Path:
     )
 
     model = build_hier_model(NUM_FINE, BACKBONE).to(device)
-    print(f"[train:{ARCH}] backbone={BACKBONE}, label_smooth={LABEL_SMOOTH}")
-    print(f"[train:{ARCH}] trainable params: {count_parameters(model):,}")
+    log.info(f"[{ARCH}] backbone={BACKBONE}, label_smooth={LABEL_SMOOTH}")
+    log.info(f"[{ARCH}] trainable params: {count_parameters(model):,}")
 
     fine_w, coarse_w = compute_hier_weights(
         train_items, cap_multiplier=config.CNN_CLASS_WEIGHT_CAP,
@@ -289,7 +260,7 @@ def train_hier() -> Path:
             "val_fine_acc": val_facc, "val_coarse_acc": val_cacc,
             "elapsed_sec": elapsed,
         })
-        print(
+        log.info(
             f"[{ARCH} epoch {epoch:3d}] "
             f"train loss={tr_loss:.4f} f_acc={tr_facc:.4f} c_acc={tr_cacc:.4f} | "
             f"val loss={val_loss:.4f} f_acc={val_facc:.4f} c_acc={val_cacc:.4f} | "
@@ -314,7 +285,7 @@ def train_hier() -> Path:
         else:
             patience_counter += 1
             if patience_counter >= hp.patience:
-                print(f"[{ARCH}] early stopping at epoch {epoch}")
+                log.info(f"[{ARCH}] early stopping at epoch {epoch}")
                 break
 
     log_path = LOG_DIR / "training_log.json"
@@ -328,8 +299,8 @@ def train_hier() -> Path:
         "history": history,
     }, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"[train:{ARCH}] done. best epoch={best_epoch}")
-    print(f"[train:{ARCH}] checkpoint → {best_ckpt_path}")
+    log.info(f"[{ARCH}] done. best epoch={best_epoch}")
+    log.info(f"[{ARCH}] checkpoint → {best_ckpt_path}")
     return best_ckpt_path
 
 

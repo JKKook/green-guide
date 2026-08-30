@@ -29,9 +29,13 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
+from waste_common import imaging
+from waste_common.logging import get_logger
 
 from src import config
 from src.model import WasteClassifierCNN
+
+log = get_logger(__name__)
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent
 CKPT_PATH: Path = PROJECT_ROOT / "outputs" / "checkpoints" / "cnn" / "best.pt"
@@ -40,8 +44,8 @@ OUTPUT_DIR: Path = PROJECT_ROOT / "outputs" / "cam"
 
 # ImageNet 정규화 (train 코드와 동일해야 함)
 _NORMALIZE = transforms.Normalize(
-    mean=[0.485, 0.456, 0.406],
-    std=[0.229, 0.224, 0.225],
+    mean=list(imaging.IMAGENET_MEAN),
+    std=list(imaging.IMAGENET_STD),
 )
 _PREPROCESS = transforms.Compose([
     transforms.Resize((config.IMAGE_SIZE, config.IMAGE_SIZE)),
@@ -221,7 +225,7 @@ def main() -> int:
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-    print(f"device: {device}")
+    log.info(f"device: {device}")
 
     # 체크포인트 로드
     if not args.ckpt.exists():
@@ -239,7 +243,7 @@ def main() -> int:
             model.load_state_dict(state)
     else:
         model.load_state_dict(state)
-    print(f"loaded: {args.ckpt}")
+    log.info(f"loaded: {args.ckpt}")
 
     # target_class 검증 + 변환
     target_idx: int | None = None
@@ -256,7 +260,7 @@ def main() -> int:
         images = [args.image]
     else:
         images = _sample_images_for_label(args.label, args.n)
-        print(f"sampled {len(images)} images from label={args.label!r}")
+        log.info(f"sampled {len(images)} images from label={args.label!r}")
 
     # 실행
     with CamGenerator(model, device) as gen:

@@ -27,13 +27,16 @@ import numpy as np
 import torch
 from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
 from torch.utils.data import DataLoader
+from waste_common.logging import fail_open, get_logger
 
 from src import config
 from src.dataset import build_dataset, load_manifest
 from src.evaluate import collect_predictions
 from src.frozen_test import ensure_frozen_test, load_frozen_keys
 from src.model import build_model
-from src.train import _input_mode, _model_kind, get_hyperparams, pick_device
+from src.train import _input_mode, get_hyperparams, model_kind, pick_device
+
+log = get_logger(__name__)
 
 # ── 임계값 ─────────────────────────────────────────────
 WEAK_F1 = 0.85               # f1 < 0.85 → 약한 클래스
@@ -54,18 +57,13 @@ def _sync_to_supabase(report: dict[str, Any]) -> None:
 
     테이블은 migrations/004_model_diagnostics.sql 로 미리 생성돼 있어야 함.
     """
-    try:
-        import os
+    with fail_open(log, "Supabase 기록"):
+        from waste_common.supabase import try_get_client
 
-        from dotenv import load_dotenv
-        from supabase import create_client
-
-        load_dotenv(config.PREPROCESSOR_ROOT / ".env")
-        url, key = os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY")
-        if not url or not key:
-            print("[diagnose] Supabase env 없음 — 레포 파일에만 기록")
+        client = try_get_client()
+        if client is None:
+            log.warning("Supabase env 없음 — 레포 파일에만 기록")
             return
-        client = create_client(url, key)
         client.table("model_diagnostics").insert({
             "version": report["version"],
             "arch": report["arch"],
@@ -82,9 +80,7 @@ def _sync_to_supabase(report: dict[str, Any]) -> None:
             "gate_pass": report["gate"]["pass"],
             "gate_reasons": report["gate"]["reasons"],
         }).execute()
-        print("[diagnose] Supabase model_diagnostics += 1 row")
-    except Exception as exc:  # noqa: BLE001
-        print(f"[diagnose] Supabase 기록 실패 (무시): {exc}")
+        log.info("Supabase model_diagnostics += 1 row")
 
 
 def _load_frozen_test_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -99,9 +95,9 @@ def _load_model(arch: str, device: torch.device) -> torch.nn.Module:
     if not ckpt_path.exists():
         raise FileNotFoundError(f"checkpoint not found: {ckpt_path}")
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
-    model = build_model(_model_kind(arch)).to(device)
+    model = build_model(model_kind(arch)).to(device)
     model.load_state_dict(ckpt["model_state"])
-    print(f"[diagnose:{arch}] checkpoint epoch {ckpt.get('epoch')} "
+    log.info(f"[{arch}] checkpoint epoch {ckpt.get('epoch')} "
           f"(val_acc={ckpt.get('val_acc', float('nan')):.4f})")
     return model
 
@@ -141,7 +137,7 @@ def _prev_per_class() -> dict[str, dict[str, float]] | None:
     try:
         entry = json.loads(last)
         return {c["label"]: c for c in entry.get("per_class", [])}
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — fail-open: 손상된 history 줄은 baseline 없음으로 취급
         return None
 
 
@@ -166,7 +162,7 @@ def run_diagnosis(
     test_items = _load_frozen_test_items(items)
     test_ds = build_dataset(arch, test_items, input_mode=_input_mode(arch))
     loader = DataLoader(test_ds, batch_size=hp.batch_size, shuffle=False)
-    print(f"[diagnose:{arch}] 고정 test: {len(test_ds):,}장 / {len(labels)} 클래스")
+    log.info(f"[{arch}] 고정 test: {len(test_ds):,}장 / {len(labels)} 클래스")
 
     y_true, y_pred = collect_predictions(model, loader, device)
 
@@ -223,7 +219,7 @@ def run_diagnosis(
         if lines:
             try:
                 prev_acc = json.loads(lines[-1]).get("accuracy")
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001 — fail-open: 손상된 history 줄은 baseline 없음으로 취급
                 prev_acc = None
     if prev_acc is not None and (prev_acc - accuracy) > GATE_MAX_ACC_DROP:
         gate_reasons.append(
@@ -264,7 +260,7 @@ def run_diagnosis(
         if sync_supabase:
             _sync_to_supabase(report)
     elif commit_history and not report["gate"]["pass"]:
-        print("[diagnose] 게이트 FAIL — history/Supabase 커밋 생략 (baseline 보존)")
+        log.warning("게이트 FAIL — history/Supabase 커밋 생략 (baseline 보존)")
     _print_summary(report)
     return report
 
@@ -273,7 +269,7 @@ def _write_report(report: dict[str, Any]) -> None:
     """버전별 상세 리포트 json — 항상 기록 (실패 시도도 디버그용)."""
     full_path = DIAG_DIR / f"{report['version']}.json"
     full_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"[diagnose] report → {full_path}")
+    log.info(f"report → {full_path}")
 
 
 def _append_history(report: dict[str, Any]) -> None:
@@ -290,7 +286,7 @@ def _append_history(report: dict[str, Any]) -> None:
     }
     with HISTORY_PATH.open("a", encoding="utf-8") as f:
         f.write(json.dumps(summary, ensure_ascii=False) + "\n")
-    print(f"[diagnose] history += {HISTORY_PATH}")
+    log.info(f"history += {HISTORY_PATH}")
 
 
 def _print_summary(report: dict[str, Any]) -> None:

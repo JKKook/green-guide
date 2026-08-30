@@ -16,7 +16,6 @@
 """
 from __future__ import annotations
 
-import argparse
 import io
 import random
 import sys
@@ -24,10 +23,9 @@ import tarfile
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from _base import PREPROCESSOR_ROOT, make_parser
 from PIL import Image
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
 BG_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "_aux" / "backgrounds"
 TAR_PATH = Path("/tmp/indoorCVPR_09.tar")
 TARGET_SIZE = 256
@@ -132,10 +130,9 @@ def extract_and_save(args) -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="MIT Indoor 67 → 실내 배경 풀")
+    ap = make_parser("build_indoor_bg_pool", "MIT Indoor 67 → 실내 배경 풀")
     ap.add_argument("--per-category", type=int, default=15,
                     help="high-priority 카테고리당 추출 장수 (기본 15)")
-    ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
     return extract_and_save(args)

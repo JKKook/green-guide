@@ -18,17 +18,15 @@
 """
 from __future__ import annotations
 
-import argparse
 import random
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-import numpy as np  # noqa: E402
-import onnxruntime as ort  # noqa: E402
-from PIL import Image, ImageFilter  # noqa: E402
+import numpy as np
+import onnxruntime as ort
+from _base import PROJECT_ROOT, make_parser
+from PIL import Image, ImageFilter
+from waste_common import imaging
 
 STAGING_CROPS = PROJECT_ROOT.parent / "aihub_71385_staging" / "crops"
 BACKGROUNDS = (PROJECT_ROOT.parent / "waste-preprocessor" / "data" / "raw"
@@ -37,7 +35,6 @@ FINE_STAGING = (PROJECT_ROOT.parent / "waste-preprocessor" / "data" / "raw"
                 / "fine-staging")
 U2NETP = PROJECT_ROOT.parent / "waste-api" / "models" / "u2netp.onnx"
 
-SEED = 42
 CANVAS = (640, 480)
 OBJ_SCALE = (0.30, 0.52)      # 캔버스 짧은변 대비 객체 크기
 CROP_PAD = 0.25               # 학습 크롭 패딩 (이웃 파편 포함 목적)
@@ -55,8 +52,8 @@ HARD_GROUPS = [
     ["glass_clear", "glass_green", "glass_deposit", "pet"],      # 유리 가족 + PET
 ]
 
-_U2_MEAN = (0.485, 0.456, 0.406)
-_U2_STD = (0.229, 0.224, 0.225)
+_U2_MEAN = imaging.IMAGENET_MEAN
+_U2_STD = imaging.IMAGENET_STD
 
 
 class Cutter:
@@ -153,12 +150,12 @@ def paste_object(canvas: Image.Image, cut: tuple, rng: random.Random,
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser()
+    ap = make_parser("synthesize_multiobject")
     ap.add_argument("--per-class", type=int, default=800,
                     help="클래스당 생성 크롭 상한")
     args = ap.parse_args()
 
-    rng = random.Random(SEED)
+    rng = random.Random(args.seed)
     bgs = sorted(BACKGROUNDS.glob("*.jpg")) + sorted(BACKGROUNDS.glob("*.png"))
     if not bgs:
         sys.exit(f"배경 없음: {BACKGROUNDS}")

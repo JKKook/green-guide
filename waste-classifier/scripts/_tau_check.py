@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """OOD τ 선택 근거 — val 거리 퍼센타일 + 후보 τ별 오거부율 (일회성 분석)."""
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import _base  # noqa: F401 — sys.path 설정
 import numpy as np
 import onnxruntime as ort
 

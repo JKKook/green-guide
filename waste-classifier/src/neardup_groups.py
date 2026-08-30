@@ -16,7 +16,11 @@ import json
 from collections import defaultdict
 from typing import Any
 
+from waste_common.logging import get_logger
+
 from src import config
+
+log = get_logger(__name__)
 
 PHASH_CACHE = config.SPLITS_DIR / "phash_cache.json"
 NEARDUP_DIST = 4
@@ -27,7 +31,7 @@ def _load_cache() -> dict[str, str]:
     if PHASH_CACHE.exists():
         try:
             return json.loads(PHASH_CACHE.read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001 — fail-open: 캐시 손상 시 재계산
             return {}
     return {}
 
@@ -40,12 +44,12 @@ def _compute_missing(paths: list[str], cache: dict[str, str]) -> dict[str, str]:
     missing = [p for p in paths if p not in cache]
     if not missing:
         return cache
-    print(f"[neardup] pHash 증분 계산: {len(missing):,}장")
+    log.info(f"pHash 증분 계산: {len(missing):,}장")
     for p in missing:
         try:
             with Image.open(config.PREPROCESSOR_ROOT / p) as im:
                 cache[p] = str(imagehash.phash(im, hash_size=8))
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001 — fail-open: 손상 이미지는 그룹화 제외
             cache[p] = ""  # 손상 — 그룹화 제외
     PHASH_CACHE.parent.mkdir(parents=True, exist_ok=True)
     PHASH_CACHE.write_text(json.dumps(cache), encoding="utf-8")
@@ -121,5 +125,5 @@ def compute_groups(items: list[dict[str, Any]]) -> dict[str, int]:
     for g in groups.values():
         sizes[g] += 1
     n_multi = sum(1 for s in sizes.values() if s > 1)
-    print(f"[neardup] 그룹 {len(sizes):,}개 (다원소 그룹 {n_multi:,})")
+    log.info(f"그룹 {len(sizes):,}개 (다원소 그룹 {n_multi:,})")
     return groups

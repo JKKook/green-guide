@@ -4,10 +4,17 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from waste_common import settings
+from waste_common.imaging import IMAGE_CHANNELS, IMAGE_SIZE  # noqa: F401 — 하위호환 re-export
+from waste_common.logging import fail_open, get_logger
+from waste_common.taxonomy import LEGACY_LABELS
+
+log = get_logger(__name__)
+
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 
 # 자매 프로젝트인 waste-preprocessor의 산출물을 직접 참조
-PREPROCESSOR_ROOT: Path = PROJECT_ROOT.parent / "waste-preprocessor"
+PREPROCESSOR_ROOT: Path = settings.PREPROCESSOR_ROOT
 MANIFEST_PATH: Path = PREPROCESSOR_ROOT / "data" / "processed" / "manifest.json"
 VECTORS_DIR: Path = PREPROCESSOR_ROOT / "data" / "processed" / "vectors"
 
@@ -21,11 +28,9 @@ LOGS_DIR: Path = OUTPUTS_DIR / "logs"
 PLOTS_DIR: Path = OUTPUTS_DIR / "plots"
 
 # [역사적 유물] 구 6클래스 fallback — flat 파이프라인 하위호환 전용.
-# 계층 학습의 정본은 src/taxonomy.py (대분류 14 × 세부 25) 이며 이 목록과 무관.
+# 계층 학습의 정본은 waste_common.taxonomy (대분류 14 × 세부 25) 이며 이 목록과 무관.
 # 모듈 import 시 manifest 가 있으면 동적으로 갱신.
-_DEFAULT_LABELS: tuple[str, ...] = (
-    "cardboard", "glass", "metal", "paper", "plastic", "trash",
-)
+_DEFAULT_LABELS: tuple[str, ...] = LEGACY_LABELS
 CLASS_LABELS: tuple[str, ...] = _DEFAULT_LABELS
 NUM_CLASSES: int = len(CLASS_LABELS)
 LABEL_TO_INDEX: dict[str, int] = {label: i for i, label in enumerate(CLASS_LABELS)}
@@ -40,7 +45,7 @@ def refresh_classes_from_manifest() -> None:
     global CLASS_LABELS, NUM_CLASSES, LABEL_TO_INDEX, INDEX_TO_LABEL
     if not MANIFEST_PATH.exists():
         return
-    try:
+    with fail_open(log, "manifest 클래스 갱신"):
         with MANIFEST_PATH.open("r", encoding="utf-8") as f:
             manifest = json.load(f)
         labels = sorted({item["label"] for item in manifest.get("items", [])})
@@ -50,17 +55,13 @@ def refresh_classes_from_manifest() -> None:
         NUM_CLASSES = len(CLASS_LABELS)
         LABEL_TO_INDEX = {label: i for i, label in enumerate(CLASS_LABELS)}
         INDEX_TO_LABEL = {i: label for i, label in enumerate(CLASS_LABELS)}
-        print(f"[config] classes refreshed: {NUM_CLASSES} classes — {list(CLASS_LABELS)}")
-    except Exception as exc:  # noqa: BLE001
-        print(f"[config] failed to refresh classes from manifest: {exc}")
+        log.info(f"classes refreshed: {NUM_CLASSES} classes — {list(CLASS_LABELS)}")
 
 
 # import 시 자동 시도
 refresh_classes_from_manifest()
 
-# 입력 차원 (preprocessor 의 VECTOR_DIM 과 일치해야 함)
-IMAGE_SIZE: int = 224
-IMAGE_CHANNELS: int = 3
+# 입력 차원 — IMAGE_SIZE/IMAGE_CHANNELS 는 waste_common.imaging 과 공유 (preprocessor 의 VECTOR_DIM 과 동일 출처)
 INPUT_DIM: int = IMAGE_SIZE * IMAGE_SIZE * IMAGE_CHANNELS  # 150,528
 
 # 데이터 분할 비율

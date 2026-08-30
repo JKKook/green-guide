@@ -18,16 +18,19 @@ from typing import Any
 
 import torch
 from torch.utils.data import Dataset
-
-from src import config
-from src.dataset import WasteImageDataset, _load_rgb_chw01, load_manifest
-from src.taxonomy import (
+from waste_common.logging import fail_open, get_logger
+from waste_common.taxonomy import (
     COARSE_TO_INDEX,
     FINE_TO_INDEX,
     LEGACY_LABEL_SUPERVISION,
     STAGING_DIR_SUPERVISION,
     supervision_index,
 )
+
+from src import config
+from src.dataset import WasteImageDataset, _load_rgb_chw01, load_manifest
+
+log = get_logger(__name__)
 
 FINE_STAGING_DIR: Path = config.PREPROCESSOR_ROOT / "data" / "raw" / "fine-staging"
 HIER_SPLITS_PATH: Path = config.SPLITS_DIR / "hier_splits.json"
@@ -83,7 +86,7 @@ def build_hier_items() -> list[dict[str, Any]]:
                 continue
             sup = STAGING_DIR_SUPERVISION.get(d.name)
             if sup is None:
-                print(f"[hier_dataset] 미정의 staging 라벨 스킵: {d.name}")
+                log.warning(f"미정의 staging 라벨 스킵: {d.name}")
                 continue
             kind, slug = sup
             idx = supervision_index(kind, slug)
@@ -106,15 +109,13 @@ def _load_frozen_paths() -> set[str]:
     """legacy frozen test 의 source_path 집합 (없으면 빈 집합)."""
     if not LEGACY_FROZEN_PATH.exists():
         return set()
-    try:
+    with fail_open(log, "legacy frozen 로드"):
         data = json.loads(LEGACY_FROZEN_PATH.read_text(encoding="utf-8"))
         # frozen_test.json 포맷: {"keys": [source_path...], "per_class": ..., "total": ...}
         if isinstance(data, dict) and "keys" in data:
             return set(data["keys"])
         if isinstance(data, list):
             return set(data)
-    except Exception as exc:  # noqa: BLE001
-        print(f"[hier_dataset] legacy frozen 로드 실패: {exc}")
     return set()
 
 
@@ -168,7 +169,7 @@ def build_hier_splits(items: list[dict[str, Any]]) -> dict[str, list[int]]:
         else:
             pool_by_class.setdefault((it["sup_kind"], it["sup_slug"]), []).append(i)
     if dropped_synth:
-        print(f"[hier_dataset] test-그룹 소속 합성 {dropped_synth}장 미사용 처리")
+        log.info(f"test-그룹 소속 합성 {dropped_synth}장 미사용 처리")
 
     # ── 그룹 단위 헬퍼: 클래스 pool 을 (그룹 → 멤버들) 리스트로 ──────────────
     def _group_units(pool: list[int]) -> list[list[int]]:
@@ -273,10 +274,10 @@ def load_or_build_hier_splits(items: list[dict[str, Any]]) -> dict[str, list[int
             assigned = sum(len(v) for v in out.values())
             unassigned = len(items) - assigned
             if missing or unassigned:
-                print(f"[hier_dataset] splits 매핑: 소실 {missing}, "
+                log.warning(f"splits 매핑: 소실 {missing}, "
                       f"미배정 신규 {unassigned} (rebuild 전까지 학습 제외)")
             return out
-        print("[hier_dataset] 구버전(인덱스) splits 감지 → 재생성")
+        log.warning("구버전(인덱스) splits 감지 → 재생성")
         HIER_SPLITS_PATH.unlink()
     return build_hier_splits(items)
 

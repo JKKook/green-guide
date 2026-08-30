@@ -16,6 +16,7 @@ import numpy as np
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
+from waste_common import imaging
 
 from src import config
 
@@ -88,8 +89,8 @@ class WasteImageDataset(Dataset):
         self.items = items
         self.augment = augment
         # ImageNet 정규화
-        self._mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
-        self._std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+        self._mean = torch.tensor(list(imaging.IMAGENET_MEAN)).view(3, 1, 1)
+        self._std = torch.tensor(list(imaging.IMAGENET_STD)).view(3, 1, 1)
 
     def __len__(self) -> int:
         return len(self.items)
@@ -149,8 +150,8 @@ class WasteEdgeDataset(Dataset):
     ) -> None:
         self.items = items
         self.augment = augment
-        self._mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
-        self._std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+        self._mean = torch.tensor(list(imaging.IMAGENET_MEAN)).view(3, 1, 1)
+        self._std = torch.tensor(list(imaging.IMAGENET_STD)).view(3, 1, 1)
         # Sobel 커널
         self._sobel_x = torch.tensor([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]],
                                       dtype=torch.float32).view(1, 1, 3, 3)

@@ -10,6 +10,7 @@ import random
 import statistics
 import time
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from waste_common.logging import get_logger
 
 from src import config
 from src.dataset import build_dataset, load_manifest
@@ -26,28 +28,33 @@ from src.frozen_test import build_splits
 from src.model import build_model, count_parameters
 from src.split import load_splits, save_splits, subset_items
 
+log = get_logger(__name__)
+
+
+def inverse_freq_weights(
+    counts: dict[int, int], n_classes: int, cap_multiplier: float,
+) -> torch.Tensor:
+    """클래스 빈도 → inverse-frequency 가중치 (감독 공간 일반화).
+
+    weight[c] = total / (n_classes * count[c]), median 의 cap_multiplier 배로 상한.
+    상한이 없으면 etc(10장) 같은 극소 클래스가 과도한 가중치로 학습을 불안정하게 만듦.
+    """
+    total = sum(counts.values()) or 1
+    raw = [total / (n_classes * counts.get(i, 1)) for i in range(n_classes)]
+    med = statistics.median(raw) if raw else 1.0
+    return torch.tensor(
+        [min(w, med * cap_multiplier) for w in raw], dtype=torch.float32,
+    )
+
 
 def _compute_class_weights(
     train_items: list[dict[str, Any]],
     device: torch.device,
     cap_multiplier: float = 4.0,
 ) -> torch.Tensor:
-    """학습 split 의 클래스 빈도로 inverse-frequency 가중치 계산.
-
-    weight[c] = total / (num_classes * count[c]), median 의 cap_multiplier 배로 상한.
-    상한이 없으면 etc(10장) 같은 극소 클래스가 과도한 가중치로 학습을 불안정하게 만듦.
-    """
-    counts = Counter(it["label"] for it in train_items)
-    total = sum(counts.values())
-    n = config.NUM_CLASSES
-    raw = []
-    for i in range(n):
-        label = config.INDEX_TO_LABEL[i]
-        c = counts.get(label, 1)
-        raw.append(total / (n * c))
-    med = statistics.median(raw) if raw else 1.0
-    capped = [min(w, med * cap_multiplier) for w in raw]
-    return torch.tensor(capped, dtype=torch.float32, device=device)
+    """학습 split 의 클래스 빈도로 inverse-frequency 가중치 계산."""
+    counts = Counter(config.LABEL_TO_INDEX[it["label"]] for it in train_items)
+    return inverse_freq_weights(counts, config.NUM_CLASSES, cap_multiplier).to(device)
 
 
 @dataclass
@@ -89,7 +96,7 @@ def get_hyperparams(arch: str) -> ArchHyperparams:
     raise ValueError(f"unsupported arch={arch!r}")
 
 
-def _model_kind(arch: str) -> str:
+def model_kind(arch: str) -> str:
     """arch → 실제 모델 클래스 키 (cnn_edge 는 cnn 모델 사용)."""
     return "cnn" if arch == "cnn_edge" else arch
 
@@ -114,6 +121,45 @@ def pick_device() -> torch.device:
     return torch.device("cpu")
 
 
+def run_epoch(
+    model: nn.Module,
+    loader: DataLoader,
+    device: torch.device,
+    optimizer: torch.optim.Optimizer | None,
+    desc: str,
+    step: Callable[..., tuple[torch.Tensor, ...]],
+) -> tuple[float, int, list[float]]:
+    """공용 epoch 러너 — optimizer 가 주어지면 train, 아니면 eval.
+
+    step(logits, *targets) -> (loss, *stats). 반환: (loss 합, 샘플 수, stats 합).
+    """
+    training = optimizer is not None
+    model.train(training)
+
+    total_loss = 0.0
+    total_count = 0
+    sums: list[float] | None = None
+
+    context = torch.enable_grad() if training else torch.no_grad()
+    with context:
+        for batch in tqdm(loader, desc=desc, leave=False):
+            batch = [t.to(device, non_blocking=True) for t in batch]
+            logits = model(batch[0])
+            loss, *stats = step(logits, *batch[1:])
+
+            if training:
+                optimizer.zero_grad(set_to_none=True)
+                loss.backward()
+                optimizer.step()
+
+            batch_size = batch[0].size(0)
+            total_loss += loss.item() * batch_size
+            total_count += batch_size
+            sums = stats if sums is None else [a + b for a, b in zip(sums, stats, strict=True)]
+
+    return total_loss, total_count, sums or []
+
+
 def _run_epoch(
     model: nn.Module,
     loader: DataLoader,
@@ -123,31 +169,12 @@ def _run_epoch(
     desc: str = "",
 ) -> tuple[float, float]:
     """optimizer 가 주어지면 train, 아니면 eval."""
-    training = optimizer is not None
-    model.train(training)
+    def step(logits: torch.Tensor, y: torch.Tensor) -> tuple[torch.Tensor, int]:
+        return criterion(logits, y), (logits.argmax(dim=1) == y).sum().item()
 
-    total_loss = 0.0
-    total_correct = 0
-    total_count = 0
-
-    context = torch.enable_grad() if training else torch.no_grad()
-    with context:
-        for x, y in tqdm(loader, desc=desc, leave=False):
-            x = x.to(device, non_blocking=True)
-            y = y.to(device, non_blocking=True)
-            logits = model(x)
-            loss = criterion(logits, y)
-
-            if training:
-                optimizer.zero_grad(set_to_none=True)
-                loss.backward()
-                optimizer.step()
-
-            batch_size = y.size(0)
-            total_loss += loss.item() * batch_size
-            total_correct += (logits.argmax(dim=1) == y).sum().item()
-            total_count += batch_size
-
+    total_loss, total_count, (total_correct,) = run_epoch(
+        model, loader, device, optimizer, desc, step,
+    )
     return total_loss / total_count, total_correct / total_count
 
 
@@ -160,16 +187,16 @@ def train(arch: str = "mlp") -> Path:
     set_seed()
     device = pick_device()
     hp = get_hyperparams(arch)
-    print(f"[train:{arch}] device={device}, hyperparams={hp}")
+    log.info(f"[{arch}] device={device}, hyperparams={hp}")
 
     # 1) 데이터
     items = load_manifest()
-    print(f"[train:{arch}] manifest items: {len(items):,}")
+    log.info(f"[{arch}] manifest items: {len(items):,}")
 
     splits_path = config.SPLITS_DIR / "splits.json"
     if splits_path.exists():
         splits = load_splits()
-        print(f"[train:{arch}] using existing splits at {splits_path}")
+        log.info(f"[{arch}] using existing splits at {splits_path}")
     else:
         # 고정 held-out test set 기준 분할 — test 멤버는 source_path 로 동결되어
         # 버전 간 정확도가 같은 잣대로 비교 가능 (frozen_test.py 참고).
@@ -197,8 +224,8 @@ def train(arch: str = "mlp") -> Path:
     )
 
     # 2) 모델 (cnn_edge 도 동일한 CNN 클래스 사용)
-    model = build_model(_model_kind(arch)).to(device)
-    print(f"[train:{arch}] trainable params: {count_parameters(model):,}")
+    model = build_model(model_kind(arch)).to(device)
+    log.info(f"[{arch}] trainable params: {count_parameters(model):,}")
 
     # 클래스 불균형 보정 — inverse frequency 가중치.
     # clothes(7305) vs trash(834) vs etc(10) 처럼 편차가 크면 다수 클래스로
@@ -208,7 +235,7 @@ def train(arch: str = "mlp") -> Path:
         subset_items(items, splits["train"]), device,
         cap_multiplier=config.CNN_CLASS_WEIGHT_CAP,
     )
-    print(f"[train:{arch}] class weights: "
+    log.info(f"[{arch}] class weights: "
           f"{ {config.INDEX_TO_LABEL[i]: round(float(w), 2) for i, w in enumerate(class_weights)} }")
     criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = torch.optim.Adam(
@@ -239,7 +266,7 @@ def train(arch: str = "mlp") -> Path:
 
         m = EpochMetrics(epoch, tr_loss, tr_acc, val_loss, val_acc, elapsed)
         history.append(m)
-        print(
+        log.info(
             f"[{arch} epoch {epoch:3d}] "
             f"train loss={tr_loss:.4f} acc={tr_acc:.4f} | "
             f"val loss={val_loss:.4f} acc={val_acc:.4f} | "
@@ -259,7 +286,7 @@ def train(arch: str = "mlp") -> Path:
         else:
             patience_counter += 1
             if patience_counter >= hp.patience:
-                print(f"[{arch}] early stopping at epoch {epoch} "
+                log.info(f"[{arch}] early stopping at epoch {epoch} "
                       f"(no improvement for {hp.patience} epochs)")
                 break
 
@@ -274,9 +301,9 @@ def train(arch: str = "mlp") -> Path:
             "history": [asdict(m) for m in history],
         }, f, ensure_ascii=False, indent=2)
 
-    print(f"[train:{arch}] done. best epoch={best_epoch}, val_acc={best_val_acc:.4f}")
-    print(f"[train:{arch}] checkpoint → {best_ckpt_path}")
-    print(f"[train:{arch}] log        → {log_path}")
+    log.info(f"[{arch}] done. best epoch={best_epoch}, val_acc={best_val_acc:.4f}")
+    log.info(f"[{arch}] checkpoint → {best_ckpt_path}")
+    log.info(f"[{arch}] log        → {log_path}")
     return best_ckpt_path
 
 

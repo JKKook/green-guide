@@ -7,23 +7,13 @@
 from __future__ import annotations
 
 import argparse
-import os
 import sys
-from pathlib import Path
 
-from dotenv import load_dotenv
-from supabase import create_client
-
-PREPROCESSOR_ROOT = Path(__file__).resolve().parent.parent.parent / "waste-preprocessor"
+from waste_common.supabase import get_client
 
 
 def _client():
-    load_dotenv(PREPROCESSOR_ROOT / ".env")
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY")
-    if not url or not key:
-        sys.exit("ERROR: SUPABASE_URL / SUPABASE_KEY 미설정")
-    return create_client(url, key)
+    return get_client()
 
 
 def main() -> int:

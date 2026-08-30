@@ -19,10 +19,9 @@ import sys
 import zipfile
 from pathlib import Path
 
+from integrate_aihub import RAW_DIR, _apikey, fetch_to_zip
+from integrate_aihub import STAGING_140 as STAGING
 from PIL import Image
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from integrate_aihub_140 import RAW_DIR, STAGING, _apikey, fetch_to_zip  # noqa: E402
 
 STORE = 256
 IMG_EXT = (".jpg", ".jpeg", ".png")
@@ -99,7 +98,7 @@ def main() -> int:
 
     print(f"\n[1] 라벨(fileSn={args.label_filesn}) 다운로드 + 전체 bbox 파싱...")
     lw = STAGING / "bg_label"
-    labels = parse_all_boxes(fetch_to_zip(args.label_filesn, lw, apikey))
+    labels = parse_all_boxes(fetch_to_zip(args.label_filesn, lw, apikey, dataset_key=140))
     print(f"  라벨 이미지 {len(labels)}개")
     shutil.rmtree(lw, ignore_errors=True)
 
@@ -110,7 +109,7 @@ def main() -> int:
         print(f"\n[2.{i}] 원천 fileSn={fsn} (누적 {n}/{args.cap})...")
         sw = STAGING / f"bg_{fsn}"
         try:
-            zp = fetch_to_zip(fsn, sw, apikey)
+            zp = fetch_to_zip(fsn, sw, apikey, dataset_key=140)
             with zipfile.ZipFile(zp) as z:
                 for name in z.namelist():
                     if n >= args.cap or not name.lower().endswith(IMG_EXT):

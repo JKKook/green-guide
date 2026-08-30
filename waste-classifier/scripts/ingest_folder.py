@@ -13,11 +13,9 @@ import argparse
 import sys
 from pathlib import Path
 
+from _base import RAW_DIR
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
-RAW_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "garbage-classification"
 STORE_SIZE = 256
 IMG_EXT = (".jpg", ".jpeg", ".png", ".bmp", ".webp", ".heic")
 

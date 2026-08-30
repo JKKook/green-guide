@@ -25,6 +25,8 @@ import time
 from collections import Counter
 from pathlib import Path
 
+from _base import PREPROCESSOR_ROOT, PROJECT_ROOT
+
 # DINOv2 의 interpolate_pos_encoding 이 MPS 미지원 op (upsample_bicubic2d) 사용 →
 # 해당 연산만 CPU 로 폴백. 매 forward 마다 한 번 호출되므로 약간 느려지지만 작동.
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
@@ -36,11 +38,10 @@ from PIL import Image, ImageFile
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as T
 from transformers import AutoModel
+from waste_common import imaging
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
 MANIFEST_PATH = PREPROCESSOR_ROOT / "data" / "processed" / "manifest.json"
 OUT_DIR = PROJECT_ROOT / "outputs" / "models" / "dinov2_classifier"
 
@@ -49,8 +50,8 @@ EMBED_DIM = 384      # ViT-S/14 의 CLS token dim
 INPUT_SIZE = 224
 
 # ImageNet 정규화 (DINOv2 가 기대하는 입력)
-_MEAN = [0.485, 0.456, 0.406]
-_STD = [0.229, 0.224, 0.225]
+_MEAN = list(imaging.IMAGENET_MEAN)
+_STD = list(imaging.IMAGENET_STD)
 
 
 # ─── DINOv2 wrapper (ONNX export 호환) ──────────────────────────

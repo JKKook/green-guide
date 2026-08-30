@@ -26,24 +26,23 @@ from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
+from _base import PROJECT_ROOT, RAW_DIR
 from PIL import Image
+from waste_common import imaging
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PREPROCESSOR_ROOT = PROJECT_ROOT.parent / "waste-preprocessor"
-RAW_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "garbage-classification"
 U2NETP_PATH = PROJECT_ROOT.parent / "waste-api" / "models" / "u2netp.onnx"
 CLASSIFIER_PATH = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx"
 
 # u2netp 입출력 사양
 _SIZE = 320
-_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float64)
-_STD = np.array([0.229, 0.224, 0.225], dtype=np.float64)
+_MEAN = np.array(imaging.IMAGENET_MEAN, dtype=np.float64)
+_STD = np.array(imaging.IMAGENET_STD, dtype=np.float64)
 _MASK_THRESHOLD = 0.30   # saliency 0~1 에서 객체로 간주할 하한
 
 # 분류기 입력 (ImageNet 정규화, 224)
 _CLF_SIZE = 224
-_CLF_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-_CLF_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+_CLF_MEAN = imaging.MEAN_ARRAY
+_CLF_STD = imaging.STD_ARRAY
 
 
 def load_u2netp() -> ort.InferenceSession:
@@ -112,7 +111,6 @@ def load_classifier() -> tuple[ort.InferenceSession, list[str]]:
         sys.exit(f"classifier 없음: {CLASSIFIER_PATH}")
     sess = ort.InferenceSession(str(CLASSIFIER_PATH), providers=["CPUExecutionProvider"])
     # config 에서 라벨 순서 가져옴 (manifest 기반 — 학습과 동기)
-    sys.path.insert(0, str(PROJECT_ROOT))
     from src import config  # noqa: PLC0415
     config.refresh_classes_from_manifest()
     return sess, list(config.CLASS_LABELS)
