@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../core/di/app_scope.dart';
 import '../core/feedback/app_snackbar.dart';
+import '../core/ui/ds_card.dart';
 import '../data/collection_schedule.dart';
 import '../data/haptics.dart';
 import '../data/settings_store.dart';
@@ -362,23 +363,11 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                   final dayIdx = (todayIdx + i) % 7;
                   final date = monday.add(Duration(days: todayIdx + i));
                   final isToday = i == 0;
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
-                    decoration: BoxDecoration(
-                      color: t.surface,
-                      border: Border.all(color: t.border),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              const Color(0xFF2B2B2D).withValues(alpha: 0.14),
-                          offset: const Offset(0, 1),
-                          blurRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: Row(
+                  return DsCard(
+                           elevated: true,
+                           margin: const EdgeInsets.only(bottom: 8),
+                           padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
+                           child: Row(
                       children: [
                         SizedBox(
                           width: 40,
@@ -444,7 +433,7 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                           ),
                       ],
                     ),
-                  );
+                         );
                 }),
             const SizedBox(height: 8),
             // 아파트 단지 안내
@@ -1040,24 +1029,10 @@ class _CollectionRemindersScreenState extends State<CollectionRemindersScreen> {
                       ),
                       child: Opacity(
                         opacity: r.enabled ? 1 : 0.62,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: t.surface,
-                            border: Border.all(color: t.border),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: r.enabled
-                                ? [
-                                    BoxShadow(
-                                      color: const Color(0xFF2B2B2D)
-                                          .withValues(alpha: 0.14),
-                                      offset: const Offset(0, 1),
-                                      blurRadius: 2,
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: InkWell(
+                        child: DsCard(
+                                 elevated: true,
+                                 margin: const EdgeInsets.only(bottom: 8),
+                                 child: InkWell(
                             borderRadius: BorderRadius.circular(16),
                             onTap: () => _edit(r),
                             child: Padding(
@@ -1100,17 +1075,12 @@ class _CollectionRemindersScreenState extends State<CollectionRemindersScreen> {
                               ),
                             ),
                           ),
-                        ),
+                               ),
                       ),
                     ),
                   const SizedBox(height: 8),
-                  Container(
+                  DsCard(
                     padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
-                    decoration: BoxDecoration(
-                      color: t.surface,
-                      border: Border.all(color: t.border),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

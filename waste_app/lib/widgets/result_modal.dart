@@ -14,6 +14,7 @@ import '../api/api_client.dart';
 import '../api/models.dart';
 import '../core/di/app_scope.dart';
 import '../core/feedback/app_snackbar.dart';
+import '../core/ui/ds_card.dart';
 import '../data/confidence.dart';
 import '../data/haptics.dart';
 import '../data/image_quality.dart';
@@ -1945,16 +1946,10 @@ class _PredictionCard extends StatelessWidget {
                 height: 1.1,
               ),
             ),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: t.accentChipBg,
-                border: Border.all(
-                  color: t.dark ? kAccent700 : kAccent300,
-                ),
-                borderRadius: BorderRadius.circular(999),
-              ),
+            DsCard(
+              tinted: true,
+              radius: 999,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               child: Text(
                 '확신 ${(prediction.confidence * 100).round()}% · $_sourceLabel',
                 style: TextStyle(
@@ -2458,14 +2453,10 @@ class _GuideCard extends StatelessWidget {
     ];
     final bodyColor = t.dark ? t.muted2 : const Color(0xFF5D5D60);
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-      decoration: BoxDecoration(
-        color: t.surface,
-        border: Border.all(color: t.border),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
+    return DsCard(
+             radius: 20,
+             padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+             child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -2593,7 +2584,7 @@ class _GuideCard extends StatelessWidget {
           ),
         ],
       ),
-    );
+           );
   }
 }
 

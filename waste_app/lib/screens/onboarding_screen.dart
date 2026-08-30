@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/di/app_scope.dart';
+import '../core/ui/ds_card.dart';
 import '../data/collection_schedule.dart';
 import '../data/haptics.dart';
 import '../data/legal_terms.dart';
@@ -1061,13 +1062,9 @@ class _PickupSetupStepState extends State<_PickupSetupStep> {
                   style: TextStyle(fontSize: 12.5, color: t.muted2),
                 ),
                 const SizedBox(height: 18),
-                Container(
+                DsCard(
+                  radius: 20,
                   padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-                  decoration: BoxDecoration(
-                    color: t.surface,
-                    border: Border.all(color: t.border),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1155,13 +1152,9 @@ class _PickupSetupStepState extends State<_PickupSetupStep> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Container(
+                DsCard(
+                  radius: 20,
                   padding: const EdgeInsets.fromLTRB(20, 16, 14, 16),
-                  decoration: BoxDecoration(
-                    color: t.surface,
-                    border: Border.all(color: t.border),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
                   child: Row(
                     children: [
                       Icon(Icons.notifications_none,
@@ -1252,13 +1245,10 @@ class _ApartmentFinishStepState extends State<_ApartmentFinishStep> {
                   style: TextStyle(fontSize: 12.5, color: t.muted2),
                 ),
                 const SizedBox(height: 18),
-                Container(
+                DsCard(
+                  tinted: true,
+                  radius: 20,
                   padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-                  decoration: BoxDecoration(
-                    color: t.accentChipBg,
-                    border: Border.all(color: t.dark ? kAccent700 : kAccent300),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1301,13 +1291,9 @@ class _ApartmentFinishStepState extends State<_ApartmentFinishStep> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Container(
+                DsCard(
+                  radius: 20,
                   padding: const EdgeInsets.fromLTRB(20, 16, 14, 16),
-                  decoration: BoxDecoration(
-                    color: t.surface,
-                    border: Border.all(color: t.border),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
                   child: Row(
                     children: [
                       Icon(Icons.notifications_none,

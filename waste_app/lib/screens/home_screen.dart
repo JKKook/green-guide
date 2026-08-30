@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/di/app_scope.dart';
+import '../core/ui/ds_card.dart';
 import '../data/collection_schedule.dart';
 import '../data/haptics.dart';
 import '../data/settings_store.dart';
@@ -468,21 +469,11 @@ class _TipCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tip = todayTip();
 
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: tokens.surface,
-        border: Border.all(color: tokens.border),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2B2B2D).withValues(alpha: 0.14),
-            offset: const Offset(0, 1),
-            blurRadius: 2,
-          ),
-        ],
-      ),
-      child: Column(
+    return DsCard(
+             elevated: true,
+             radius: 24,
+             clipBehavior: Clip.antiAlias,
+             child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 배너 — 13번 패턴 라이브러리 에셋, 팁이 바뀌는 날마다 교체
@@ -523,7 +514,7 @@ class _TipCard extends StatelessWidget {
           ),
         ],
       ),
-    );
+           );
   }
 }
 
@@ -688,16 +679,10 @@ class _HowSheet extends StatelessWidget {
                     size: 15,
                     color: t.dark ? const Color(0xFF8C9199) : kNeutral400),
                 const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: t.accentChipBg,
-                    border: Border.all(
-                      color: t.dark ? kAccent700 : kAccent300,
-                    ),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
+                DsCard(
+                  tinted: true,
+                  radius: 999,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

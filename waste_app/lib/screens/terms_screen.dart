@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/ui/ds_card.dart';
 import '../data/haptics.dart';
 import '../data/legal_terms.dart';
 import '../theme/app_theme.dart';
@@ -25,13 +26,8 @@ class TermsListScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, kSpaceS, 20, kSpaceXL),
           children: [
-            Container(
+            DsCard(
               clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: t.surface,
-                border: Border.all(color: t.border),
-                borderRadius: BorderRadius.circular(16),
-              ),
               child: Column(
                 children: [
                   for (final (i, doc) in kLegalDocs.indexed) ...[
@@ -150,13 +146,9 @@ class TermsDetailScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 14),
-            Container(
+            DsCard(
+              tinted: true,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              decoration: BoxDecoration(
-                color: t.accentChipBg,
-                border: Border.all(color: t.dark ? kAccent700 : kAccent300),
-                borderRadius: BorderRadius.circular(16),
-              ),
               child: Text(
                 doc.summary,
                 style: TextStyle(

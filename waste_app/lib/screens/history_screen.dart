@@ -1,7 +1,9 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../core/di/app_scope.dart';
+import '../core/ui/ds_card.dart';
 import '../data/haptics.dart';
 import '../data/history_repository.dart';
 import '../data/waste_info.dart';
@@ -216,17 +218,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         InkWell(
                           borderRadius: BorderRadius.circular(14),
                           onTap: _pickRange,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
+                          child: DsCard(
+                                   tinted: true,
+                                   radius: 14,
+                                   padding: const EdgeInsets.symmetric(
                                 horizontal: 11, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: t.accentChipBg,
-                              border: Border.all(
-                                color: t.dark ? kAccent700 : kAccent300,
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Row(
+                                   child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.calendar_month_outlined,
@@ -242,7 +239,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                 ),
                               ],
                             ),
-                          ),
+                                 ),
                         ),
                       ],
                     ),

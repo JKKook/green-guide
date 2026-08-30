@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import '../api/api_client.dart';
 import '../core/di/app_scope.dart';
 import '../core/feedback/app_snackbar.dart';
+import '../core/ui/ds_card.dart';
 import '../data/collection_schedule.dart';
 import '../data/haptics.dart';
 import '../data/settings_store.dart';
@@ -734,23 +735,12 @@ class _DsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: margin,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: tokens.surface,
-        border: Border.all(color: tokens.border),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2B2B2D).withValues(alpha: 0.14),
-            offset: const Offset(0, 1),
-            blurRadius: 2,
-          ),
-        ],
-      ),
-      child: child,
-    );
+    return DsCard(
+             elevated: true,
+             margin: margin,
+             clipBehavior: Clip.antiAlias,
+             child: child,
+           );
   }
 }
 
