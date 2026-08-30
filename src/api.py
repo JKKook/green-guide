@@ -33,6 +33,7 @@ from src.schemas import (
 from src.hand_detector import get_hand_detector
 from src.regions import extract_regions, render_hatching
 from src.segment import get_segmenter
+from src.services.recording import record_safely
 from src.dinov2_classifier import get_dinov2_classifier
 from src.stage1_classifier import get_stage1_classifier
 from src.uploads import get_recorder
@@ -389,27 +390,18 @@ async def predict_hier(
             for ev in evidence
         ]
 
-    upload_id: str | None = None
-    if config.COLLECT_USER_UPLOADS:
-        try:
-            # user_uploads 스키마와 호환되는 형태로 기록 (게이트 적용 결과 기준)
-            upload_id = get_recorder().record_prediction(
-                image_bytes=raw,
-                content_type=image.content_type or "application/octet-stream",
-                prediction={
-                    "predicted_class": result["display_class"],
-                    "confidence": (
-                        result["fine_confidence"]
-                        if result["display_level"] == "fine"
-                        else result["coarse_confidence"]
-                    ),
-                    "all_probabilities": result["coarse_probabilities"],
-                    "model_arch": result["model_arch"],
-                    "inference_ms": result["inference_ms"],
-                },
-            )
-        except Exception as exc:  # noqa: BLE001
-            log.warning(f"upload collection failed: {exc}")
+    # user_uploads 스키마와 호환되는 형태로 기록 (게이트 적용 결과 기준)
+    upload_id = record_safely(raw, image, {
+        "predicted_class": result["display_class"],
+        "confidence": (
+            result["fine_confidence"]
+            if result["display_level"] == "fine"
+            else result["coarse_confidence"]
+        ),
+        "all_probabilities": result["coarse_probabilities"],
+        "model_arch": result["model_arch"],
+        "inference_ms": result["inference_ms"],
+    })
 
     return PredictionHierResponse(**result, upload_id=upload_id)
 
@@ -645,17 +637,7 @@ async def predict(
 
     result = classifier.predict(color_input, edge_input)
 
-    upload_id: str | None = None
-    if config.COLLECT_USER_UPLOADS:
-        try:
-            upload_id = get_recorder().record_prediction(
-                image_bytes=raw,
-                content_type=image.content_type or "application/octet-stream",
-                prediction=result,
-            )
-        except Exception as exc:  # noqa: BLE001
-            # 수집 실패는 추론 자체를 막지 않도록 — 로그만 남기고 응답은 정상
-            log.warning(f"upload collection failed: {exc}")
+    upload_id = record_safely(raw, image, result)
 
     return PredictionResponse(**result, upload_id=upload_id)
 
@@ -1012,16 +994,7 @@ async def predict_centered(
 
     if hand_area >= 0.50:
         result = _force_non_object_result(f"hand area {hand_area:.2f} >= 0.50")
-        upload_id: str | None = None
-        if config.COLLECT_USER_UPLOADS:
-            try:
-                upload_id = get_recorder().record_prediction(
-                    image_bytes=raw,
-                    content_type=image.content_type or "application/octet-stream",
-                    prediction=result,
-                )
-            except Exception as exc:  # noqa: BLE001
-                log.warning(f"upload collection failed: {exc}")
+        upload_id = record_safely(raw, image, result)
         return PredictionResponse(**result, upload_id=upload_id)
 
     # ─ Stage 1: binary classifier — waste/non-waste 판정 ─
@@ -1033,16 +1006,7 @@ async def predict_centered(
 
     if not is_waste:
         result = _force_non_object_result(f"stage1 waste_prob={waste_prob:.3f} < 0.50")
-        upload_id = None
-        if config.COLLECT_USER_UPLOADS:
-            try:
-                upload_id = get_recorder().record_prediction(
-                    image_bytes=raw,
-                    content_type=image.content_type or "application/octet-stream",
-                    prediction=result,
-                )
-            except Exception as exc:  # noqa: BLE001
-                log.warning(f"upload collection failed: {exc}")
+        upload_id = record_safely(raw, image, result)
         return PredictionResponse(**result, upload_id=upload_id)
 
     # ─ Stage 2: 자동 크롭 + 13-class 분류 ─────────────
@@ -1060,16 +1024,7 @@ async def predict_centered(
         log.warning(f"dinov2 ensemble failed: {exc}")
 
     # upload 기록 (원본 이미지 — 사용자 피드백·재학습은 원본 기준)
-    upload_id = None
-    if config.COLLECT_USER_UPLOADS:
-        try:
-            upload_id = get_recorder().record_prediction(
-                image_bytes=raw,
-                content_type=image.content_type or "application/octet-stream",
-                prediction=result,
-            )
-        except Exception as exc:  # noqa: BLE001
-            log.warning(f"upload collection failed: {exc}")
+    upload_id = record_safely(raw, image, result)
 
     return PredictionResponse(**result, upload_id=upload_id)
 
@@ -1103,16 +1058,7 @@ async def predict_with_cam(
             log.warning(f"CAM rendering failed: {exc}")
 
     # /predict 와 동일하게 upload 기록 (active learning 데이터로 동등하게 누적)
-    upload_id: str | None = None
-    if config.COLLECT_USER_UPLOADS:
-        try:
-            upload_id = get_recorder().record_prediction(
-                image_bytes=raw,
-                content_type=image.content_type or "application/octet-stream",
-                prediction=result,
-            )
-        except Exception as exc:  # noqa: BLE001
-            log.warning(f"upload collection failed: {exc}")
+    upload_id = record_safely(raw, image, result)
 
     return PredictionWithCamResponse(
         **result,
@@ -1149,16 +1095,7 @@ async def predict_with_mask(
     except Exception as exc:  # noqa: BLE001
         log.warning(f"segmentation failed: {exc}")
 
-    upload_id: str | None = None
-    if config.COLLECT_USER_UPLOADS:
-        try:
-            upload_id = get_recorder().record_prediction(
-                image_bytes=raw,
-                content_type=image.content_type or "application/octet-stream",
-                prediction=result,
-            )
-        except Exception as exc:  # noqa: BLE001
-            log.warning(f"upload collection failed: {exc}")
+    upload_id = record_safely(raw, image, result)
 
     return PredictionWithMaskResponse(
         **result,
