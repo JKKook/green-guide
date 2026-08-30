@@ -206,7 +206,9 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
     try {
       await controller.setFlashMode(_torch ? FlashMode.off : FlashMode.torch);
       if (mounted) setState(() => _torch = !_torch);
-    } catch (_) {}
+    } catch (_) {
+      // 토치 미지원 기기 — 토글 상태를 바꾸지 않고 조용히 무시
+    }
   }
 
   Future<void> _flipCamera() async {

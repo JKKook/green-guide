@@ -69,7 +69,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final info = await PackageInfo.fromPlatform();
       version = '${info.version} (${info.buildNumber})';
-    } catch (_) {}
+    } catch (_) {
+      // 패키지 정보 조회 실패(테스트·일부 기기) — 버전 표시만 비운다
+    }
     if (!mounted) return;
     setState(() {
       _devMode = dev;

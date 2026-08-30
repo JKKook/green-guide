@@ -61,7 +61,9 @@ class _FeedbackCardState extends State<FeedbackCard> {
         modelArch: confirmed ? p.modelArch : 'user-corrected ← ${p.modelArch}',
       );
       if (mounted) setState(() => _saved = true);
-    } catch (_) {}
+    } catch (_) {
+      // 기기 저장 실패(저장 공간 등) — 서버 피드백은 계속 진행
+    }
 
     // 2) 서버 피드백 — 업로드 ID 가 없거나(온디바이스) 서버가 모르는 라벨이면
     //    로컬 기록만. (자유 입력을 그대로 보내면 서버가 400 으로 거절함)

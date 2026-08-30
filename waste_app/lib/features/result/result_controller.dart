@@ -15,6 +15,7 @@ import 'package:flutter/widgets.dart';
 import '../../api/api_client.dart';
 import '../../api/models.dart';
 import '../../core/di/app_scope.dart';
+import '../../core/log.dart';
 import '../../data/haptics.dart';
 import '../../data/image_quality.dart';
 import '../../data/settings_store.dart';
@@ -185,7 +186,9 @@ class ResultController extends ChangeNotifier {
       if (_disposed || info == null) return;
       _regionInfo = info;
       _notify();
-    } catch (_) {}
+    } catch (_) {
+      // 지역 규정은 선택적 향상 — 실패하면 전국 공통 안내로 표시
+    }
   }
 
   /// 탐지-후-분류 — 장면의 객체 후보들 (백그라운드, 실패해도 무해).
@@ -250,7 +253,7 @@ class ResultController extends ChangeNotifier {
     final stream = FileImage(image).resolve(const ImageConfiguration());
     stream.addListener(
       ImageStreamListener((info, _) {
-        debugPrint(
+        appLog(
           '[tap-select] imgSize resolved: '
           '${info.image.width}x${info.image.height}',
         );
@@ -260,14 +263,14 @@ class ResultController extends ChangeNotifier {
           info.image.height.toDouble(),
         );
         _notify();
-      }, onError: (e, _) => debugPrint('[tap-select] imgSize resolve 실패: $e')),
+      }, onError: (e, _) => appLog('[tap-select] imgSize resolve 실패: $e')),
     );
   }
 
   /// 표시 좌표 → 원본 정규화 좌표 (BoxFit.cover 보정).
   /// 원본 크기 미해석이면 null (위젯이 안내 + 재해석), 범위 밖이면 null.
   Offset? tapToNorm(Offset local, Size view) {
-    debugPrint(
+    appLog(
       '[tap-select] tap local=$local view=$view '
       'imgSize=$_imgSize loading=$loading busy=$_retapBusy',
     );

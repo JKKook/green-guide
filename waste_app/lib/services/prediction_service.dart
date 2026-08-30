@@ -7,10 +7,9 @@ library;
 
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
-
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../core/log.dart';
 import '../data/settings_store.dart';
 
 
@@ -41,8 +40,7 @@ class PredictionService {
       return await client.predictHier(image, onUploadProgress: onUploadProgress);
     } on ApiException catch (e) {
       if (e.statusCode == 404 || e.statusCode == 503) {
-        // ignore: avoid_print
-        _log('[predict] hier 미지원 서버 (${e.statusCode}) → 기존 경로 fallback');
+        appLog('[predict] hier 미지원 서버 (${e.statusCode}) → 기존 경로 fallback');
         return centered
             ? client.predictCentered(image, onUploadProgress: onUploadProgress)
             : client.predict(image, onUploadProgress: onUploadProgress);
@@ -77,8 +75,3 @@ class PredictionService {
 /// modelArch 가 fallback 으로 반환됐는지 판별 (UI 배지용).
 bool isCloudFallback(String modelArch) => modelArch.startsWith('cloud-fallback');
 
-
-/// 진단 로그 — 릴리즈 빌드에서는 출력하지 않는다(logcat 노출 방지).
-void _log(String message) {
-  if (kDebugMode) debugPrint(message);
-}

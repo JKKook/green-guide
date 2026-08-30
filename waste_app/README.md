@@ -205,18 +205,27 @@ cd /Users/whdrnr01/ai/waste-api
 
 ## 구성 요소
 
-| 파일 | 역할 |
+| 경로 | 역할 |
 |---|---|
-| `lib/main.dart` | 앱 진입점, MaterialApp 설정 |
-| `lib/theme/app_theme.dart` | Material 3 light/dark theme (green seed color) |
-| `lib/api/models.dart` | `Prediction`, `ServiceInfo` 응답 모델 (Python Pydantic 과 1:1) |
-| `lib/api/api_client.dart` | `WasteApiClient` — `/predict`, `/health`, `/` 호출 + 에러 처리 |
-| `lib/data/waste_info.dart` | 6개 클래스의 한국어 메타 + 분리수거 상세 안내 |
-| `lib/data/settings_store.dart` | API URL 영구 저장 (shared_preferences) |
-| `lib/screens/home_screen.dart` | 메인 화면 — 이미지 선택 + 분류 트리거 |
-| `lib/screens/result_screen.dart` | 결과 화면 — 메인 카드 + 가이드 + 확률 분포 |
-| `lib/screens/settings_screen.dart` | API URL 변경 + 연결 테스트 |
-| `test/widget_test.dart` | HomeScreen 기본 렌더링 검증 |
+| `lib/main.dart` · `lib/app.dart` | 진입점(초기화·서버 웜업) / `GreenGuideApp`(MaterialApp·테마·로케일) |
+| `lib/core/di/app_scope.dart` | **의존 접근점** — `AppScope.settings/history/prediction`, `AppScope.api()` |
+| `lib/core/ui/ds_card.dart` | 디자인 시스템 카드(`DsCard`: elevated/tinted/radius) |
+| `lib/core/feedback/app_snackbar.dart` | `showAppSnackBar` / `showAppErrorSnackBar`(friendlyError 경유) |
+| `lib/core/log.dart` | `appLog` — 릴리즈에서 출력하지 않는 진단 로그 |
+| `lib/theme/` | `app_theme.dart`(ThemeData·색 램프·간격/반경 토큰·잉크 상수), `design_tokens.dart`(`DsTokens` 라이트/다크 대응색) |
+| `lib/api/` | `WasteApiClient`, 응답 모델(`Prediction`·`PredictObjects`·…) |
+| `lib/data/` | `SettingsStore`(SharedPreferences 단일 접근), `HistoryRepository`(sqflite), 클래스 메타·신뢰도·화질 |
+| `lib/services/` | `PredictionService`(계층 분류 → 구버전 fallback), `ClassLoader`, `ServerWarmup`, 안정도 감지 |
+| `lib/features/<기능>/` | 화면 + 그 화면 전용 위젯(`widgets/`) — capture · result(+`ResultController`) · home · history · search · schedule · settings · onboarding · shell |
+| `lib/widgets/` | 기능에 묶이지 않는 범용 위젯(animated_entry·criteria_sheet·hier_badge·korea_map·region_picker) |
+| `test/` | 순수 로직(`data/`·`api`), `core/`(AppScope), `features/`(ResultController), `widgets/`(화면·골든) — `helpers/test_env.dart` 로 플러그인 가짜 구성 |
+
+### 공통단(core) 사용 규칙
+
+- 설정·DB·서비스·API 클라이언트는 **직접 생성하지 않고 `AppScope`** 로 접근한다. `SharedPreferences` 는 `SettingsStore` 만 만진다.
+- 스낵바는 `showAppSnackBar`, 카드 컨테이너는 `DsCard`, 로그는 `appLog`. 색은 `DsTokens`/`app_theme` 상수, 간격·반경은 `kSpace*`/`kRadius*`.
+- `core/` 에 넣는 기준: 2개 이상 feature 가 쓰고, 도메인(분류·지역·일정)을 모르며, 자체 상태/네트워크가 없다.
+- 검증: `flutter analyze && flutter test` (골든 갱신은 `flutter test --update-goldens test/widgets/golden_test.dart`). 리팩토링 이력·계획은 `REFACTORING_GUIDE.md`.
 
 ---
 
@@ -293,25 +302,16 @@ flutter build appbundle --release
 
 ```
 waste_app/
-├── .gitignore
-├── README.md
-├── pubspec.yaml
-├── android/                          # Android 네이티브 (auto-generated)
-│   └── app/src/main/AndroidManifest.xml   # 권한·clearText 설정
 ├── lib/
-│   ├── main.dart
-│   ├── api/
-│   │   ├── api_client.dart
-│   │   └── models.dart
-│   ├── data/
-│   │   ├── settings_store.dart
-│   │   └── waste_info.dart
-│   ├── screens/
-│   │   ├── home_screen.dart
-│   │   ├── result_screen.dart
-│   │   └── settings_screen.dart
-│   └── theme/
-│       └── app_theme.dart
-└── test/
-    └── widget_test.dart
+│   ├── main.dart · app.dart
+│   ├── core/            # 공통단 — di/ ui/ feedback/ log.dart
+│   ├── theme/           # ThemeData · 토큰
+│   ├── api/  data/  services/
+│   ├── features/        # 기능별 화면 + 전용 위젯
+│   │   ├── capture/  result/  home/  history/  search/
+│   │   ├── schedule/  settings/  onboarding/  shell/
+│   └── widgets/         # 범용 위젯
+├── test/                # data/ core/ features/ widgets/(goldens/) helpers/
+├── REFACTORING_GUIDE.md
+└── pubspec.yaml
 ```
