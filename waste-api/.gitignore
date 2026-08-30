@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv*/
+venv/
+
+# Environment (secrets)
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Pytest
+.pytest_cache/
+.coverage
+
+# Logs
+*.log
+
+# 서빙 모델 — git 에 넣지 않는다. HF Hub ethanDev92/waste-models/serving/ 가 원본이고
+# Docker 빌드가 내려받는다. 로컬 개발은 scripts/fetch_models.py 로 같은 경로에 받는다.
+models/
+cache/
+local_feedback/

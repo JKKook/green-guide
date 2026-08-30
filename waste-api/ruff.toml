@@ -1,0 +1,11 @@
+# 린트 게이트: .venv/bin/ruff check src/ tests/
+line-length = 100
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "B"]
+ignore = [
+    "B008",  # FastAPI File(...)/Form(...) 기본 인자 관례
+    # 아래는 기존 코드 스타일 — 새 코드에서는 지키고, 기존 코드는 손댈 때 정리
+    "B905", "E702", "E741", "B007", "B017",
+]
