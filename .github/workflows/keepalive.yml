@@ -1,0 +1,21 @@
+# 무료 티어 절전 방지 — HF Space(48h 무요청 시 sleep)·Supabase(7일 무요청 시 일시정지).
+# Supabase 핑은 리포 시크릿 SUPABASE_URL / SUPABASE_ANON_KEY 가 있을 때만 실행.
+name: keep-alive
+on:
+  schedule:
+    - cron: "17 */12 * * *"   # 12시간마다 (UTC)
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: HF Space /health
+        run: curl -fsS --max-time 180 https://ethandev92-waste-api.hf.space/health
+      - name: Supabase REST
+        if: ${{ secrets.SUPABASE_URL != '' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          curl -fsS --max-time 30 "$SUPABASE_URL/rest/v1/region_waste_rules?select=sido&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" > /dev/null
