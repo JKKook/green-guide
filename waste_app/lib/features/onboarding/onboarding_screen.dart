@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/di/app_scope.dart';
 import '../../data/haptics.dart';
 import '../../data/settings_store.dart';
-import '../../screens/main_shell.dart';
+import '../shell/main_shell.dart';
 import 'housing_type_sheet.dart';
 import 'steps/apartment_finish_step.dart';
 import 'steps/consent_step.dart';

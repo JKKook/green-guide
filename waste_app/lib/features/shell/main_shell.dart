@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../data/haptics.dart';
-import '../features/history/history_screen.dart';
-import '../theme/app_theme.dart';
-import '../theme/design_tokens.dart';
-import '../widgets/capture_entry_sheet.dart';
-import 'home_screen.dart';
-import 'settings_screen.dart';
-import 'unified_search_screen.dart';
+import '../../data/haptics.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/design_tokens.dart';
+import '../capture/capture_entry_sheet.dart';
+import '../history/history_screen.dart';
+import '../home/home_screen.dart';
+import '../search/unified_search_screen.dart';
+import '../settings/settings_screen.dart';
 
 /// 하단 내비게이션 셸 — 홈 · 검색 · 스마트 촬영(중앙) · 기록 · 설정.
 /// 시안 8a 의 라운드 엣지 바: 위 모서리 26px + 중앙에 떠 있는

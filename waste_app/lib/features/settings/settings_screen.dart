@@ -6,21 +6,22 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../api/api_client.dart';
-import '../core/di/app_scope.dart';
-import '../core/feedback/app_snackbar.dart';
-import '../core/ui/ds_card.dart';
-import '../data/collection_schedule.dart';
-import '../data/haptics.dart';
-import '../data/settings_store.dart';
-import '../features/onboarding/housing_type_sheet.dart';
-import '../features/schedule/collection_reminders_screen.dart';
-import '../features/schedule/pickup_weekdays_sheet.dart';
-import '../theme/app_theme.dart';
-import '../theme/design_tokens.dart';
-import '../widgets/region_picker.dart';
-import 'splash_screen.dart';
+import '../../api/api_client.dart';
+import '../../core/di/app_scope.dart';
+import '../../core/feedback/app_snackbar.dart';
+import '../../core/ui/ds_card.dart';
+import '../../data/collection_schedule.dart';
+import '../../data/haptics.dart';
+import '../../data/settings_store.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/design_tokens.dart';
+import '../../widgets/region_picker.dart';
+import '../onboarding/housing_type_sheet.dart';
+import '../schedule/collection_reminders_screen.dart';
+import '../schedule/pickup_weekdays_sheet.dart';
+import '../shell/splash_screen.dart';
 import 'terms_screen.dart';
+import 'widgets/settings_rows.dart';
 
 /// 설정 — 시안 5a: 내 동네 / 알림 / 분류 / 화면 / 정보.
 class SettingsScreen extends StatefulWidget {
@@ -29,6 +30,7 @@ class SettingsScreen extends StatefulWidget {
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
+
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final SettingsStore _store = AppScope.settings;
@@ -314,13 +316,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
 
-                  _SectionLabel(tokens: t, label: '내 동네'),
+                  SettingsSectionLabel(tokens: t, label: '내 동네'),
                   DsCard(
                     elevated: true,
                     clipBehavior: Clip.antiAlias,
                     child: Column(
                       children: [
-                        _DsRow(
+                        SettingsRow(
                           tokens: t,
                           icon: Icons.place_outlined,
                           title: _region?.$2 ?? '지역 미설정',
@@ -344,7 +346,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         Container(height: 1, color: t.border),
                         // 주거 형태 — 온보딩 ③ 세대 구분 (언제든 변경)
-                        _DsRow(
+                        SettingsRow(
                           tokens: t,
                           icon: _housing == HousingType.apartment
                               ? Icons.apartment_outlined
@@ -379,7 +381,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         // 수거 요일 — 주택·빌라만 (아파트는 상시 배출)
                         if (_housing != HousingType.apartment) ...[
                           Container(height: 1, color: t.border),
-                          _DsRow(
+                          SettingsRow(
                             tokens: t,
                             icon: Icons.event_repeat_outlined,
                             title: '우리 집 수거 요일',
@@ -409,13 +411,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
 
-                  _SectionLabel(tokens: t, label: '알림'),
+                  SettingsSectionLabel(tokens: t, label: '알림'),
                   DsCard(
                     elevated: true,
                     clipBehavior: Clip.antiAlias,
                     child: Column(
                       children: [
-                        _DsRow(
+                        SettingsRow(
                           tokens: t,
                           icon: Icons.notifications_none,
                           title: '수거일 알림',
@@ -436,7 +438,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           },
                         ),
                         Container(height: 1, color: t.border),
-                        _DsRow(
+                        SettingsRow(
                           tokens: t,
                           icon: Icons.tips_and_updates_outlined,
                           title: '오늘의 팁 알림',
@@ -455,11 +457,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
 
-                  _SectionLabel(tokens: t, label: '분류'),
+                  SettingsSectionLabel(tokens: t, label: '분류'),
                   DsCard(
                     elevated: true,
                     clipBehavior: Clip.antiAlias,
-                    child: _DsRow(
+                    child: SettingsRow(
                       tokens: t,
                       icon: Icons.vibration,
                       title: '햅틱 피드백',
@@ -477,13 +479,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
 
-                  _SectionLabel(tokens: t, label: '화면'),
+                  SettingsSectionLabel(tokens: t, label: '화면'),
                   ValueListenableBuilder<ThemeMode>(
                     valueListenable: appThemeMode,
                     builder: (context, mode, _) => DsCard(
                       elevated: true,
                       clipBehavior: Clip.antiAlias,
-                      child: _DsRow(
+                      child: SettingsRow(
                         tokens: t,
                         icon: Icons.dark_mode_outlined,
                         title: '다크 모드',
@@ -502,13 +504,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
 
-                  _SectionLabel(tokens: t, label: '정보'),
+                  SettingsSectionLabel(tokens: t, label: '정보'),
                   DsCard(
                     elevated: true,
                     clipBehavior: Clip.antiAlias,
                     child: Column(
                       children: [
-                        _DsRow(
+                        SettingsRow(
                           tokens: t,
                           icon: Icons.info_outline,
                           title: '앱 정보',
@@ -518,7 +520,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onTap: _showAbout,
                         ),
                         Container(height: 1, color: t.border),
-                        _DsRow(
+                        SettingsRow(
                           tokens: t,
                           icon: Icons.description_outlined,
                           title: '약관 및 정책',
@@ -534,7 +536,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           },
                         ),
                         Container(height: 1, color: t.border),
-                        _DsRow(
+                        SettingsRow(
                           tokens: t,
                           icon: Icons.verified_outlined,
                           title: '버전',
@@ -546,11 +548,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
 
                   if (_devMode) ...[
-                    _SectionLabel(tokens: t, label: '개발자'),
+                    SettingsSectionLabel(tokens: t, label: '개발자'),
                     DsCard(
                       elevated: true,
                       clipBehavior: Clip.antiAlias,
-                      child: _DsRow(
+                      child: SettingsRow(
                         tokens: t,
                         icon: Icons.replay_outlined,
                         title: '온보딩 다시 보기',
@@ -575,7 +577,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       margin: const EdgeInsets.only(top: kSpaceS),
                       child: Column(
                         children: [
-                          _DsRow(
+                          SettingsRow(
                             tokens: t,
                             icon: Icons.auto_awesome_motion_outlined,
                             title: '더미 기록 10건 추가',
@@ -585,7 +587,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onTap: _seedDummyHistory,
                           ),
                           Container(height: 1, color: t.border),
-                          _DsRow(
+                          SettingsRow(
                             tokens: t,
                             icon: Icons.delete_sweep_outlined,
                             title: '기록 전체 삭제',
@@ -597,7 +599,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     ),
-                    _SectionLabel(tokens: t, label: '개발자 — API 서버'),
+                    SettingsSectionLabel(tokens: t, label: '개발자 — API 서버'),
                     DsCard(
                       elevated: true,
                       clipBehavior: Clip.antiAlias,
@@ -709,81 +711,5 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
       ),
     );
-  }
-}
-
-/// 섹션 라벨 — 시안: 11px w700 accent-800.
-class _SectionLabel extends StatelessWidget {
-  final DsTokens tokens;
-  final String label;
-  const _SectionLabel({required this.tokens, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 8),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.22,
-          color: tokens.accentChipText,
-        ),
-      ),
-    );
-  }
-}
-
-/// 설정 행 — 아이콘(accent-700) + 제목/부제 + 트레일링.
-class _DsRow extends StatelessWidget {
-  final DsTokens tokens;
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-  const _DsRow({
-    required this.tokens,
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    this.trailing,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final row = Padding(
-      padding: const EdgeInsets.fromLTRB(15, 14, 15, 14),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: tokens.accentStrong),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w700),
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle!,
-                    style: TextStyle(fontSize: 11, color: tokens.muted2),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          ?trailing,
-        ],
-      ),
-    );
-    if (onTap == null) return row;
-    return InkWell(onTap: onTap, child: row);
   }
 }

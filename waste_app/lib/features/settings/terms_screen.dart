@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../core/ui/ds_card.dart';
-import '../data/haptics.dart';
-import '../data/legal_terms.dart';
-import '../theme/app_theme.dart';
-import '../theme/design_tokens.dart';
+import '../../core/ui/ds_card.dart';
+import '../../data/haptics.dart';
+import '../../data/legal_terms.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/design_tokens.dart';
 
 /// 약관 및 정책 목록 — 설정 > 정보 > 약관 및 정책.
 class TermsListScreen extends StatelessWidget {

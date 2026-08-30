@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../core/di/app_scope.dart';
-import '../data/collection_schedule.dart';
-import '../data/haptics.dart';
-import '../data/history_repository.dart';
-import '../data/settings_store.dart';
-import '../data/tips.dart';
-import '../data/waste_info.dart';
-import '../features/schedule/collection_reminders_screen.dart';
-import '../features/schedule/collection_schedule_screen.dart';
-import '../theme/app_theme.dart';
-import '../theme/design_tokens.dart';
-import '../widgets/criteria_sheet.dart';
+import '../../core/di/app_scope.dart';
+import '../../data/collection_schedule.dart';
+import '../../data/haptics.dart';
+import '../../data/history_repository.dart';
+import '../../data/settings_store.dart';
+import '../../data/tips.dart';
+import '../../data/waste_info.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/design_tokens.dart';
+import '../../widgets/criteria_sheet.dart';
+import '../schedule/collection_reminders_screen.dart';
+import '../schedule/collection_schedule_screen.dart';
 
 /// 통합 검색 — 시안 7b: 품목·일정·기록·설정을 한 검색창에서.
 class UnifiedSearchScreen extends StatefulWidget {

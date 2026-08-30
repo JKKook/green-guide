@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'data/settings_store.dart';
-import 'screens/splash_screen.dart';
+import 'features/shell/splash_screen.dart';
 import 'theme/app_theme.dart';
 
 class GreenGuideApp extends StatelessWidget {

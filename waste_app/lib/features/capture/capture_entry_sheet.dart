@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../core/feedback/app_snackbar.dart';
-import '../data/haptics.dart';
-import '../screens/gallery_confirm_screen.dart';
-import '../screens/live_camera_screen.dart';
-import '../theme/app_theme.dart';
-import '../theme/design_tokens.dart';
+import '../../core/feedback/app_snackbar.dart';
+import '../../data/haptics.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/design_tokens.dart';
+import 'gallery_confirm_screen.dart';
+import 'live_camera_screen.dart';
 
 /// 스마트 촬영 진입 시트 — 시안 16a: 스마트 촬영 / 갤러리에서 선택.
 Future<void> showCaptureEntrySheet(BuildContext context) async {

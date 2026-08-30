@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 
 import '../../../data/haptics.dart';
 import '../../../data/legal_terms.dart';
-import '../../../screens/terms_screen.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/design_tokens.dart';
+import '../../settings/terms_screen.dart';
 import '../widgets/onboarding_primitives.dart';
 
 class ConsentStep extends StatefulWidget {
