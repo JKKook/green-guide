@@ -144,3 +144,17 @@ src/
 - `routers/inference.py::predict_hier` 가 여전히 ~200줄 (시맨틱 증거 융합·VLM 폴백 블록). `services/hier_pipeline.py` 로 추출 후보.
 - `predict_objects` 도 같은 패턴 (~100줄).
 - mypy 도입 시 `uploads.py:70`, `regions.py:108` 의 PIL 타입 이슈부터.
+
+## 7. 실기동 검증 (2026-08-30)
+
+리팩토링 전 커밋(`5acdfb5`)을 worktree 로 8001, 현재 코드를 8000 에 띄우고 **동일 요청 75건**
+(GET 8 + 실사진 6장·랜덤 1장 × POST 9 + 오류 입력 4)의 응답 JSON 을 비교 (`inference_ms`/`upload_id` 제외, base64 는 해시).
+
+**발견·수정한 회귀 1건**: `config.py` 를 `src/core/` 로 옮기며 `PROJECT_ROOT = Path(__file__).parent.parent` 가
+`src/` 를 가리킴 → 번들 모델(edge·DINOv2·segmenter·stage1) 전부 미발견, `/design/tokens.json` 500.
+단위 테스트는 sibling 폴백·Supabase 캐시 덕에 통과해 **잡지 못했음** → `parents[2]` 로 수정하고
+`test_project_root_points_to_repo` / `test_design_tokens_endpoint` 추가.
+
+수정 후 결과: **70/75 동일**. 나머지 5건은 모두 비회귀 —
+`/` 의 `model_path`(worktree 절대경로), 400 오류 메시지의 `BytesIO` 객체 주소 2건,
+`/predict-hier` 탭 경로 2건(같은 서버에 같은 요청을 3회 보내도 결과가 오가는 **기존 비결정성** — GrabCut/MediaPipe).

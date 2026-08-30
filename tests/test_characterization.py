@@ -68,3 +68,14 @@ def test_feedback_rejects_unconfirmed_without_label(client: TestClient) -> None:
     )
     # 수집 비활성(503) 또는 검증 실패(400) — DB 없이도 도달 가능한 두 경로
     assert res.status_code in (400, 503), res.text
+
+
+def test_project_root_points_to_repo() -> None:
+    """config 가 src/core/ 로 옮겨진 뒤 PROJECT_ROOT 가 src/ 를 가리키던 회귀 방지."""
+    from src.core import config
+    assert (config.PROJECT_ROOT / "requirements.txt").is_file()
+    assert (config.PROJECT_ROOT / "design" / "tokens.json").is_file()
+
+
+def test_design_tokens_endpoint(client: TestClient) -> None:
+    assert client.get("/design/tokens.json").status_code == 200

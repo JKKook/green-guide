@@ -51,8 +51,7 @@ def design_tokens() -> dict:
     디자인 도구(Figma Tokens/style-dictionary)·시안 문서가 URL 로 소비.
     """
     import json  # noqa: PLC0415
-    from pathlib import Path  # noqa: PLC0415
-    p = Path(__file__).resolve().parent.parent / "design" / "tokens.json"
+    p = config.PROJECT_ROOT / "design" / "tokens.json"
     return json.loads(p.read_text(encoding="utf-8"))
 
 
