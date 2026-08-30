@@ -12,7 +12,8 @@ load_dotenv()  # 아래 os.getenv 전에 .env 반영 (이미 설정된 env 는 �
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]  # src/core/config.py → 레포 루트
 
 # 자매 프로젝트의 ONNX 모델 직접 참조 (로컬 개발용)
-CLASSIFIER_ROOT: Path = PROJECT_ROOT.parents[1] / "ml" / "classifier"  # services/inference-api → 레포 루트/ml/classifier
+# services/inference-api → <레포 루트>/ml/classifier
+CLASSIFIER_ROOT: Path = PROJECT_ROOT.parents[1] / "ml" / "classifier"
 DEFAULT_MODEL_ARCH: str = "cnn"  # mlp | cnn
 
 

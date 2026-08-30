@@ -7,4 +7,4 @@ supabase==2.7.4
 pytest==8.3.3
 
 # 공통단 (editable)
--e ../waste-common
+-e ../../libs/waste-common

@@ -14,4 +14,4 @@ python-dotenv==1.0.1
 requests==2.32.3
 
 # 공통단 (editable)
--e ../waste-common
+-e ../../libs/waste-common

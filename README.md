@@ -5,9 +5,7 @@
 
 ## 저장소 구조
 
-> 2026-08-30 기준 **이전 진행 중**. 각 구성 요소는 폴더별 리팩토링이 끝나는 대로 아래 목표 구조로 옮깁니다.
-
-목표 구조 (ML 표준 레이아웃 + `apps`/`services` 분리):
+2026-08-30 적용 완료 — ML 표준 레이아웃 + `apps`/`services` 분리:
 
 ```
 green-guide/
@@ -15,27 +13,30 @@ green-guide/
 │   └── mobile/               Flutter 앱 (Android) — 촬영·분석 결과·기록·설정
 ├── services/
 │   └── inference-api/        FastAPI 추론 서버 — Hugging Face Spaces 배포, Supabase 연동
-├── ml/                       모델 파이프라인 (데이터 수집·전처리 → 학습 → 평가 → ONNX 내보내기 → 발행)
-│   ├── configs/              하이퍼파라미터·taxonomy·경로
-│   ├── data/                 raw / interim / processed (git 제외)
-│   ├── src/greenguide_ml/    설치 가능한 패키지 (data · datasets · models · training · evaluation · export · registry)
-│   ├── scripts/              1회성 데이터 통합·실험 스크립트
-│   ├── experiments/          학습 산출물·로그 (git 제외)
-│   └── tests/
+├── ml/                       모델 파이프라인
+│   ├── classifier/           학습·평가·ONNX 내보내기·발행 (src/·scripts/·tests/)
+│   ├── preprocessor/         데이터 수집·정제·벡터화 (src/·tests/)
+│   └── data/raw/             AI-Hub·TACO·Open Images·합성 원본 (git 제외)
+├── libs/
+│   └── waste-common/         공통 패키지 — 설정(경로)·taxonomy·이미지 전처리·Supabase·로깅
 ├── docs/                     설계 문서(plans/)·UI/UX 시안(design/)·모델 방법론·배포 체크리스트
 ├── wiki/                     프로젝트 지식 베이스 (llm-wiki)
 ├── bin/                      로컬 유틸 스크립트
 └── .github/workflows/        keep-alive 등 자동화
 ```
 
-현재 위치 ↔ 목표 위치:
+이전 이름 ↔ 현재 위치 (2026-08-30 이전 커밋·문서에서 옛 이름이 보이면 이 표로 읽으세요):
 
-| 현재 | 목표 |
+| 이전 | 현재 |
 | --- | --- |
 | `waste_app/` | `apps/mobile/` |
 | `waste-api/` | `services/inference-api/` |
-| `waste-classifier/` + `waste-preprocessor/` | `ml/` (패키지 하나로 통합) |
-| `*_staging/` (AI-Hub·TACO·Open Images·합성) | `ml/data/raw/` (git 제외) |
+| `waste-classifier/` | `ml/classifier/` |
+| `waste-preprocessor/` | `ml/preprocessor/` |
+| `waste-common/` | `libs/waste-common/` |
+| `*_staging/` | `ml/data/raw/<name>/` (git 제외) |
+
+다음 단계(선택): `ml/classifier`+`ml/preprocessor`를 `ml/src/greenguide_ml` 단일 패키지로 통합, `configs/`·`experiments/` 도입.
 
 학습 데이터·모델 가중치·`.env`·서명 키는 저장소에 포함하지 않습니다 (`.gitignore` 참고).
 
@@ -53,6 +54,6 @@ green-guide/
 
 각 폴더의 README 를 참고하세요.
 
-- 앱 빌드: `waste_app/` — Flutter 3.44 / Dart 3.12, `flutter build appbundle --release`
-- 서버 배포: `waste-api/` — Hugging Face Space `ethanDev92/waste-api`. 모노레포에서 `git subtree push --prefix=waste-api hf main` (remote `hf` = Space URL). 서빙 모델은 git 이 아니라 HF Hub `ethanDev92/waste-models/serving/` 에서 빌드 시 다운로드
-- 모델 발행: `waste-classifier/scripts/publish_hier_version.py` — HF Hub `ethanDev92/waste-models`
+- 앱 빌드: `apps/mobile/` — Flutter 3.44 / Dart 3.12, `flutter build appbundle --release`
+- 서버 배포: `services/inference-api/` — Hugging Face Space `ethanDev92/waste-api`. 모노레포에서 `git subtree push --prefix=services/inference-api hf main` (구조 변경 직후 첫 push 는 `--force` 필요 — split 이력이 새 prefix 부터 시작) (remote `hf` = Space URL). 서빙 모델은 git 이 아니라 HF Hub `ethanDev92/waste-models/serving/` 에서 빌드 시 다운로드
+- 모델 발행: `ml/classifier/scripts/publish_hier_version.py` — HF Hub `ethanDev92/waste-models`

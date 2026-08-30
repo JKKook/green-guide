@@ -44,10 +44,9 @@ import zipfile
 from collections import defaultdict
 from pathlib import Path
 
-from _base import PROJECT_ROOT, RAW_DIR
+from _base import RAW_DIR
 from PIL import Image
-
-from waste_common import settings  # noqa: E402
+from waste_common import settings
 
 STAGING = settings.WASTE_ROOT / "ml" / "data" / "raw" / "aihub"
 STAGING_140 = settings.WASTE_ROOT / "ml" / "data" / "raw" / "aihub_140"

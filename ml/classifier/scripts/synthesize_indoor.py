@@ -26,7 +26,7 @@ import albumentations as A
 import cv2
 import numpy as np
 import onnxruntime as ort
-from _base import PREPROCESSOR_ROOT, PROJECT_ROOT, RAW_DIR, make_parser
+from _base import PREPROCESSOR_ROOT, RAW_DIR, make_parser
 from PIL import Image
 from waste_common import imaging, settings
 

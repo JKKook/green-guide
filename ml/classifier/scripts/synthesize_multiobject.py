@@ -24,7 +24,7 @@ from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
-from _base import PROJECT_ROOT, make_parser
+from _base import make_parser
 from PIL import Image, ImageFilter
 from waste_common import imaging, settings
 
