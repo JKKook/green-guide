@@ -38,7 +38,7 @@
 | 세션 | 담당 범위 |
 | --- | --- |
 | waste_app | `waste_app/` 내부 |
-| waste-api | `waste-api/` 내부 (+ `waste-common/`) |
+| waste-api | `waste-api/` 내부 (+ `waste-common/`). 2026-08-30 모노레포 편입 — 자체 git 없음. HF 배포는 `git subtree push --prefix=waste-api hf main` (사용자 요청 시) |
 | waste-classifier | `waste-classifier/` 내부 |
 | waste-preprocessor | `waste-preprocessor/` 내부 |
 | 상위 구조(repo) | 루트 파일, `docs/`, `wiki/`, `.github/`, 폴더 이동(`apps/` `services/` `ml/`) |

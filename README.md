@@ -54,5 +54,5 @@ green-guide/
 각 폴더의 README 를 참고하세요.
 
 - 앱 빌드: `waste_app/` — Flutter 3.44 / Dart 3.12, `flutter build appbundle --release`
-- 서버 배포: `waste-api/` — Hugging Face Space `ethanDev92/waste-api` (push = 배포)
+- 서버 배포: `waste-api/` — Hugging Face Space `ethanDev92/waste-api`. 모노레포에서 `git subtree push --prefix=waste-api hf main` (remote `hf` = Space URL). 서빙 모델은 git 이 아니라 HF Hub `ethanDev92/waste-models/serving/` 에서 빌드 시 다운로드
 - 모델 발행: `waste-classifier/scripts/publish_hier_version.py` — HF Hub `ethanDev92/waste-models`
