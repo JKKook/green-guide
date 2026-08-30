@@ -2454,9 +2454,9 @@ class _GuideCard extends StatelessWidget {
     final bodyColor = t.dark ? t.muted2 : const Color(0xFF5D5D60);
 
     return DsCard(
-             radius: 20,
-             padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-             child: Column(
+      radius: 20,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -2584,7 +2584,7 @@ class _GuideCard extends StatelessWidget {
           ),
         ],
       ),
-           );
+    );
   }
 }
 

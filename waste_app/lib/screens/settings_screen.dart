@@ -314,8 +314,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
 
                   _SectionLabel(tokens: t, label: '내 동네'),
-                  _DsCard(
-                    tokens: t,
+                  DsCard(
+                    elevated: true,
+                    clipBehavior: Clip.antiAlias,
                     child: Column(
                       children: [
                         _DsRow(
@@ -408,8 +409,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
 
                   _SectionLabel(tokens: t, label: '알림'),
-                  _DsCard(
-                    tokens: t,
+                  DsCard(
+                    elevated: true,
+                    clipBehavior: Clip.antiAlias,
                     child: Column(
                       children: [
                         _DsRow(
@@ -453,8 +455,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
 
                   _SectionLabel(tokens: t, label: '분류'),
-                  _DsCard(
-                    tokens: t,
+                  DsCard(
+                    elevated: true,
+                    clipBehavior: Clip.antiAlias,
                     child: _DsRow(
                       tokens: t,
                       icon: Icons.vibration,
@@ -476,8 +479,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _SectionLabel(tokens: t, label: '화면'),
                   ValueListenableBuilder<ThemeMode>(
                     valueListenable: appThemeMode,
-                    builder: (context, mode, _) => _DsCard(
-                      tokens: t,
+                    builder: (context, mode, _) => DsCard(
+                      elevated: true,
+                      clipBehavior: Clip.antiAlias,
                       child: _DsRow(
                         tokens: t,
                         icon: Icons.dark_mode_outlined,
@@ -498,8 +502,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
 
                   _SectionLabel(tokens: t, label: '정보'),
-                  _DsCard(
-                    tokens: t,
+                  DsCard(
+                    elevated: true,
+                    clipBehavior: Clip.antiAlias,
                     child: Column(
                       children: [
                         _DsRow(
@@ -541,8 +546,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   if (_devMode) ...[
                     _SectionLabel(tokens: t, label: '개발자'),
-                    _DsCard(
-                      tokens: t,
+                    DsCard(
+                      elevated: true,
+                      clipBehavior: Clip.antiAlias,
                       child: _DsRow(
                         tokens: t,
                         icon: Icons.replay_outlined,
@@ -562,8 +568,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         },
                       ),
                     ),
-                    _DsCard(
-                      tokens: t,
+                    DsCard(
+                      elevated: true,
+                      clipBehavior: Clip.antiAlias,
                       margin: const EdgeInsets.only(top: 8),
                       child: Column(
                         children: [
@@ -590,8 +597,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     _SectionLabel(tokens: t, label: '개발자 — API 서버'),
-                    _DsCard(
-                      tokens: t,
+                    DsCard(
+                      elevated: true,
+                      clipBehavior: Clip.antiAlias,
                       child: Padding(
                         padding: const EdgeInsets.all(kSpaceL),
                         child: Column(
@@ -723,24 +731,6 @@ class _SectionLabel extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-/// 시안 설정 카드 — radius 16, hairline 보더, 옅은 그림자.
-class _DsCard extends StatelessWidget {
-  final DsTokens tokens;
-  final Widget child;
-  final EdgeInsetsGeometry? margin;
-  const _DsCard({required this.tokens, required this.child, this.margin});
-
-  @override
-  Widget build(BuildContext context) {
-    return DsCard(
-             elevated: true,
-             margin: margin,
-             clipBehavior: Clip.antiAlias,
-             child: child,
-           );
   }
 }
 

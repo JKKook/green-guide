@@ -470,10 +470,10 @@ class _TipCard extends StatelessWidget {
     final tip = todayTip();
 
     return DsCard(
-             elevated: true,
-             radius: 24,
-             clipBehavior: Clip.antiAlias,
-             child: Column(
+      elevated: true,
+      radius: 24,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 배너 — 13번 패턴 라이브러리 에셋, 팁이 바뀌는 날마다 교체
@@ -514,7 +514,7 @@ class _TipCard extends StatelessWidget {
           ),
         ],
       ),
-           );
+    );
   }
 }
 

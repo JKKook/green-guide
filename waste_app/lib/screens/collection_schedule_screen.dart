@@ -364,10 +364,10 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                   final date = monday.add(Duration(days: todayIdx + i));
                   final isToday = i == 0;
                   return DsCard(
-                           elevated: true,
-                           margin: const EdgeInsets.only(bottom: 8),
-                           padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
-                           child: Row(
+                    elevated: true,
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
+                    child: Row(
                       children: [
                         SizedBox(
                           width: 40,
@@ -433,7 +433,7 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
                           ),
                       ],
                     ),
-                         );
+                  );
                 }),
             const SizedBox(height: 8),
             // 아파트 단지 안내
