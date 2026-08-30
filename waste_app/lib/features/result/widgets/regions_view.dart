@@ -45,13 +45,13 @@ class RegionsView extends StatelessWidget {
   }
 }
 
-
 /// 한 재질 영역의 라벨 badge — bbox 중심(상단)에 배치.
 class RegionBadge extends StatelessWidget {
   final MaterialRegion region;
   final double areaW;
   final double areaH;
-  const RegionBadge({super.key, 
+  const RegionBadge({
+    super.key,
     required this.region,
     required this.areaW,
     required this.areaH,
@@ -63,7 +63,10 @@ class RegionBadge extends StatelessWidget {
     final accent = info?.color ?? Theme.of(context).colorScheme.primary;
     // bbox 중심 x, 상단 y (BoxFit.cover 라 정확 매핑은 어려워 근사 배치).
     const badgeW = 116.0;
-    final left = (region.cx * areaW - badgeW / 2).clamp(4.0, areaW - badgeW - 4);
+    final left = (region.cx * areaW - badgeW / 2).clamp(
+      4.0,
+      areaW - badgeW - 4,
+    );
     final top = (region.bboxNorm[1] * areaH).clamp(6.0, areaH - 36);
 
     return Positioned(
@@ -77,14 +80,19 @@ class RegionBadge extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.4),
-              blurRadius: 6, offset: const Offset(0, 2),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(info?.icon ?? Icons.help_outline, color: Colors.white, size: 16),
+            Icon(
+              info?.icon ?? Icons.help_outline,
+              color: Colors.white,
+              size: 16,
+            ),
             const SizedBox(width: 5),
             Text(
               info?.displayName ?? region.slug,

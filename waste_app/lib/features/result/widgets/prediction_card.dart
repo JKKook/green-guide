@@ -20,7 +20,8 @@ class PredictionCard extends StatelessWidget {
   final WasteInfo? info;
   final Color accent;
   final ConfidenceAssessment assessment;
-  const PredictionCard({super.key, 
+  const PredictionCard({
+    super.key,
     required this.image,
     required this.prediction,
     required this.info,
@@ -92,7 +93,11 @@ class PredictionCard extends StatelessWidget {
         ],
         const SizedBox(height: 12),
         ExplainButton(
-            image: image, accent: accent, info: info, prediction: prediction),
+          image: image,
+          accent: accent,
+          info: info,
+          prediction: prediction,
+        ),
       ],
     );
   }

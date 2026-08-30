@@ -25,12 +25,13 @@ class ResultLoadedContent extends StatelessWidget {
   final Prediction prediction;
   final ImageQualityResult? quality;
   final PredictionWithRegions? regions;
-  final bool objectsMulti;   // 물건 후보 ≥2 감지 (미선택 상태)
-  final RegionInfo? regionInfo;  // 지역별 배출 규정 (설정 시)
-  final bool regionSet;          // 지역 설정 여부 (규정 데이터가 없을 때 캡션 분기)
-  final bool isSmartCapture;     // 다시 촬영하기 / 다시 선택하기 라벨
-  final String? sceneNote;       // 장면 결과 vs 물건별 결과 불일치 안내
-  const ResultLoadedContent({super.key, 
+  final bool objectsMulti; // 물건 후보 ≥2 감지 (미선택 상태)
+  final RegionInfo? regionInfo; // 지역별 배출 규정 (설정 시)
+  final bool regionSet; // 지역 설정 여부 (규정 데이터가 없을 때 캡션 분기)
+  final bool isSmartCapture; // 다시 촬영하기 / 다시 선택하기 라벨
+  final String? sceneNote; // 장면 결과 vs 물건별 결과 불일치 안내
+  const ResultLoadedContent({
+    super.key,
     required this.image,
     required this.prediction,
     this.quality,
@@ -57,9 +58,11 @@ class ResultLoadedContent extends StatelessWidget {
     final info = reject
         ? infoFor('etc')
         : (prediction.hier != null
-            ? infoForWithRollup(prediction.predictedClass,
-                parentSlug: prediction.hier!.coarseClass)
-            : infoFor(prediction.predictedClass));
+              ? infoForWithRollup(
+                  prediction.predictedClass,
+                  parentSlug: prediction.hier!.coarseClass,
+                )
+              : infoFor(prediction.predictedClass));
     final accent = info?.color ?? cs.primary;
 
     final hasQualityIssue = quality?.hasIssue ?? false;
@@ -71,8 +74,8 @@ class ResultLoadedContent extends StatelessWidget {
     // 다중재질 카드 대신 PredictionCard 또는 reject 카드로 표시.
     // avg_conf 임계 0.75 — Fix 1.5 의 0.60 이 confident-wrong (손바닥·마우스) 통과시켜서 강화.
     // 진짜 다중재질 (PET+라벨 등) 은 보통 region 별 0.80+ 라 false negative 적음.
-    final regionsHighConf = isMulti &&
-        regions!.regions.every((r) => r.avgConf >= 0.75);
+    final regionsHighConf =
+        isMulti && regions!.regions.every((r) => r.avgConf >= 0.75);
     final realMulti = regionsHighConf && !reject;
 
     return Column(
@@ -107,7 +110,10 @@ class ResultLoadedContent extends StatelessWidget {
           //      어긋나던 불일치 해소: 영역 발견을 메인 답으로 승격.
           ...(() {
             final r = topConfidentRegion(regions)!;
-            final rInfo = infoForWithRollup(r.slug, parentSlug: kFineToCoarse[r.slug]);
+            final rInfo = infoForWithRollup(
+              r.slug,
+              parentSlug: kFineToCoarse[r.slug],
+            );
             final rAccent = rInfo?.color ?? cs.primary;
             return <Widget>[
               AnimatedEntry(
@@ -147,23 +153,24 @@ class ResultLoadedContent extends StatelessWidget {
                 accent: accent,
                 regionInfo: regionInfo,
                 regionSet: regionSet,
-                coarse: prediction.hier?.coarseClass ?? prediction.predictedClass,
+                coarse:
+                    prediction.hier?.coarseClass ?? prediction.predictedClass,
               ),
             ),
           ],
         ] else ...[
           // (3) 일반 분류 — 불확실 배너(있으면) → PredictionCard → 가이드.
           if (assessment.isUncertain) ...[
-            AnimatedEntry(
-              child: UncertainBanner(prediction: prediction),
-            ),
+            AnimatedEntry(child: UncertainBanner(prediction: prediction)),
             const SizedBox(height: kSpaceM),
           ],
           AnimatedEntry(
             index: assessment.isUncertain ? 1 : 0,
             child: PredictionCard(
               image: image,
-              prediction: prediction, info: info, accent: accent,
+              prediction: prediction,
+              info: info,
+              accent: accent,
               assessment: assessment,
             ),
           ),
@@ -172,16 +179,20 @@ class ResultLoadedContent extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.info_outline,
-                    size: 13, color: DsTokens.of(context).muted),
+                Icon(
+                  Icons.info_outline,
+                  size: 13,
+                  color: DsTokens.of(context).muted,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     sceneNote!,
                     style: TextStyle(
-                        fontSize: 11.5,
-                        height: 1.4,
-                        color: DsTokens.of(context).muted),
+                      fontSize: 11.5,
+                      height: 1.4,
+                      color: DsTokens.of(context).muted,
+                    ),
                   ),
                 ),
               ],
@@ -196,7 +207,8 @@ class ResultLoadedContent extends StatelessWidget {
                 accent: accent,
                 regionInfo: regionInfo,
                 regionSet: regionSet,
-                coarse: prediction.hier?.coarseClass ?? prediction.predictedClass,
+                coarse:
+                    prediction.hier?.coarseClass ?? prediction.predictedClass,
               ),
             ),
           ],
@@ -211,7 +223,6 @@ class ResultLoadedContent extends StatelessWidget {
             child: EvidenceChips(evidence: prediction.evidence),
           ),
         ],
-
 
         const SizedBox(height: kSpaceM),
 
@@ -237,9 +248,7 @@ class ResultLoadedContent extends StatelessWidget {
               child: Container(
                 height: 54,
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: DsTokens.of(context).accentSoft,
-                  ),
+                  border: Border.all(color: DsTokens.of(context).accentSoft),
                   borderRadius: BorderRadius.circular(kRadiusMedium),
                 ),
                 child: Row(
@@ -272,7 +281,6 @@ class ResultLoadedContent extends StatelessWidget {
     );
   }
 }
-
 
 /// reject 인데 재질 영역 분석이 확신하는 재질이 있으면 그 영역 반환.
 /// (오버레이의 빗금 배지와 결과 카드 동기화 — 임계 0.6)

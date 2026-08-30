@@ -16,7 +16,8 @@ class GuideCard extends StatelessWidget {
   final RegionInfo? regionInfo;
   final bool regionSet;
   final String coarse;
-  const GuideCard({super.key, 
+  const GuideCard({
+    super.key,
     required this.info,
     required this.accent,
     required this.regionInfo,
@@ -25,8 +26,14 @@ class GuideCard extends StatelessWidget {
   });
 
   static const _recyclables = {
-    'paper', 'paper_pack', 'glass', 'metal', 'plastic', 'vinyl',
-    'styrofoam', 'clothes',
+    'paper',
+    'paper_pack',
+    'glass',
+    'metal',
+    'plastic',
+    'vinyl',
+    'styrofoam',
+    'clothes',
   };
 
   /// 지역 규정 행 — 재질을 재활용/음식물/일반으로 매핑해 해당 분류의 규정 추출.
@@ -56,7 +63,9 @@ class GuideCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = DsTokens.of(context);
     final rule = regionInfo?.representative;
-    final regionRows = rule == null ? const <(String, String)>[] : _regionRows(rule);
+    final regionRows = rule == null
+        ? const <(String, String)>[]
+        : _regionRows(rule);
     final hasRegion = regionRows.isNotEmpty;
     final steps = [
       if (info.howTo.isEmpty && info.bin.isNotEmpty) info.bin,
@@ -82,19 +91,22 @@ class GuideCard extends StatelessWidget {
                 // 지역 조례 기준 배지
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 9, vertical: 4),
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: t.accentChipBg,
-                    border: Border.all(
-                      color: t.accentChipBorder,
-                    ),
+                    border: Border.all(color: t.accentChipBorder),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.place_outlined,
-                          size: 11, color: t.accentChipText),
+                      Icon(
+                        Icons.place_outlined,
+                        size: 11,
+                        color: t.accentChipText,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${regionInfo!.sigungu} 조례 기준',
@@ -141,7 +153,10 @@ class GuideCard extends StatelessWidget {
                     child: Text(
                       value,
                       style: TextStyle(
-                          fontSize: 13, height: 1.5, color: bodyColor),
+                        fontSize: 13,
+                        height: 1.5,
+                        color: bodyColor,
+                      ),
                     ),
                   ),
                 ],
@@ -177,7 +192,10 @@ class GuideCard extends StatelessWidget {
                   child: Text(
                     s,
                     style: TextStyle(
-                        fontSize: 13, height: 1.5, color: bodyColor),
+                      fontSize: 13,
+                      height: 1.5,
+                      color: bodyColor,
+                    ),
                   ),
                 ),
               ],
@@ -187,10 +205,10 @@ class GuideCard extends StatelessWidget {
           Text(
             hasRegion
                 ? '출처 · ${regionInfo!.sido} ${regionInfo!.sigungu} 폐기물 관리 조례 '
-                    '(행안부 생활쓰레기 배출정보 표준데이터) · 관리구역에 따라 다를 수 있어요'
+                      '(행안부 생활쓰레기 배출정보 표준데이터) · 관리구역에 따라 다를 수 있어요'
                 : regionSet
-                    ? '전국 공통 안내 · 우리 동네 조례 데이터는 아직 준비 중이에요'
-                    : '전국 공통 안내 · 지역을 설정하면 우리 동네 조례 기준도 함께 알려드려요',
+                ? '전국 공통 안내 · 우리 동네 조례 데이터는 아직 준비 중이에요'
+                : '전국 공통 안내 · 지역을 설정하면 우리 동네 조례 기준도 함께 알려드려요',
             style: TextStyle(fontSize: 10.5, height: 1.4, color: t.muted),
           ),
         ],

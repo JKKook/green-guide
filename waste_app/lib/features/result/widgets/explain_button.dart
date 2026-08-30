@@ -21,7 +21,8 @@ class ExplainButton extends StatefulWidget {
   final Color accent;
   final WasteInfo? info;
   final Prediction prediction;
-  const ExplainButton({super.key, 
+  const ExplainButton({
+    super.key,
     required this.image,
     required this.accent,
     required this.info,
@@ -31,7 +32,6 @@ class ExplainButton extends StatefulWidget {
   @override
   State<ExplainButton> createState() => _ExplainButtonState();
 }
-
 
 class _ExplainButtonState extends State<ExplainButton> {
   bool _loading = false;
@@ -48,7 +48,8 @@ class _ExplainButtonState extends State<ExplainButton> {
       if (!result.camAvailable || result.camBase64 == null) {
         _showInfoDialog(
           title: 'CAM 미지원',
-          message: '지금 서버 모델에서는 판단 근거 이미지를 만들 수 없어요.\n'
+          message:
+              '지금 서버 모델에서는 판단 근거 이미지를 만들 수 없어요.\n'
               '다음 업데이트에서 지원할 예정이에요.',
         );
         return;
@@ -66,10 +67,7 @@ class _ExplainButtonState extends State<ExplainButton> {
       }
     } catch (e) {
       if (!mounted) return;
-      _showInfoDialog(
-        title: '설명을 만들지 못했어요',
-        message: friendlyError(e),
-      );
+      _showInfoDialog(title: '설명을 만들지 못했어요', message: friendlyError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -93,9 +91,7 @@ class _ExplainButtonState extends State<ExplainButton> {
   }
 
   void _showCamDialog(PredictionWithCam result) {
-    final imageBytes = base64Decode(
-      result.camBase64!.split(',').last,
-    );
+    final imageBytes = base64Decode(result.camBase64!.split(',').last);
     final accent = widget.accent;
     final cs = Theme.of(context).colorScheme;
     showDialog<void>(
@@ -111,63 +107,70 @@ class _ExplainButtonState extends State<ExplainButton> {
           padding: const EdgeInsets.all(kSpaceL),
           child: SingleChildScrollView(
             child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.visibility_outlined, color: accent),
-                  const SizedBox(width: kSpaceS),
-                  Expanded(
-                    child: Text(
-                      '모델이 본 영역',
-                      style: Theme.of(ctx).textTheme.titleMedium,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(ctx).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: kSpaceS),
-              Text(
-                '"${widget.info?.displayName ?? widget.prediction.predictedClass}" '
-                '으로 분류할 때 모델이 가장 집중한 영역입니다 '
-                '(빨강 = 강하게 봄, 파랑 = 거의 안 봄).',
-                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
-              ),
-              const SizedBox(height: kSpaceM),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(kRadiusMedium),
-                child: Image.memory(
-                  Uint8List.fromList(imageBytes),
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: kSpaceM),
-              Container(
-                padding: const EdgeInsets.all(kSpaceM),
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(kRadiusMedium),
-                ),
-                child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
                   children: [
-                    Icon(Icons.lightbulb_outline, size: 16, color: cs.tertiary),
+                    Icon(Icons.visibility_outlined, color: accent),
                     const SizedBox(width: kSpaceS),
                     Expanded(
                       child: Text(
-                        '예상한 영역과 다르다면 결과가 틀렸을 가능성이 높아요. '
-                        '아래 피드백 카드에서 정정해주세요.',
-                        style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+                        '모델이 본 영역',
+                        style: Theme.of(ctx).textTheme.titleMedium,
                       ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(ctx).pop(),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(height: kSpaceS),
+                Text(
+                  '"${widget.info?.displayName ?? widget.prediction.predictedClass}" '
+                  '으로 분류할 때 모델이 가장 집중한 영역입니다 '
+                  '(빨강 = 강하게 봄, 파랑 = 거의 안 봄).',
+                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: kSpaceM),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(kRadiusMedium),
+                  child: Image.memory(
+                    Uint8List.fromList(imageBytes),
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: kSpaceM),
+                Container(
+                  padding: const EdgeInsets.all(kSpaceM),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(kRadiusMedium),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.lightbulb_outline,
+                        size: 16,
+                        color: cs.tertiary,
+                      ),
+                      const SizedBox(width: kSpaceS),
+                      Expanded(
+                        child: Text(
+                          '예상한 영역과 다르다면 결과가 틀렸을 가능성이 높아요. '
+                          '아래 피드백 카드에서 정정해주세요.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -180,7 +183,8 @@ class _ExplainButtonState extends State<ExplainButton> {
       onPressed: _loading ? null : _onTap,
       icon: _loading
           ? const SizedBox(
-              width: 14, height: 14,
+              width: 14,
+              height: 14,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : const Icon(Icons.visibility_outlined, size: 18),
@@ -188,7 +192,10 @@ class _ExplainButtonState extends State<ExplainButton> {
       style: OutlinedButton.styleFrom(
         foregroundColor: widget.accent,
         side: BorderSide(color: widget.accent.withValues(alpha: 0.4)),
-        padding: const EdgeInsets.symmetric(horizontal: kSpaceM, vertical: kSpaceS),
+        padding: const EdgeInsets.symmetric(
+          horizontal: kSpaceM,
+          vertical: kSpaceS,
+        ),
       ),
     );
   }

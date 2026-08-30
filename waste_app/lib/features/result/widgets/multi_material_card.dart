@@ -46,8 +46,8 @@ class MultiMaterialCard extends StatelessWidget {
                 child: Text(
                   '재질이 여러 개 섞여 있어요',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -55,19 +55,22 @@ class MultiMaterialCard extends StatelessWidget {
           const SizedBox(height: kSpaceXS),
           Text(
             '아래 재질별로 분리해서 배출하면 더 정확하게 재활용돼요.',
-            style: TextStyle(fontSize: 13, height: 1.4, color: cs.onSurfaceVariant),
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.4,
+              color: cs.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: kSpaceM),
-          ...unique.map((region) => MaterialMethodTile(
-                region: region,
-                info: infoFor(region.slug),
-              )),
+          ...unique.map(
+            (region) =>
+                MaterialMethodTile(region: region, info: infoFor(region.slug)),
+          ),
         ],
       ),
     );
   }
 }
-
 
 /// 다중재질 카드의 재질 1개 항목 — 이름·배출함 + 그 재질의 배출 방법(how_to)을 함께 제시.
 /// 단일 재질만 안내하던 것을 재질별 방법까지 다중 제시하도록 확장.
@@ -101,10 +104,14 @@ class MaterialMethodTile extends StatelessWidget {
               Container(
                 width: 30,
                 height: 30,
-                decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: accent,
+                  shape: BoxShape.circle,
+                ),
                 child: Icon(
                   info?.icon ?? Icons.help_outline,
-                  color: Colors.white, size: 17,
+                  color: Colors.white,
+                  size: 17,
                 ),
               ),
               const SizedBox(width: kSpaceM),
@@ -157,22 +164,26 @@ class MaterialMethodTile extends StatelessWidget {
           ),
           if (steps.isNotEmpty) ...[
             const SizedBox(height: kSpaceS),
-            ...steps.take(2).map((s) => Padding(
-                  padding: const EdgeInsets.only(top: 3, left: 38),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.check, size: 14, color: cs.secondary),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          s,
-                          style: const TextStyle(fontSize: 12, height: 1.4),
+            ...steps
+                .take(2)
+                .map(
+                  (s) => Padding(
+                    padding: const EdgeInsets.only(top: 3, left: 38),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.check, size: 14, color: cs.secondary),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            s,
+                            style: const TextStyle(fontSize: 12, height: 1.4),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                )),
+                ),
           ],
         ],
       ),

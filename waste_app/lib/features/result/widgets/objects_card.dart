@@ -12,7 +12,8 @@ class ObjectsCard extends StatelessWidget {
   final List<ObjectCandidate> objects;
   final int? selected;
   final void Function(int) onSelect;
-  const ObjectsCard({super.key, 
+  const ObjectsCard({
+    super.key,
     required this.objects,
     required this.selected,
     required this.onSelect,
@@ -37,20 +38,18 @@ class ObjectsCard extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 '사진 속 물건 ${objects.length}개',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             '번호를 탭하면 그 물건의 분리배출 방법을 보여드려요',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: cs.onSurfaceVariant),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: kSpaceS),
           for (int i = 0; i < objects.length; i++)
@@ -66,13 +65,13 @@ class ObjectsCard extends StatelessWidget {
   }
 }
 
-
 class ObjectTile extends StatelessWidget {
   final int index;
   final ObjectCandidate candidate;
   final bool selected;
   final VoidCallback onTap;
-  const ObjectTile({super.key, 
+  const ObjectTile({
+    super.key,
     required this.index,
     required this.candidate,
     required this.selected,
@@ -82,8 +81,10 @@ class ObjectTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final info = infoForWithRollup(candidate.displayClass,
-        parentSlug: candidate.coarseClass);
+    final info = infoForWithRollup(
+      candidate.displayClass,
+      parentSlug: candidate.coarseClass,
+    );
     final color = info?.color ?? cs.primary;
     final isReject = candidate.displayLevel == 'reject';
     final name = isReject
@@ -99,8 +100,10 @@ class ObjectTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(kRadiusSmall),
         onTap: onTap,
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: kSpaceS, vertical: kSpaceS),
+          padding: const EdgeInsets.symmetric(
+            horizontal: kSpaceS,
+            vertical: kSpaceS,
+          ),
           decoration: BoxDecoration(
             color: selected ? color.withValues(alpha: 0.10) : null,
             borderRadius: BorderRadius.circular(kRadiusSmall),
@@ -111,29 +114,37 @@ class ObjectTile extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 26, height: 26,
-                decoration: BoxDecoration(
-                    shape: BoxShape.circle, color: color),
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: color),
                 alignment: Alignment.center,
-                child: Text('${index + 1}',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13)),
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
               ),
               const SizedBox(width: kSpaceS),
               Icon(info?.icon ?? Icons.help_outline, size: 20, color: color),
               const SizedBox(width: 6),
               Expanded(
-                child: Text(name,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                child: Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
               if (!isReject)
-                Text('${(conf * 100).toStringAsFixed(0)}%',
-                    style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurfaceVariant)),
+                Text(
+                  '${(conf * 100).toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
               if (selected) ...[
                 const SizedBox(width: 6),
                 Icon(Icons.check_circle, size: 18, color: color),

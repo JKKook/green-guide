@@ -20,7 +20,8 @@ class AnalysisLoading extends StatefulWidget {
   final bool isSmartCapture;
   final VoidCallback onCancel;
 
-  const AnalysisLoading({super.key, 
+  const AnalysisLoading({
+    super.key,
     required this.uploadSent,
     required this.uploadTotal,
     required this.preprocessDone,
@@ -33,7 +34,6 @@ class AnalysisLoading extends StatefulWidget {
   @override
   State<AnalysisLoading> createState() => _AnalysisLoadingState();
 }
-
 
 class _AnalysisLoadingState extends State<AnalysisLoading>
     with TickerProviderStateMixin {
@@ -119,8 +119,7 @@ class _AnalysisLoadingState extends State<AnalysisLoading>
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: SweepGradient(
-                        transform:
-                            GradientRotation(_aura.value * 2 * math.pi),
+                        transform: GradientRotation(_aura.value * 2 * math.pi),
                         colors: [
                           Colors.white.withValues(alpha: 0.08),
                           kAccent400,
@@ -169,8 +168,11 @@ class _AnalysisLoadingState extends State<AnalysisLoading>
                         angle: _sweep.value * 2 * math.pi,
                         child: child,
                       ),
-                      child: const Icon(Icons.wb_sunny_outlined,
-                          size: 14, color: kAccent400),
+                      child: const Icon(
+                        Icons.wb_sunny_outlined,
+                        size: 14,
+                        color: kAccent400,
+                      ),
                     ),
                     const SizedBox(width: 7),
                     AnimatedBuilder(
@@ -244,8 +246,10 @@ class _AnalysisLoadingState extends State<AnalysisLoading>
               borderRadius: BorderRadius.circular(999),
               onTap: widget.onCancel,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: Colors.white.withValues(alpha: 0.2),
@@ -277,7 +281,6 @@ class _AnalysisLoadingState extends State<AnalysisLoading>
     return 0.25;
   }
 }
-
 
 /// 시안 16c 로딩 아이콘 — 둥근 꽃/톱니 형태(원호 8개) 스트로크.
 class BlobIconPainter extends CustomPainter {
@@ -311,6 +314,5 @@ class BlobIconPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(BlobIconPainter oldDelegate) =>
-      oldDelegate.color != color;
+  bool shouldRepaint(BlobIconPainter oldDelegate) => oldDelegate.color != color;
 }

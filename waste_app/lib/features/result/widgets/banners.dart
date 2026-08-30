@@ -15,7 +15,11 @@ import 'explain_button.dart';
 class RegionRescueBanner extends StatelessWidget {
   final MaterialRegion region;
   final WasteInfo? info;
-  const RegionRescueBanner({super.key, required this.region, required this.info});
+  const RegionRescueBanner({
+    super.key,
+    required this.region,
+    required this.info,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,8 +29,12 @@ class RegionRescueBanner extends StatelessWidget {
       padding: const EdgeInsets.all(kSpaceL),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [accent.withValues(alpha: 0.18), accent.withValues(alpha: 0.05)],
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: 0.18),
+            accent.withValues(alpha: 0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(kRadiusLarge),
         border: Border.all(color: accent.withValues(alpha: 0.35)),
@@ -34,40 +42,60 @@ class RegionRescueBanner extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Container(
-              width: 56, height: 56,
-              decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
-              child: Icon(info?.icon ?? Icons.category, color: Colors.white, size: 30),
-            ),
-            const SizedBox(width: kSpaceM),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(info?.displayName ?? region.slug,
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 2),
-                  Text('재질 영역 분석으로 찾았어요 (${(region.avgConf * 100).toStringAsFixed(0)}%)',
-                      style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700, color: accent)),
-                ],
+          Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: accent,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  info?.icon ?? Icons.category,
+                  color: Colors.white,
+                  size: 30,
+                ),
               ),
-            ),
-          ]),
+              const SizedBox(width: kSpaceM),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      info?.displayName ?? region.slug,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '재질 영역 분석으로 찾았어요 (${(region.avgConf * 100).toStringAsFixed(0)}%)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: accent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: kSpaceS),
           Text(
             '전체 장면으로는 확신이 낮았지만, 사진 속 빗금 영역에서 이 재질이 확인됐어요. '
             '다르다면 아래 피드백으로 알려주세요.',
-            style: TextStyle(fontSize: 12.5, height: 1.5, color: cs.onSurfaceVariant),
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.5,
+              color: cs.onSurfaceVariant,
+            ),
           ),
         ],
       ),
     );
   }
 }
-
 
 /// 사진 품질 문제 (어두움/흔들림) 안내 배너.
 class QualityBanner extends StatelessWidget {
@@ -108,10 +136,15 @@ class QualityBanner extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                ...messages.map((m) => Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text('• $m', style: const TextStyle(fontSize: 13, height: 1.4)),
-                    )),
+                ...messages.map(
+                  (m) => Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      '• $m',
+                      style: const TextStyle(fontSize: 13, height: 1.4),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -120,7 +153,6 @@ class QualityBanner extends StatelessWidget {
     );
   }
 }
-
 
 /// 모델이 확신하지 못할 때 결과 위에 표시되는 정직한 안내 배너.
 class UncertainBanner extends StatelessWidget {
@@ -148,9 +180,9 @@ class UncertainBanner extends StatelessWidget {
                 child: Text(
                   '확실하지 않아요',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: warn,
-                      ),
+                    fontWeight: FontWeight.bold,
+                    color: warn,
+                  ),
                 ),
               ),
             ],
@@ -182,7 +214,6 @@ class UncertainBanner extends StatelessWidget {
   }
 }
 
-
 /// 분류 불가(reject) 결론 카드.
 ///
 /// 두 가지 변형:
@@ -195,7 +226,8 @@ class RejectCard extends StatelessWidget {
   final bool isMultiMaterial;
   final bool isMultiObject;
   final File? image;
-  const RejectCard({super.key, 
+  const RejectCard({
+    super.key,
     required this.prediction,
     this.isMultiMaterial = false,
     this.isMultiObject = false,
@@ -213,35 +245,39 @@ class RejectCard extends StatelessWidget {
     final title = isMultiObject
         ? '여러 물건이 보여요'
         : isMultiMaterial
-            ? '여러 재질이 섞여 있어요'
-            : (etc?.displayName ?? '기타 / 분류 불가');
+        ? '여러 재질이 섞여 있어요'
+        : (etc?.displayName ?? '기타 / 분류 불가');
     final subtitle = isMultiObject
         ? '물건을 골라 확인해주세요'
         : isMultiMaterial
-            ? '단일 분류가 어려워요'
-            : '자동 분류가 어려워요';
+        ? '단일 분류가 어려워요'
+        : '자동 분류가 어려워요';
     final icon = isMultiObject
         ? Icons.filter_center_focus
         : isMultiMaterial
-            ? Icons.call_split_rounded
-            : (etc?.icon ?? Icons.help_outline);
+        ? Icons.call_split_rounded
+        : (etc?.icon ?? Icons.help_outline);
     final body = isMultiObject
         ? '사진에 물건이 여러 개 감지돼서 하나로 분류하지 않았어요. '
-          '위 물건 목록에서 번호를 선택하거나, 사진 속 물건을 직접 탭하면 '
-          '각각의 분리배출 방법을 알려드려요.'
+              '위 물건 목록에서 번호를 선택하거나, 사진 속 물건을 직접 탭하면 '
+              '각각의 분리배출 방법을 알려드려요.'
         : isMultiMaterial
-            ? '이 사진은 여러 재질이 섞여 있어서 한 가지로 분류하기 어려워요. '
+        ? '이 사진은 여러 재질이 섞여 있어서 한 가지로 분류하기 어려워요. '
               '아래 재질별 안내를 따라 분리해서 배출해주세요.'
-            : '이 물건은 확실하게 분류하기 어려워요. 재질을 직접 확인해 배출하거나, '
+        : '이 물건은 확실하게 분류하기 어려워요. 재질을 직접 확인해 배출하거나, '
               '아래에서 올바른 분류를 알려주시면 다음 학습에 반영돼요.';
     final guess =
-        infoFor(prediction.predictedClass)?.displayName ?? prediction.predictedClass;
+        infoFor(prediction.predictedClass)?.displayName ??
+        prediction.predictedClass;
 
     return Container(
       padding: const EdgeInsets.all(kSpaceL),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [accent.withValues(alpha: 0.18), accent.withValues(alpha: 0.05)],
+          colors: [
+            accent.withValues(alpha: 0.18),
+            accent.withValues(alpha: 0.05),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -256,7 +292,10 @@ class RejectCard extends StatelessWidget {
               Container(
                 width: 64,
                 height: 64,
-                decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: accent,
+                  shape: BoxShape.circle,
+                ),
                 child: Icon(icon, color: Colors.white, size: 34),
               ),
               const SizedBox(width: kSpaceM),
@@ -266,16 +305,18 @@ class RejectCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
-                    Text(subtitle,
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: accent)),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: accent,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -284,7 +325,11 @@ class RejectCard extends StatelessWidget {
           const SizedBox(height: kSpaceM),
           Text(
             body,
-            style: TextStyle(fontSize: 13, height: 1.5, color: cs.onSurfaceVariant),
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.5,
+              color: cs.onSurfaceVariant,
+            ),
           ),
           // 모델 추측 — 일반 reject 만 표시(멀티 케이스는 물건/재질별 % 가 그 역할).
           if (!isMultiMaterial && !isMultiObject) ...[
@@ -292,7 +337,10 @@ class RejectCard extends StatelessWidget {
             Text(
               '모델 추측: $guess ${(prediction.confidence * 100).toStringAsFixed(0)}% (참고용)',
               style: TextStyle(
-                  fontSize: 12, fontStyle: FontStyle.italic, color: cs.onSurfaceVariant),
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: cs.onSurfaceVariant,
+              ),
             ),
           ],
           // CAM "왜 이렇게 분류했어?" — 멀티 케이스에서 image 가 주어지면 표시.
