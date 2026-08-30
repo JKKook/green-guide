@@ -62,14 +62,14 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 
 각 단계는 `[작업] → verify: [확인 방법]` 형식. 순서는 의존성 순.
 
-### Phase 0 — Baseline & 도구 (0.5일)
-- [ ] 산출물/데이터 제외 확인 후 untracked 83 파일 커밋 (`.gitignore` 에 `outputs/`, `data/` 포함 확인)
-  → verify: `git status --short | wc -l` == 0
-- [ ] `pyproject.toml` 추가: `[project]` 최소 메타 + `ruff` 설정(`E,F,I,B,UP`, line-length 100) + `pip install -e .`
-  → verify: `python -c "import src.config"` 가 어느 cwd 에서든 성공
-- [ ] `ruff check .` 초기 실행 → 자동 수정 가능한 것(`--fix`: unused import, import 정렬)만 적용, **한 커밋**으로 분리
-  → verify: `pytest` 통과, diff 가 import 줄만
-- [ ] pyright 실행해 현재 에러 수를 기록 (증가 방지용 기준선)
+### Phase 0 — Baseline & 도구 (0.5일) ✅ 2026-08-30 완료
+- [x] baseline 커밋 `634025c` — waste-classifier/ 디렉터리만(89 파일). monorepo 의 waste_app·waste-api·wiki 는 범위 밖이라 untracked 유지
+- [x] `pyproject.toml` + `pip install -e .` (`5cfc193`) — `scripts/__init__.py` 추가, ruff 규칙 `E,F,I,B,UP` (E501 은 ignore)
+- [x] `ruff --fix` 안전 수정 97건 적용 (147 → 50건 잔여). 잔여 50건 내역: E702 14 / B905 12 / E402 9(sys.path 해킹 → 2-1 에서 해소) / B007 6 / E741 5 / F841 3 / E701 1
+- [x] pytest 32 passed, **pyright 기준선: 205 errors, 9 warnings** (`pyright src scripts *.py tests`)
+
+> 환경 메모: Rosetta(x86_64) 셸에서 `.venv/bin/python` 을 실행하면 universal 바이너리의 x86_64 슬라이스가 선택돼 numpy(arm64) import 가 실패한다.
+> Claude Code Bash 세션 등 i386 셸에서는 `arch -arm64 .venv/bin/python -m pytest` 로 실행. 일반 터미널(arm64)은 영향 없음.
 
 ### Phase 1 — Characterization tests (1일)
 공통화 대상 5개 패턴의 현재 동작을 고정한다. 이 테스트가 이후 모든 단계의 안전망.
