@@ -14,10 +14,16 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 앱 코드 + 번들된 ONNX 모델
+# 서빙 모델 — git(LFS) 대신 HF Hub `ethanDev92/waste-models/serving/` 에서 빌드 시 다운로드.
+# (2026-08-30 모노레포 git 단일화: Space 저장소에서 LFS 모델 제거. 모델 갱신은
+#  waste-classifier publish 스크립트가 HF Hub 에 올리고, 여기서는 재빌드만 하면 됨.)
+RUN python -c "from huggingface_hub import snapshot_download; \
+snapshot_download('ethanDev92/waste-models', allow_patterns=['serving/**'], local_dir='/tmp/wm')" \
+    && mv /tmp/wm/serving /app/models && rm -rf /tmp/wm
+
+# 앱 코드
 COPY src ./src
 COPY main.py .
-COPY models ./models
 COPY design ./design
 
 # HF Spaces 기본 포트

@@ -24,8 +24,8 @@ venv/
 # Logs
 *.log
 
-# Note:
-# models/classifier.onnx 는 Docker 이미지에 번들되므로 git 에 commit 합니다 (43MB)
-# 너무 큰 모델이면 git-lfs 또는 Supabase Storage 다운로드로 변경하세요
+# 서빙 모델 — git 에 넣지 않는다. HF Hub ethanDev92/waste-models/serving/ 가 원본이고
+# Docker 빌드가 내려받는다. 로컬 개발은 scripts/fetch_models.py 로 같은 경로에 받는다.
+models/
 cache/
 local_feedback/

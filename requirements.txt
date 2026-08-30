@@ -23,3 +23,6 @@ rapidocr==3.9.1
 
 # VLM 폴백 (트랙 A2) — 저확신 케이스 Claude 위임 (키 없으면 자동 비활성)
 anthropic==0.117.0
+
+# 서빙 모델 다운로드 (Dockerfile · scripts/fetch_models.py)
+huggingface_hub>=0.24
