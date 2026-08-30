@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>그린가이드 AI — 모델·추론 파이프라인 기술 문서</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    color: #1e2620; font-size: 10.5pt; line-height: 1.62; margin: 0;
+  }
+  h1 { font-size: 20pt; letter-spacing: -0.02em; margin: 0 0 2mm; }
+  .meta { color: #5c675a; font-size: 9pt; margin-bottom: 8mm; }
+  h2 {
+    font-size: 13pt; margin: 9mm 0 3mm; padding-bottom: 1.5mm;
+    border-bottom: 1.5pt solid #1E5F41; color: #1E5F41; letter-spacing: -0.01em;
+  }
+  h3 { font-size: 11pt; margin: 5mm 0 1.5mm; }
+  p { margin: 1.5mm 0; }
+  ul { margin: 1.5mm 0; padding-left: 5mm; }
+  li { margin: 0.8mm 0; }
+  table { border-collapse: collapse; width: 100%; margin: 3mm 0; font-size: 9.5pt; }
+  th, td { border: 0.5pt solid #c9d1c6; padding: 1.6mm 2.5mm; text-align: left; vertical-align: top; }
+  th { background: #eef3ec; font-weight: 700; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  code, .mono { font-family: "SF Mono", Menlo, monospace; font-size: 8.8pt; background: #f2f4f0; padding: 0 1mm; border-radius: 2px; }
+  .callout {
+    background: #f4f7f2; border-left: 3pt solid #1E5F41; padding: 2.5mm 4mm; margin: 3mm 0;
+    font-size: 9.8pt;
+  }
+  .warn { border-left-color: #C98A2E; background: #faf6ec; }
+  .small { font-size: 8.8pt; color: #5c675a; }
+  .cols { display: flex; gap: 6mm; }
+  .cols > div { flex: 1; }
+  .ok { color: #1E5F41; font-weight: 700; }
+  .bad { color: #B9564A; font-weight: 700; }
+  .pagebreak { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<h1>그린가이드 AI — 모델·추론 파이프라인 기술 문서</h1>
+<div class="meta">
+  v1.0 · 2026-08-06 · 작성: 개발 세션 실측 기반 (waste-classifier / waste-api / waste_app)<br>
+  적용 버전: 모델 <b>hier_v2</b> (레지스트리 v20260805_152341) · 서버 <span class="mono">facc879</span> · 앱 88MB 슬림 빌드
+</div>
+
+<h2>1. 시스템 개요</h2>
+<p>
+그린가이드는 사진 한 장으로 폐기물의 재질을 분류하고 거주 지자체 조례 기준의 배출 방법을 안내하는
+시스템으로, <b>클라우드 경로</b>(FastAPI 서버, 전체 파이프라인)와 <b>온디바이스 경로</b>(Flutter 앱 내
+ONNX 단일 패스)의 이원 구조를 갖는다. 두 경로는 <b>동일한 분류기 가중치</b>를 공유하며,
+차이는 추론 파이프라인(TTA·시맨틱 융합·VLM 중재 유무)에 있다. 설계 우선순위는
+① 분류 정확도 ② 반환 속도이다.
+</p>
+<table>
+  <tr><th></th><th>클라우드 (기본)</th><th>온디바이스</th></tr>
+  <tr><td>실행 위치</td><td>HF Spaces (FastAPI, cpu-basic)</td><td>앱 내 onnxruntime</td></tr>
+  <tr><td>모델 전달</td><td>Docker 이미지 내장</td><td>OTA — HF Hub에서 다운로드 (번들 없음)</td></tr>
+  <tr><td>파이프라인</td><td>EXIF TTA + OCR/CLIP/CAM 융합 + OOD 게이트 + VLM 중재</td><td>단일 패스 + 게이트 롤업</td></tr>
+  <tr><td>평균 지연 (실측)</td><td class="num">1.7 s</td><td class="num">0.1–0.3 s</td></tr>
+  <tr><td>부가 기능</td><td>탭 재분류·빗금 실루엣·증거 칩·지역 조례 안내·피드백 수집</td><td>오프라인 분류만</td></tr>
+</table>
+
+<h2>2. 모델 인벤토리</h2>
+<table>
+  <tr><th>모델</th><th>구조/크기</th><th>사용 경로</th><th>역할·비고</th></tr>
+  <tr><td>계층 분류기 (주 모델)</td><td>ResNet50 백본 · 94.4MB ONNX (FP32)</td><td><b>공통 (동일 가중치)</b></td>
+      <td>대분류 14 × 세부 25 (fine 로짓 → coarse 롤업). CAM 헤드 동시 출력 (conv2d 재구성 — 양자화 호환).
+      온디바이스는 HF Hub 에서 같은 발행본을 OTA 로 수신.</td></tr>
+  <tr><td>Stage1 이진 게이트</td><td>경량 CNN</td><td>클라우드 전용</td><td>폐기물/비폐기물 선별 — 통과 시 분류기의 non_object 로짓 마스킹 (대분류 +5.9pp 실측)</td></tr>
+  <tr><td>u2netp</td><td>4.4MB ONNX</td><td>클라우드 전용</td><td>saliency — 객체 마스크·성분 분리(watershed-lite)·다중 물건 후보</td></tr>
+  <tr><td>CLIP 이미지 인코더</td><td>INT8 ONNX + 컨셉 임베딩 66개</td><td>클라우드 전용</td><td>정체(identity) 인식 — 제로샷 컨셉 매칭, 한국어 증거 토큰</td></tr>
+  <tr><td>RapidOCR</td><td>PP-OCRv5 korean mobile</td><td>클라우드 전용</td><td>라벨 문구·분리배출 마크 텍스트 인식</td></tr>
+  <tr><td>DINOv2 분류기</td><td>ONNX (기본 <b>비활성</b>)</td><td>클라우드 전용</td><td>앙상블 후보 — 홀드아웃 중립이라 <span class="mono">WASTE_API_DINO_W=0</span></td></tr>
+  <tr><td>VLM 폴백</td><td>Claude Haiku 4.5 (API)</td><td>클라우드 전용</td><td>저확신·reject·증거불일치 시 최종 판정자. 일 200회 상한</td></tr>
+  <tr><td>GrabCut (모델 아님 — CV 알고리즘)</td><td>OpenCV</td><td>클라우드 전용</td><td>탭 지점 물건의 픽셀 실루엣 분리 — 탭 분류 크롭·빗금 영역</td></tr>
+</table>
+<p class="small">온디바이스 경로는 주 분류기 + taxonomy 게이트 롤업만 사용한다 — §7 비교의 격차가 곧 "파이프라인 차이"인 이유(가중치 동일).</p>
+
+<h2>3. 전처리·정규화</h2>
+<ul>
+  <li><b>입력 정규화</b>: RGB → 224×224 <b>스트레치</b> 리사이즈(bilinear, 크롭 없음) → [0,1] 스케일 →
+      ImageNet 통계 정규화 <span class="mono">mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)</span>.
+      학습(Python)과 온디바이스(Dart) 구현이 동일 수치를 사용한다.</li>
+  <li><b>고해상 CAM</b>: 재질 영역 분석은 448×448 forward → 25클래스 × 14×14 CAM (셀당 16px).</li>
+  <li><b>EXIF 방향</b>: 학습 데이터(AI-Hub 크롭)는 센서 방향, 서빙 입력은 뷰어 방향 — 분포 불일치가
+      실측 정확도를 크게 훼손(26→36/51)하여 서빙에서 <b>회전 TTA</b>로 흡수한다(§5).</li>
+  <li><b>저장용 재압축</b>(수집 정책): EXIF 보정 + 긴 변 720px JPEG q80 — 장당 255KB→29KB 실측.</li>
+</ul>
+
+<h2>4. 학습 방법</h2>
+<ul>
+  <li><b>데이터</b>: AI-Hub 생활폐기물(71385) 계층 크롭 + TACO 실외 실사 + 사용자 피드백.
+      Kaggle류 스튜디오 이미지는 노이즈 부재로 기각.</li>
+  <li><b>계층 구조</b>: 대분류 14 / 세부 25 (<span class="mono">taxonomy.json</span> 사이드카가 정본 —
+      fine→coarse 매핑·게이트·라벨 순서를 모델과 함께 배포).</li>
+  <li><b>손실</b>: fine CE + <b>rollup loss</b>(fine 확률 합산 → coarse CE) — 세부가 불확실해도 대분류가 견고하도록.</li>
+  <li><b>증강</b>: 표준 augment + <b>ROT90</b>(EXIF 방향 격차 완화).</li>
+  <li><b>신뢰도 게이트</b> (표시 깊이 결정): fine 확신 ≥ 0.60 그리고 마진 ≥ 0.15 → 세부 표시;
+      coarse ≥ 0.55 → 대분류 표시; 미달 시 reject(기타). OOD prototype 거리 τ_soft 0.30(세부 억제) /
+      τ_hard 0.40(완전 reject — 탭 경로에서는 완화).</li>
+  <li><b>평가 무결성</b>: 피드백 사진(<span class="mono">user_*</span>)은 학습에서 영구 제외 —
+      과거 31/51 오염으로 실측 지표가 부풀려졌던 사고 이후의 원칙. 게이트 승격/롤백은
+      support ≥ 50 클래스의 recall 저하만 거부권을 갖는다(etc↔trash 동치 처리).</li>
+  <li><b>지표 (hier_v2)</b>: frozen test coarse <b>96.4%</b> / fine <b>93.2%</b>,
+      val coarse 94.3% / fine 90.2% (best epoch 9). 실사용(순수 홀드아웃)은 이보다 낮다 — §7.</li>
+</ul>
+
+<h2 class="pagebreak">5. 클라우드 추론 파이프라인과 최적화</h2>
+<p>운영 장면 경로 지연을 <b>15s → 1.6s(9.4×)</b>로 줄인 트랙과 정확도 융합 트랙의 조합이다. 순서대로:</p>
+<table>
+  <tr><th>단계</th><th>내용</th><th>최적화·근거</th></tr>
+  <tr><td>1. Stage1 게이트</td><td>폐기물 여부 판정</td><td>비폐기물 조기 종료, non_object 마스킹</td></tr>
+  <tr><td>2. 회전 TTA</td><td>EXIF 태그 기반 후보 회전만 추론, 최고 확신 채택</td>
+      <td><b>B2</b>: 태그별 축소 — 6→(0°,90°), 8→(0°,270°), 3→(0°,180°), 무태그 3방향. 3×→평균 1.7×</td></tr>
+  <tr><td>3. 조건부 OCR</td><td>텍스트·마크 인식 → 어휘 부스트 (A급 마크 ×6, B급 정체어 ×2.5)</td>
+      <td><b>B1</b>: 1차 확신 ≥ 0.75면 스킵 (운영 −2~4s). 탭 경로는 항상 수행</td></tr>
+  <tr><td>4. CLIP·CAM prior</td><td>정체 인식 prior(부스트 전용, 비율 상한 8) + 탭 영역 CAM prior(w=0.15)</td>
+      <td>탭(고립 크롭) 전용 — 장면 적용은 실측 역효과</td></tr>
+  <tr><td>5. 융합 재예측</td><td>prior 를 로그-선형 곱 후 <b>베스트 회전 텐서 1장만</b> 재예측</td>
+      <td>TTA 전체 재실행 대비 1회로 절감</td></tr>
+  <tr><td>6. VLM 중재</td><td>reject·coarse&lt;0.55·<b>증거-불일치</b>(강한 CLIP 증거가 다른 대분류 지시) 시
+      Claude Haiku 최종 판정</td>
+      <td>재질 교체는 확신 ≥ 0.8, non_object 는 ≥ 0.5 (과신 가드). 일 200회 상한, 실패 시 무시(fail-open)</td></tr>
+</table>
+<ul>
+  <li><b>기각된 최적화</b>: INT8 양자화(주 모델) — QUInt8/per-channel에서 정확도 −1~−5pp라 채택 안 함
+      (CLIP 인코더만 INT8). u2netp 자동 크롭(장면 경로) — v6+TTA 하에서 역효과(39→25)라 전체 프레임 사용.</li>
+  <li><b>탭-투-셀렉트 경로</b>: GrabCut(탭 중심 창, ≤480px)으로 물건 실루엣을 픽셀 수준 분리 →
+      분류 크롭·빗금 영역 모두 실루엣 기반. 탭 = "물체 존재" 신호이므로 OOD 하드 reject 를
+      소프트(대분류 표시)로 완화. 크롭 최소 변 35% 보장(파편 크롭 방지).</li>
+</ul>
+
+<h2>6. 온디바이스 파이프라인</h2>
+<ul>
+  <li><b>OTA 전달</b>: 번들 모델 제거(앱 204→88MB, Play 200MB 한도 대응). 앱이
+      <span class="mono">/model/latest</span> → HF Hub(<span class="mono">ethanDev92/waste-models</span>)에서
+      ONNX + taxonomy 사이드카를 받아 캐시. sha256 검증, 실패 시 구캐시 → 클라우드 폴백.</li>
+  <li><b>추론</b>: 단일 패스 (TTA·융합·VLM 없음, non_object 마스킹 없음) → fine 확률 → 게이트 롤업 —
+      서버 <span class="mono">/predict-hier</span> 와 동일한 의미의 표시 수준(fine/coarse/reject)을 재현.</li>
+  <li><b>폴백 정책</b>: 온디바이스 저확신 시 클라우드에 재판정 위임(오프라인이면 로컬 결과 유지).
+      기본 모드는 클라우드.</li>
+</ul>
+
+<h2>7. 온디바이스 vs 클라우드 — 실측 비교 (2026-08-06)</h2>
+<p>
+피드백 라벨이 확정된 실사용 사진 51장을 <b>동일 가중치·양 경로</b>로 평가.
+대분류(coarse) 기준 채점. hier_v2 학습에 포함됐던 33장(낙관 편향)과
+학습에 없던 <b>정직 서브셋 18장</b>을 분리 집계.
+</p>
+<table>
+  <tr><th>세트</th><th class="num">온디바이스</th><th class="num">클라우드</th><th class="num">격차</th>
+      <th class="num">reject (dev/cloud)</th></tr>
+  <tr><td>전체 (n=51)</td><td class="num">31/51 = 60.8%</td><td class="num">28/51 = 54.9%</td>
+      <td class="num">−5.9pp</td><td class="num">13 / 17</td></tr>
+  <tr><td><b>정직 서브셋 (n=18)</b></td><td class="num"><b>8/18 = 44.4%</b></td><td class="num"><b>8/18 = 44.4%</b></td>
+      <td class="num"><b>±0.0pp</b></td><td class="num">5 / 9</td></tr>
+  <tr><td>학습 포함분 (n=33, 참고)</td><td class="num">23/33 = 69.7%</td><td class="num">20/33 = 60.6%</td>
+      <td class="num">−9.1pp</td><td class="num">8 / 8</td></tr>
+  <tr><td>평균 지연</td><td class="num">0.1–0.3 s</td><td class="num">1.7 s</td><td colspan="2"></td></tr>
+</table>
+<div class="callout">
+<b>해석.</b> 대분류 정답률만 보면 두 경로는 <b>사실상 동률</b>이다(정직 서브셋 ±0.0pp).
+클라우드의 겉보기 열세(전체 −5.9pp)는 대부분 <b>보수적 reject 정책</b>에서 온다 —
+OOD 하드 게이트와 VLM이 저확신 케이스를 "기타/재촬영"으로 돌려보내는 건수가 더 많다(17 vs 13).
+이는 오답을 정답처럼 확신 있게 표기하는 것보다 안내 품질 면에서 의도된 동작이지만,
+단순 정답률 지표에서는 손해로 나타난다.
+</div>
+<div class="callout warn">
+<b>한계.</b> ① 이 채점은 클라우드 전용 가치(탭 재분류, 빗금 실루엣, 증거 칩, OCR 텍스트가 있는
+케이스의 부스트, 지역 조례 안내, 피드백 수집)를 포착하지 않는다 — 텍스트·마크가 있는 사진에서는
+클라우드가 구조적으로 유리하다. ② n=18은 통계적으로 작다(±11pp 수준의 오차).
+③ reject 를 "오답"으로 채점했다 — reject 후 재촬영 유도를 성공으로 보는 지표에서는 결론이 달라진다.
+결론: <b>속도·오프라인은 온디바이스, 설명가능성·복합 장면·안내 품질은 클라우드</b> —
+현행 기본값(클라우드 + 저확신 교차 폴백)이 타당하다.
+</div>
+
+<h2>8. 운영·용량 정책 (무료 티어 지속성)</h2>
+<table>
+  <tr><th>자원</th><th>정책</th><th>가드</th></tr>
+  <tr><td>Supabase Storage (1GB)</td><td>업로드 재압축(720px q80, ~9×) · 피드백 없는 업로드 <b>7일 후 자동 삭제</b> ·
+      user-uploads 버킷 <b>비공개</b>(service key 접근)</td>
+      <td>사용률 80% 초과 위험 시 발행·작업 중단 후 보고</td></tr>
+  <tr><td>HF 모델 저장소</td><td>활성 버전만 유지(발행 시 구버전 자동 삭제) · 대용량 파일 호스팅 전담
+      (Supabase 무료 50MB/파일 캡 우회)</td>
+      <td>자체 상한 1GB 의 80% 초과 시 발행 중단</td></tr>
+  <tr><td>기기 (앱)</td><td>분류 기록 <b>최근 100건</b> 초과분 이미지·행 자동 정리 · 모델 캐시는 활성 버전만</td><td>—</td></tr>
+  <tr><td>VLM 비용</td><td>일 200회 상한 (카운터 영속)</td><td>한도 도달 시 자동 스킵</td></tr>
+</table>
+<p class="small">
+디자인 토큰·컴포넌트 스펙: <span class="mono">https://ethandev92-waste-api.hf.space/design/tokens.json</span> ·
+모델 저장소: <span class="mono">https://huggingface.co/ethanDev92/waste-models</span> ·
+본 문서의 수치는 2026-08-06 실측 기준이며, 재학습·재평가 시 §7은 갱신되어야 한다.
+</p>
+
+</body>
+</html>
