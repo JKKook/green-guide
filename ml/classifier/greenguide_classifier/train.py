@@ -18,9 +18,9 @@ from typing import Any
 import numpy as np
 import torch
 import torch.nn as nn
+from greenguide_common.logging import get_logger
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from greenguide_common.logging import get_logger
 
 from greenguide_classifier import config
 from greenguide_classifier.dataset import build_dataset, load_manifest

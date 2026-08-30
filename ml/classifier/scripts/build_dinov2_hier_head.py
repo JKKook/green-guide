@@ -31,10 +31,10 @@ os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 import numpy as np
 import torch
 import torch.nn as nn
-from PIL import Image, ImageFile
-from torch.utils.data import DataLoader, Dataset
 from greenguide_common import imaging
 from greenguide_common.taxonomy import FINE_LABELS, NUM_FINE
+from PIL import Image, ImageFile
+from torch.utils.data import DataLoader, Dataset
 
 from greenguide_classifier import config
 from greenguide_classifier.hier_dataset import build_hier_items, load_or_build_hier_splits

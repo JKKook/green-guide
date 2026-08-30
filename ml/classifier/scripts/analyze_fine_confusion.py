@@ -16,8 +16,8 @@ from pathlib import Path
 
 import _base  # noqa: F401 — sys.path 설정
 import torch
-from torch.utils.data import DataLoader
 from greenguide_common.taxonomy import FINE_LABELS, NUM_FINE
+from torch.utils.data import DataLoader
 
 from greenguide_classifier import config
 from greenguide_classifier.hier_dataset import (

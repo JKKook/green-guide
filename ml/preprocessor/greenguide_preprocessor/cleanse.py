@@ -10,9 +10,9 @@ import imagehash
 from PIL import Image, UnidentifiedImageError
 from tqdm import tqdm
 
+from greenguide_common.logging import get_logger
 from greenguide_preprocessor import config
 from greenguide_preprocessor.catalog import Catalog, CatalogItem
-from greenguide_common.logging import get_logger
 
 log = get_logger(__name__)
 

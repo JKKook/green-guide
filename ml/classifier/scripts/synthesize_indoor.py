@@ -27,8 +27,8 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 from _base import PREPROCESSOR_ROOT, RAW_DIR, make_parser
-from PIL import Image
 from greenguide_common import imaging, settings
+from PIL import Image
 
 SYNTH_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "synthetic_indoor"
 AUX_DIR = PREPROCESSOR_ROOT / "data" / "raw" / "_aux"

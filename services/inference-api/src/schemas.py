@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # pydantic 2.x 는 "model_" 로 시작하는 필드명을 보호 namespace 로 경고
 # 도메인 용어상 "model" 사용이 자연스러우므로 비활성화
 _ALLOW_MODEL_FIELDS = ConfigDict(protected_namespaces=())

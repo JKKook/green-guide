@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 import torch
-from torch.utils.data import Dataset
 from greenguide_common.logging import fail_open, get_logger
 from greenguide_common.taxonomy import (
     COARSE_TO_INDEX,
@@ -26,6 +25,7 @@ from greenguide_common.taxonomy import (
     STAGING_DIR_SUPERVISION,
     supervision_index,
 )
+from torch.utils.data import Dataset
 
 from greenguide_classifier import config
 from greenguide_classifier.dataset import WasteImageDataset, _load_rgb_chw01, load_manifest

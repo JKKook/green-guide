@@ -13,8 +13,6 @@ from __future__ import annotations
 import json
 
 import torch
-from sklearn.metrics import classification_report, confusion_matrix
-from torch.utils.data import DataLoader
 from greenguide_common.logging import get_logger
 from greenguide_common.taxonomy import (
     COARSE_LABELS,
@@ -23,9 +21,15 @@ from greenguide_common.taxonomy import (
     NUM_FINE,
     same_guidance,
 )
+from sklearn.metrics import classification_report, confusion_matrix
+from torch.utils.data import DataLoader
 
 from greenguide_classifier import config
-from greenguide_classifier.hier_dataset import HierImageDataset, build_hier_items, load_or_build_hier_splits
+from greenguide_classifier.hier_dataset import (
+    HierImageDataset,
+    build_hier_items,
+    load_or_build_hier_splits,
+)
 from greenguide_classifier.hier_train import ARCH, CKPT_DIR, LOG_DIR
 from greenguide_classifier.model import build_hier_model
 from greenguide_classifier.train import pick_device

@@ -18,6 +18,7 @@ from typing import Any
 
 import numpy as np
 from PIL import Image
+
 from src.core import config
 from src.core.log import get_logger
 from src.core.singleton import lazy_singleton

@@ -21,7 +21,7 @@ def backup_artifacts(
     dest.mkdir(parents=True, exist_ok=True)
     copied = 0
     for src, name in artifacts:
-        if greenguide_classifier.exists():
+        if src.exists():
             shutil.copy2(src, dest / name)
             copied += 1
     log.info(f"{copied}개 → {dest}")
@@ -43,7 +43,7 @@ def rollback_artifacts(
         fail_dir.mkdir(parents=True, exist_ok=True)
         kept = 0
         for src, name in artifacts:
-            if greenguide_classifier.exists():
+            if src.exists():
                 shutil.copy2(src, fail_dir / name)
                 kept += 1
         log.warning(f"실패 산출물 {kept}개 보존 → {fail_dir}")

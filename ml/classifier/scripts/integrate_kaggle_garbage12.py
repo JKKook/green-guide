@@ -56,18 +56,18 @@ def _find_dataset_root(src: Path) -> Path:
     Kaggle 데이터셋은 압축 해제 시 'garbage_classification/' 같은 single subdir
     안에 클래스 폴더들이 있는 경우가 흔함. 그 경우 자동 탐색.
     """
-    if not greenguide_classifier.exists():
+    if not src.exists():
         sys.exit(f"ERROR: {src} 가 없음")
 
     expected = set(KAGGLE_TO_OURS.keys())
 
     # 1) src 자체가 클래스 폴더들을 갖는지
-    direct = {p.name for p in greenguide_classifier.iterdir() if p.is_dir()}
+    direct = {p.name for p in src.iterdir() if p.is_dir()}
     if expected.issubset(direct):
         return src
 
     # 2) 한 단계 더 들어가서 찾기
-    for sub in greenguide_classifier.iterdir():
+    for sub in src.iterdir():
         if sub.is_dir():
             inner = {p.name for p in sub.iterdir() if p.is_dir()}
             if expected.issubset(inner):

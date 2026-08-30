@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status
+
 from src.classes import ClassRegistry
 from src.core import config
 from src.core.log import get_logger

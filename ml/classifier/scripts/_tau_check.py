@@ -6,8 +6,8 @@ import _base  # noqa: F401 — sys.path 설정
 import numpy as np
 import onnxruntime as ort
 
-from scripts.build_hier_prototypes import ONNX_PATH, OOD_PATH, _extract_embeddings
 from greenguide_classifier.hier_dataset import build_hier_items, load_or_build_hier_splits
+from scripts.build_hier_prototypes import ONNX_PATH, OOD_PATH, _extract_embeddings
 
 
 def main() -> None:

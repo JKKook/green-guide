@@ -21,7 +21,6 @@ import _base  # noqa: F401 — sys.path 설정
 import numpy as np
 import onnxruntime as ort
 import requests
-from PIL import Image
 from greenguide_common import imaging
 from greenguide_common.taxonomy import (
     COARSE_TO_INDEX,
@@ -31,10 +30,11 @@ from greenguide_common.taxonomy import (
     LEGACY_LABEL_SUPERVISION,
     same_guidance,
 )
+from PIL import Image
 
-from retrain import fetch_feedback_rows
 from greenguide_classifier import config
 from greenguide_classifier.hier_train import LOG_DIR
+from retrain import fetch_feedback_rows
 
 ONNX_PATH = config.MODELS_DIR / "cnn_hier" / "classifier.onnx"
 OUT_PATH = LOG_DIR / "realworld_eval.json"

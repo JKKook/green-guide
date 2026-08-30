@@ -27,8 +27,8 @@ from pathlib import Path
 import numpy as np
 import onnxruntime as ort
 from _base import PROJECT_ROOT, RAW_DIR
-from PIL import Image
 from greenguide_common import imaging, settings
+from PIL import Image
 
 U2NETP_PATH = settings.API_ROOT / "models" / "u2netp.onnx"
 CLASSIFIER_PATH = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx"
@@ -414,7 +414,7 @@ def main() -> int:
                 dst = keep_dir / r["file"]
                 if dst.exists() or dst.is_symlink():
                     dst.unlink()
-                dst.symlink_to(greenguide_classifier.resolve())
+                dst.symlink_to(src.resolve())
         print(f"\n✓ {pass_count}장 심볼릭 링크 → {keep_dir}")
     else:
         print("\n(dry-run) --apply 없이 실행 — manifest 만 저장됨")

@@ -16,8 +16,8 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from PIL import Image
-from src.core.singleton import lazy_singleton
 
+from src.core.singleton import lazy_singleton
 
 _DILATE_KERNEL = np.ones((15, 15), np.uint8)
 

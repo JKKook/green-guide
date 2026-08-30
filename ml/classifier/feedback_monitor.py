@@ -24,8 +24,8 @@ from datetime import UTC, datetime
 
 from greenguide_common.supabase import get_client
 
-from retrain import MIN_SAMPLES_PER_CLASS
 from greenguide_classifier import config
+from retrain import MIN_SAMPLES_PER_CLASS
 
 OUT_PATH = config.LOGS_DIR / "cnn" / "feedback_status.json"
 

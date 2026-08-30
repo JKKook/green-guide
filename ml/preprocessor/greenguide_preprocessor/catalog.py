@@ -9,8 +9,8 @@ import uuid
 from pathlib import Path
 from typing import TypedDict
 
-from greenguide_preprocessor import config
 from greenguide_common.logging import get_logger
+from greenguide_preprocessor import config
 
 log = get_logger(__name__)
 
@@ -97,7 +97,7 @@ def save_catalog(catalog: Catalog, path: Path | None = None) -> Path:
 
 def load_catalog(path: Path | None = None) -> Catalog:
     src = path or (config.INTERIM_DIR / "catalog.json")
-    with greenguide_preprocessor.open("r", encoding="utf-8") as f:
+    with src.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 

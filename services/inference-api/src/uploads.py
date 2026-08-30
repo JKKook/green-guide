@@ -65,6 +65,7 @@ def _recompress_for_storage(
     """저장용 재압축 — 긴 변 640px WebP q75. 실패 시 원본 그대로 (fail-open)."""
     try:
         import io  # noqa: PLC0415
+
         from PIL import Image, ImageOps  # noqa: PLC0415
         img = Image.open(io.BytesIO(image_bytes))
         img = ImageOps.exif_transpose(img).convert("RGB")

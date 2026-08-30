@@ -45,8 +45,8 @@ from collections import defaultdict
 from pathlib import Path
 
 from _base import RAW_DIR
-from PIL import Image
 from greenguide_common import settings
+from PIL import Image
 
 STAGING = settings.WASTE_ROOT / "ml" / "data" / "raw" / "aihub"
 STAGING_140 = settings.WASTE_ROOT / "ml" / "data" / "raw" / "aihub_140"

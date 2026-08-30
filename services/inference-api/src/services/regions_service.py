@@ -30,6 +30,7 @@ def tap_silhouette_regions(
     분리, 아니면 다수결 단일 영역 = 다중재질 표시 유지).
     """
     import numpy as _np  # noqa: PLC0415
+
     from src.regions import _softmax0  # noqa: PLC0415
 
     tr = min(grid_h - 1, max(0, int(tap_y * grid_h)))
@@ -112,7 +113,9 @@ def verify_regions(raw: bytes, regions: list[dict], hier_clf,
     영역이 전부 폐기되는 문제(빗금 미표시) 방지. 탭 없는 경로는 기존 가드 유지.
     """
     import io as _io  # noqa: PLC0415
+
     from PIL import Image as _Image  # noqa: PLC0415
+
     from src.preprocess import preprocess_both as _pb  # noqa: PLC0415
 
     try:

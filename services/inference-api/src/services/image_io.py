@@ -38,6 +38,7 @@ async def read_validate_with_orientation(image: UploadFile) -> tuple[bytes, int]
     orientation = 1
     try:
         import io as _io  # noqa: PLC0415
+
         from PIL import Image as _Image  # noqa: PLC0415
         orientation = int(_Image.open(_io.BytesIO(raw)).getexif().get(274, 1))
     except Exception:  # noqa: BLE001
@@ -60,6 +61,7 @@ def auto_crop_to_object(raw: bytes, expand: float = 0.10) -> bytes:
     /predict-with-regions 가 공통 사용. 객체 중심 입력으로 표준화 → 잡배경 영향 ↓.
     """
     import io  # noqa: PLC0415
+
     from PIL import Image  # noqa: PLC0415
 
     try:
@@ -99,7 +101,9 @@ def crop_at_tap(raw: bytes, tap_x: float, tap_y: float,
     반환: (crop bytes, region bbox_norm|None) — bbox 는 CAM 재질 융합용.
     """
     import io  # noqa: PLC0415
+
     from PIL import Image  # noqa: PLC0415
+
     from src.segment import component_bbox_at, grabcut_object_at  # noqa: PLC0415
 
     try:

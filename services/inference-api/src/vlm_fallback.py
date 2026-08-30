@@ -20,10 +20,10 @@ from typing import Any
 
 from PIL import Image
 
-from src.streams import is_valid_stream, prompt_lines
 from src.core import config
 from src.core.log import get_logger
 from src.core.singleton import lazy_singleton
+from src.streams import is_valid_stream, prompt_lines
 
 log = get_logger(__name__)
 

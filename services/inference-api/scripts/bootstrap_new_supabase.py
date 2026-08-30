@@ -112,7 +112,7 @@ def main() -> None:
     print("\n다음 수동 단계:")
     print("  1) greenguide-classifier: .venv/bin/python scripts/apply_hier_activation.py "
           "(계층 활성화/승격 상태 복원)")
-    print("  2) greenguide-classifier: publish_hier_version.py --apply (레지스트리 재발행 — 운영 배포 승인 필요)")
+    print("  2) ml/classifier: publish_hier_version.py --apply (레지스트리 재발행 — 배포 승인 필요)")
     print("  3) HF Spaces Settings → Secrets: SUPABASE_URL / SUPABASE_KEY 교체 → 재시작")
 
 

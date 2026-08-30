@@ -6,14 +6,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.classes import ClassRegistry
 from src.core import config
 from src.core.errors import register_exception_handlers
-from src.routers import admin, inference, learning, meta
-from src.classes import ClassRegistry
-from src.inference import get_active_meta, get_classifier, reset_classifier
-from src.dinov2_classifier import get_dinov2_classifier
-from src.uploads import get_recorder
 from src.core.log import get_logger
+from src.dinov2_classifier import get_dinov2_classifier
+from src.inference import get_active_meta, get_classifier, reset_classifier
+from src.routers import admin, inference, learning, meta
+from src.uploads import get_recorder
 
 log = get_logger(__name__)
 

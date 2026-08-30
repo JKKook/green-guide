@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+
 from src.cam_renderer import render_overlay_png_base64
 from src.core import config
 from src.core.log import get_logger
@@ -9,12 +10,12 @@ from src.inference import get_classifier
 from src.preprocess import ImageDecodeError, preprocess_both
 from src.schemas import (
     ObjectCandidate,
-    PredictObjectsResponse,
     PredictionHierResponse,
     PredictionResponse,
     PredictionWithCamResponse,
     PredictionWithMaskResponse,
     PredictionWithRegionsResponse,
+    PredictObjectsResponse,
 )
 from src.segment import get_segmenter
 from src.services.cascade import force_non_object_result, non_object_gate, run_cascade, stage1_gate
@@ -46,7 +47,9 @@ async def predict_hier(
     혼재 장면에서 사용자가 지목한 객체의 saliency 성분만 크롭해 분류.
     """
     from src.hier_inference import (  # noqa: PLC0415
-        degs_for_orientation, get_hier_classifier, predict_rotations,
+        degs_for_orientation,
+        get_hier_classifier,
+        predict_rotations,
     )
 
     raw, exif_tag = await read_validate_with_orientation(image)
@@ -102,7 +105,9 @@ async def predict_hier(
     # prior 가 생기면 베스트 회전 텐서 1장만 재예측 — TTA 전체 재실행 없음.
     from src.clip_identity import get_clip_identity  # noqa: PLC0415
     from src.semantic_evidence import (  # noqa: PLC0415
-        evidence_prior, get_evidence_engine, match_evidence,
+        evidence_prior,
+        get_evidence_engine,
+        match_evidence,
     )
     evidence: list[dict] = []
     prior = None
@@ -250,9 +255,13 @@ async def predict_objects(
     """
     import io as _io  # noqa: PLC0415
     import time as _time  # noqa: PLC0415
+
     from PIL import Image as _Image  # noqa: PLC0415
+
     from src.hier_inference import (  # noqa: PLC0415
-        degs_for_orientation, get_hier_classifier, predict_best_rotation,
+        degs_for_orientation,
+        get_hier_classifier,
+        predict_best_rotation,
     )
     from src.segment import all_component_bboxes  # noqa: PLC0415
 
@@ -278,7 +287,9 @@ async def predict_objects(
     # (후보마다 OCR 재실행 금지 — 비용. SEMANTIC_FUSION_PLAN §1 공간 귀속)
     from src.clip_identity import get_clip_identity  # noqa: PLC0415
     from src.semantic_evidence import (  # noqa: PLC0415
-        evidence_prior, get_evidence_engine, match_evidence,
+        evidence_prior,
+        get_evidence_engine,
+        match_evidence,
     )
     scene_evidence: list[dict] = []
     try:

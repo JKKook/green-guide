@@ -21,9 +21,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from greenguide_preprocessor import config
 from greenguide_common import supabase
 from greenguide_common.imaging import content_type
+from greenguide_preprocessor import config
 
 if TYPE_CHECKING:
     from supabase import Client

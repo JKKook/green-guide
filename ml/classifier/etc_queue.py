@@ -31,12 +31,12 @@ import numpy as np
 import requests
 import torch
 import torch.nn as nn
+from greenguide_common import imaging
+from greenguide_common.logging import fail_open, get_logger
 from PIL import Image
 from postgrest.types import CountMethod
 from sklearn.cluster import HDBSCAN
 from supabase import Client
-from greenguide_common import imaging
-from greenguide_common.logging import fail_open, get_logger
 
 from greenguide_classifier import config
 from greenguide_classifier.dataset import load_manifest

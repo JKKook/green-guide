@@ -14,9 +14,9 @@ from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
-from PIL import Image
 from greenguide_common import imaging
 from greenguide_common.logging import fail_open, get_logger
+from PIL import Image
 
 from greenguide_classifier import config
 from greenguide_classifier.dataset import load_manifest

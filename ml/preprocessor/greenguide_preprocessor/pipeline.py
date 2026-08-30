@@ -12,13 +12,13 @@ from typing import TYPE_CHECKING, Any
 
 from tqdm import tqdm
 
+from greenguide_common.logging import get_logger
 from greenguide_preprocessor import config
 from greenguide_preprocessor.catalog import build_catalog, save_catalog
 from greenguide_preprocessor.cleanse import cleanse
 from greenguide_preprocessor.collect import ensure_dataset
 from greenguide_preprocessor.preprocess import image_stats, preprocess_image
 from greenguide_preprocessor.vectorize import flatten, save_vector
-from greenguide_common.logging import get_logger
 
 if TYPE_CHECKING:
     from greenguide_preprocessor.storage import SupabaseStore

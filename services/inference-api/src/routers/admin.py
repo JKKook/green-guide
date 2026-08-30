@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
+
 from src.classes import ClassRegistry
 from src.inference import get_active_meta, get_classifier, reset_classifier
 from src.schemas import ReloadModelResponse

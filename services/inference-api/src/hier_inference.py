@@ -21,10 +21,10 @@ from typing import Any
 import numpy as np
 import onnxruntime as ort
 
-from src.inference import _softmax
 from src.core import config
 from src.core.log import get_logger
 from src.core.singleton import lazy_singleton
+from src.inference import _softmax
 
 log = get_logger(__name__)
 

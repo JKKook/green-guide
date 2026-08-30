@@ -18,7 +18,6 @@ from PIL import Image
 from src.core import config
 from src.core.singleton import lazy_singleton
 
-
 _U2NET_MEAN = (0.485, 0.456, 0.406)
 _U2NET_STD = (0.229, 0.224, 0.225)
 _SIZE = 320

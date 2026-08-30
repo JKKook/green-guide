@@ -15,11 +15,15 @@ from collections import Counter
 import _base  # noqa: F401 — sys.path 설정
 import numpy as np
 import onnxruntime as ort
-from torch.utils.data import DataLoader
 from greenguide_common.taxonomy import FINE_LABELS
+from torch.utils.data import DataLoader
 
 from greenguide_classifier import config
-from greenguide_classifier.hier_dataset import HierImageDataset, build_hier_items, load_or_build_hier_splits
+from greenguide_classifier.hier_dataset import (
+    HierImageDataset,
+    build_hier_items,
+    load_or_build_hier_splits,
+)
 
 TARGETS = {
     "paper_other": ["carton", "paper_cup", "cardboard"],

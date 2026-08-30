@@ -23,7 +23,6 @@ from typing import Any
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
 from greenguide_common.logging import get_logger
 from greenguide_common.taxonomy import (
     COARSE_LABELS,
@@ -32,6 +31,7 @@ from greenguide_common.taxonomy import (
     NUM_COARSE,
     NUM_FINE,
 )
+from torch.utils.data import DataLoader
 
 from greenguide_classifier import config
 from greenguide_classifier.hier_dataset import (
@@ -40,7 +40,13 @@ from greenguide_classifier.hier_dataset import (
     load_or_build_hier_splits,
 )
 from greenguide_classifier.model import build_hier_model, count_parameters
-from greenguide_classifier.train import ArchHyperparams, inverse_freq_weights, pick_device, run_epoch, set_seed
+from greenguide_classifier.train import (
+    ArchHyperparams,
+    inverse_freq_weights,
+    pick_device,
+    run_epoch,
+    set_seed,
+)
 
 log = get_logger(__name__)
 

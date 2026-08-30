@@ -25,9 +25,9 @@ from typing import Any
 
 import numpy as np
 import torch
+from greenguide_common.logging import fail_open, get_logger
 from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
 from torch.utils.data import DataLoader
-from greenguide_common.logging import fail_open, get_logger
 
 from greenguide_classifier import config
 from greenguide_classifier.dataset import build_dataset, load_manifest

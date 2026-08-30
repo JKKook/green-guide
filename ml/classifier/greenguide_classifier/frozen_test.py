@@ -16,8 +16,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-from sklearn.model_selection import train_test_split
 from greenguide_common.logging import get_logger
+from sklearn.model_selection import train_test_split
 
 from greenguide_classifier import config
 

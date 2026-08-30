@@ -13,7 +13,6 @@ from collections import defaultdict
 import numpy as np
 from PIL import Image, ImageDraw
 
-
 # 필터 — "확실히 다른 재질만" (사용자 요구)
 _CONF_THRESHOLD = 0.45    # 셀 클래스 확신 하한
 _MIN_CELLS = 3            # 이 셀 수 미만 클래스는 노이즈로 간주, 제외

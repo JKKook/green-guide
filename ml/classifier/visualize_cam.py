@@ -27,10 +27,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
-from PIL import Image
-from torchvision import transforms
 from greenguide_common import imaging, settings
 from greenguide_common.logging import get_logger
+from PIL import Image
+from torchvision import transforms
 
 from greenguide_classifier import config
 from greenguide_classifier.model import WasteClassifierCNN
@@ -205,8 +205,8 @@ def _sample_images_for_label(label: str, n: int) -> list[Path]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Grad-CAM 시각화")
     src = parser.add_mutually_exclusive_group(required=True)
-    greenguide_classifier.add_argument("--image", type=Path, help="시각화할 단일 이미지 경로")
-    greenguide_classifier.add_argument("--label", type=str, help="이 라벨 폴더에서 자동 샘플")
+    src.add_argument("--image", type=Path, help="시각화할 단일 이미지 경로")
+    src.add_argument("--label", type=str, help="이 라벨 폴더에서 자동 샘플")
     parser.add_argument("--n", type=int, default=5,
                         help="--label 사용 시 샘플 개수 (default 5)")
     parser.add_argument("--target-class", type=str, default=None,

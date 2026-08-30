@@ -16,10 +16,10 @@ from datetime import UTC, datetime
 import numpy as np
 import onnxruntime as ort
 import requests
-from PIL import Image
 from greenguide_common import imaging
 from greenguide_common.logging import get_logger
 from greenguide_common.supabase import Bucket, get_client
+from PIL import Image
 
 from greenguide_classifier import config
 

@@ -8,8 +8,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from sklearn.model_selection import train_test_split
 from greenguide_common.logging import get_logger
+from sklearn.model_selection import train_test_split
 
 from greenguide_classifier import config
 
@@ -62,7 +62,7 @@ def save_splits(splits: dict[str, list[int]], path: Path | None = None) -> Path:
 
 def load_splits(path: Path | None = None) -> dict[str, list[int]]:
     src = path or (config.SPLITS_DIR / "splits.json")
-    with greenguide_classifier.open("r", encoding="utf-8") as f:
+    with src.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 

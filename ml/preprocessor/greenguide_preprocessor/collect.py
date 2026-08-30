@@ -12,8 +12,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from greenguide_preprocessor import config
 from greenguide_common.logging import get_logger
+from greenguide_preprocessor import config
 
 log = get_logger(__name__)
 
@@ -69,12 +69,12 @@ def _flatten_nested_structure(dataset_dir: Path) -> None:
 
     for label, src in by_label.items():
         dst = dataset_dir / label
-        if greenguide_preprocessor.resolve() == dst.resolve():
+        if src.resolve() == dst.resolve():
             continue
         if dst.exists():
-            for f in greenguide_preprocessor.iterdir():
+            for f in src.iterdir():
                 shutil.move(str(f), str(dst / f.name))
-            greenguide_preprocessor.rmdir()
+            src.rmdir()
         else:
             shutil.move(str(src), str(dst))
 

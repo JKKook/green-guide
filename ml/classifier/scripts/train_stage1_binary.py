@@ -22,9 +22,9 @@ import torch.nn as nn
 import torchvision.models as tvm
 import torchvision.transforms as T
 from _base import PREPROCESSOR_ROOT, PROJECT_ROOT, make_parser
+from greenguide_common import imaging
 from PIL import Image, ImageFile
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
-from greenguide_common import imaging
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 

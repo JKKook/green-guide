@@ -10,9 +10,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from greenguide_preprocessor import config
 from greenguide_common import imaging
 from greenguide_common.imaging import resize_square, to_normalized_array  # noqa: F401 — 하위호환 re-export
+from greenguide_preprocessor import config
 
 
 def load_rgb(path: Path) -> Image.Image:

@@ -5,7 +5,12 @@ import pytest
 import torch
 
 from greenguide_classifier import config
-from greenguide_classifier.model import WasteClassifierCNN, WasteClassifierMLP, build_model, count_parameters
+from greenguide_classifier.model import (
+    WasteClassifierCNN,
+    WasteClassifierMLP,
+    build_model,
+    count_parameters,
+)
 
 # ───── MLP ─────
 

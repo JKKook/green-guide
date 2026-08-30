@@ -12,9 +12,9 @@ from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
+from greenguide_common.logging import get_logger
 from sklearn.metrics import precision_recall_fscore_support
 from torch.utils.data import DataLoader
-from greenguide_common.logging import get_logger
 
 from greenguide_classifier import config
 from greenguide_classifier.dataset import build_dataset, load_manifest

@@ -36,6 +36,10 @@ from pathlib import Path
 from greenguide_common.logging import fail_open, get_logger
 from greenguide_common.taxonomy import COARSE_LABELS
 
+from greenguide_classifier import config
+from greenguide_classifier.artifacts import backup_artifacts, rollback_artifacts
+from greenguide_classifier.hier_train import CKPT_DIR, LOG_DIR
+
 # retrain.py(flat) 의 검증된 유틸 재사용
 from retrain import (
     download_to_raw,
@@ -44,9 +48,6 @@ from retrain import (
     quarantine_tiny_classes,
     run_preprocessor,
 )
-from greenguide_classifier import config
-from greenguide_classifier.artifacts import backup_artifacts, rollback_artifacts
-from greenguide_classifier.hier_train import CKPT_DIR, LOG_DIR
 
 log = get_logger(__name__)
 

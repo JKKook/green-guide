@@ -7,8 +7,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from src.uploads import _client as _supabase_client
 from src.core.log import get_logger
+from src.uploads import _client as _supabase_client
 
 log = get_logger(__name__)
 

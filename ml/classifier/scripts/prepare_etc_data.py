@@ -126,7 +126,7 @@ def _copy_local_dir(src_dir: Path, n: int, dry_run: bool) -> int:
     TARGET_DIR.mkdir(parents=True, exist_ok=True)
     copied = 0
     for src in selected:
-        dest = TARGET_DIR / f"etc_local_{greenguide_classifier.name}"
+        dest = TARGET_DIR / f"etc_local_{src.name}"
         if dest.exists():
             continue
         shutil.copy2(src, dest)
