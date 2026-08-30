@@ -37,5 +37,13 @@ void main() {
     expect(find.textContaining('다른 각도로 다시 촬영'), findsOneWidget);
     expect(find.text('다시 시도'), findsOneWidget);
     expect(find.textContaining('Exception'), findsNothing);
+
+    // 출처 배지: '갤러리 · 오후 5:34' 형식 — 컨트롤러 객체가 문자열화되면 안 된다
+    // (회귀: '$c.capturedAt' → "Instance of 'ResultController'.capturedAt")
+    expect(
+      find.textContaining(RegExp(r'^갤러리 · (오전|오후) \d{1,2}:\d{2}$')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Instance of'), findsNothing);
   });
 }

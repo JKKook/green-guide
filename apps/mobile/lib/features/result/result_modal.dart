@@ -279,7 +279,7 @@ class _ResultModalState extends State<_ResultModal> {
                                             ),
                                             const SizedBox(width: 5),
                                             Text(
-                                              '${widget.isSmartCapture ? '스마트 촬영' : '갤러리'} · $c.capturedAt',
+                                              '${widget.isSmartCapture ? '스마트 촬영' : '갤러리'} · ${c.capturedAt}',
                                               style: const TextStyle(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w600,
