@@ -11,10 +11,10 @@ import 'package:flutter/services.dart';
 
 import '../data/haptics.dart';
 import '../data/image_prep.dart';
+import '../features/result/result_modal.dart';
 import '../services/stability_detector.dart';
 import '../theme/app_theme.dart';
 import '../widgets/capture_entry_sheet.dart' show pickFromGalleryAndAnalyze;
-import '../widgets/result_modal.dart';
 
 const Duration _kCountdown = Duration(seconds: 5);
 const Duration _kStableGrace = Duration(seconds: 3);

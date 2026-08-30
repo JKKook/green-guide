@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:waste_app/widgets/result_modal.dart';
+import 'package:waste_app/features/result/result_modal.dart';
 
 import '../helpers/test_env.dart';
 

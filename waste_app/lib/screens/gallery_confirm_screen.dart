@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../data/haptics.dart';
+import '../features/result/result_modal.dart';
 import '../theme/app_theme.dart';
 import '../theme/design_tokens.dart';
-import '../widgets/result_modal.dart';
 
 /// 갤러리 선택 확인 — 시안 16d: 선택한 사진 + "재질 분석 시작".
 /// (앨범 그리드는 시스템 피커가 담당하고, 선택 결과를 여기서 확인한다)
