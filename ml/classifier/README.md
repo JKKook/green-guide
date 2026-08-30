@@ -419,6 +419,8 @@ outputs/
 
 ```bash
 .venv/bin/python -m pytest
+# ruff + pytest 한 번에 (커밋 전 검증)
+scripts/check.sh
 ```
 
 총 **24개 테스트**:

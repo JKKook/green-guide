@@ -109,7 +109,7 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 ### Phase 4 — 품질 규칙 고정 (0.5일)
 - [ ] `config.py` 의 import-time 부수효과(`refresh_classes_from_manifest()` 자동 호출, `print`) 를 **명시 호출**로 바꿀지 결정. 바꾼다면 호출부 전수 확인 — 리스크 있으니 별도 PR
 - [ ] `print` 로깅 → `logging` 전환은 **이번 범위 밖**. 공통단 신규 코드만 `logging` 사용
-- [ ] `ruff check` 를 pytest 앞에 두는 `Makefile`/`scripts/check.sh` 1개
+- [x] `scripts/check.sh` — ruff → pytest 순, 실패 시 중단 (2026-08-31)
 - [ ] 이 문서의 진단 표를 최종 수치로 갱신 (목표: InferenceSession 직접 호출 0, softmax 구현 1, create_client 1, sys.path 0)
 
 ---
