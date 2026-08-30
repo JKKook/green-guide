@@ -48,7 +48,7 @@ def evaluate_ensemble():
 
     y_true, y_color, y_edge, y_ensemble = [], [], [], []
 
-    for (xc, yc), (xe, ye) in zip(color_loader, edge_loader):
+    for (xc, yc), (xe, ye) in zip(color_loader, edge_loader, strict=False):
         assert (yc == ye).all(), "label 순서 다름"
         xc_np = xc.numpy()
         xe_np = xe.numpy()

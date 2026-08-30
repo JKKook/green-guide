@@ -49,8 +49,8 @@ def _hf_token() -> str:
         ["git", "credential", "fill"],
         input="protocol=https\nhost=huggingface.co\n\n",
         capture_output=True, text=True, timeout=30).stdout
-    tok = dict(l.split("=", 1) for l in out.strip().splitlines()
-               if "=" in l).get("password")
+    tok = dict(ln.split("=", 1) for ln in out.strip().splitlines()
+               if "=" in ln).get("password")
     if not tok:
         sys.exit("HF 토큰 없음 — git credential(키체인) 확인")
     return tok

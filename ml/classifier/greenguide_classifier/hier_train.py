@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import json
+import os as _os
 import time
 from collections import Counter
 from dataclasses import asdict
@@ -51,7 +52,6 @@ from greenguide_classifier.train import (
 log = get_logger(__name__)
 
 ARCH = "cnn_hier"
-import os as _os
 
 BACKBONE = _os.getenv("WASTE_HIER_BACKBONE", "resnet18")
 LABEL_SMOOTH = float(_os.getenv("WASTE_HIER_LABEL_SMOOTH", "0.0"))

@@ -68,7 +68,7 @@ def main() -> None:
     for it in train_items:
         by_class[it["sup_slug"]].append(it)
     proto_items: list[dict] = []
-    for slug, pool in by_class.items():
+    for _slug, pool in by_class.items():
         idx = rng.permutation(len(pool))[:PER_CLASS_CAP]
         proto_items.extend(pool[i] for i in idx)
     print(f"prototype 표본: {len(proto_items):,} ({len(by_class)} classes)")

@@ -35,8 +35,8 @@ def _prep(img: Image.Image, center_frac: float | None = None) -> np.ndarray:
     if center_frac:
         w, h = img.size
         s = int(min(w, h) * center_frac)
-        l, t = (w - s) // 2, (h - s) // 2
-        img = img.crop((l, t, l + s, t + s))
+        left, top = (w - s) // 2, (h - s) // 2
+        img = img.crop((left, top, left + s, top + s))
     im = img.convert("RGB").resize((224, 224), Image.BILINEAR)
     return np.ascontiguousarray(((np.asarray(im, np.float32) / 255 - _MEAN) / _STD).transpose(2, 0, 1))[None]
 
@@ -80,20 +80,22 @@ def main() -> int:
             continue
         pred, _ = classify(img)
         pred_c, _ = classify(img, center_frac=0.7)
-        y_true.append(truth); y_pred.append(pred); y_pred_crop.append(pred_c)
+        y_true.append(truth)
+        y_pred.append(pred)
+        y_pred_crop.append(pred_c)
 
     n = len(y_true)
     if n == 0:
         log.warning("평가 가능한 샘플 0 — 피드백 데이터 부족")
         return 0
 
-    acc = sum(t == p for t, p in zip(y_true, y_pred)) / n
-    acc_crop = sum(t == p for t, p in zip(y_true, y_pred_crop)) / n
+    acc = sum(t == p for t, p in zip(y_true, y_pred, strict=False)) / n
+    acc_crop = sum(t == p for t, p in zip(y_true, y_pred_crop, strict=False)) / n
 
     # per-class + 혼동
     per_class: dict[str, dict] = defaultdict(lambda: {"n": 0, "correct": 0})
     confusions: Counter = Counter()
-    for t, p in zip(y_true, y_pred):
+    for t, p in zip(y_true, y_pred, strict=False):
         per_class[t]["n"] += 1
         if t == p:
             per_class[t]["correct"] += 1

@@ -38,7 +38,7 @@ def collect_probs():
     edge_loader = DataLoader(edge_ds, batch_size=32, shuffle=False)
 
     ys, color_probs, edge_probs = [], [], []
-    for (xc, yc), (xe, _) in zip(color_loader, edge_loader):
+    for (xc, yc), (xe, _) in zip(color_loader, edge_loader, strict=False):
         logits_c = sc.run(["logits"], {color_in: xc.numpy()})[0]
         logits_e = se.run(["logits"], {edge_in: xe.numpy()})[0]
         color_probs.append(softmax(logits_c, axis=1))
