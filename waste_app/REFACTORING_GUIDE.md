@@ -260,3 +260,37 @@ Phase 0에서 켜고, 경고는 **해당 파일을 건드리는 Phase에서** �
 | 5 마무리 | ±200줄 | 낮음 | 4 |
 
 Phase 1→2→3은 순서 고정. Phase 4의 4-1(이동만)은 Phase 2와 병행 가능.
+
+---
+
+## 7. 진행 결과 (2026-08-30 — Phase 0~5 완료)
+
+커밋 12개(`d48e7ce`…`fba3b91`), 매 커밋 `flutter analyze` 0 issues · 테스트 전부 통과.
+
+| Phase | 커밋 | 핵심 결과 |
+|---|---|---|
+| 0 안전망 | `3c2dc02` | 린트 강화, 테스트 3→34, 골든 2화면×라이트/다크, APK 69.4MB 기준선 |
+| 1 DI | `a579a96` | `AppScope` 도입 — 직접 생성 39곳 → 0, SharedPreferences 단일 접근 |
+| 2 공통 UI | `f487a7a` `0f74c46` `5b40d65` | `showAppSnackBar`(9곳), `DsCard`(15곳 + settings 래퍼 8곳 인라인) |
+| 3 토큰 | `00c186a` | DsTokens 5개 신설·잉크 상수 4개, 다크 삼항 30→6, 정확 일치 간격 66곳 치환 |
+| 4 분해 | `e6539c9` `5fea65f` `bb2dd8c` `2eca428` | result_modal 2,628→398 + `ResultController`(테스트 6), 1,000줄 화면 3개 분할, `screens/` 폐지 → `features/` 9개 |
+| 5 마무리 | `fba3b91` | `appLog` 로거, 빈 catch 7곳 의도 주석, README 구조 반영 |
+
+### DoD 판정
+
+| 항목 | 목표 | 결과 | 판정 |
+|---|---|---|---|
+| 파일 최대 줄 수 | ≤500 | settings 717 · unified_search 633 · live_camera 553 (State 본문 자체가 큼), 나머지 ≤495 | **미달 3개** — 로직 분리(컨트롤러 추출)가 필요해 "이동만" 범위 밖 |
+| 의존 직접 참조 | 정의처+AppScope 만 | `SettingsStore()` 0 · `HistoryRepository()` 0 · `SharedPreferences` 0 · `WasteApiClient(` 1(설정 화면의 사용자 입력 URL 헬스체크 — 의도적) | ✅ |
+| theme 밖 `Color(0x` | 0 | 39 (waste_info 도메인 팔레트 21 · confidence 신호색 3 · 커스텀 페인터/오버레이 15) | **부분** — 도메인 팔레트는 데이터 테이블에 두는 게 맞다고 판단 |
+| `showSnackBar` 직접 | 0 | 0 | ✅ |
+| `BoxDecoration(` | ≤30 | 103 (엄격 동일 패턴만 DsCard 로 흡수; 나머지는 gradient·circle·조건부 색 등 제각각) | **미달** — 목표치가 과대. 픽셀 동일을 지키며 더 줄이려면 변형 파라미터가 늘어 DsCard 가 복잡해짐 |
+| 골든·컨트롤러 테스트 | 골든 ≥4화면, 컨트롤러 테스트 | 골든 2화면(4장) · ResultController 6 · 총 42 | **부분** — 골든은 데이터/날짜 의존 없는 화면만 |
+| analyze / format | 0 issues / 클린 | 0 issues / 내가 만든 파일만 포맷(기존 파일 일괄 포맷은 diff 오염이라 보류) | **부분** |
+| 릴리즈 APK | ±2% | 69,367,290B → 69,383,674B (+0.02%) | ✅ |
+
+### 이번 범위 밖으로 남긴 것
+- settings·unified_search·live_camera 의 State 로직 분리(각각 컨트롤러 추출) — result 와 같은 레시피
+- 죽은 코드: `SettingsStore.emulatorLocalApiUrl`(미사용 상수), `lib/widgets/app_tooltip.dart`(importer 0) — 변경과 무관해 기록만
+- README 의 6-class 시절 서술(화면 흐름·클래스 표·한계) 전면 개정
+- `dart format` 전역 적용
