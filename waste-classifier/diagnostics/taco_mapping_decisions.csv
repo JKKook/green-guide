@@ -1,0 +1,46 @@
+annotation_id,image_id,taco_category,our_class,bbox,saved_path
+1,0,Glass bottle,glass,"[161.45738451528953, 39.66813079551001, 139.59661678594665, 412.92337725719864]",data/raw/garbage-classification/glass/taco_000001.jpg
+2,1,Meal carton,cardboard,"[0.3122966818477554, 142.74280136652027, 446.27195836044245, 474.455832113226]",data/raw/garbage-classification/cardboard/taco_000002.jpg
+3,1,Other carton,cardboard,"[165.8295380611581, 91.20546608101513, 314.1704619388419, 209.89751098096633]",data/raw/garbage-classification/cardboard/taco_000003.jpg
+4,2,Clear plastic bottle,plastic,"[197.3715029277814, 308.2869692532943, 156.1483409238777, 116.81795998047829]",data/raw/garbage-classification/plastic/taco_000004.jpg
+6,3,Clear plastic bottle,plastic,"[65.28062469497316, 287.31294729993493, 141.8057589067838, 175.51073519843854]",data/raw/garbage-classification/plastic/taco_000006.jpg
+7,3,Clear plastic bottle,plastic,"[378.5651537335286, 256.70787247885494, 55.910200097608595, 139.2843201040989]",data/raw/garbage-classification/plastic/taco_000007.jpg
+9,3,Drink can,metal,"[183.97266959492435, 171.13858165256994, 106.51049292337726, 126.48015614834092]",data/raw/garbage-classification/metal/taco_000009.jpg
+10,4,Drink can,metal,"[173.636955107352, 294.8560273304051, 153.02537410540015, 104.94875549048317]",data/raw/garbage-classification/metal/taco_000010.jpg
+11,5,Food Can,metal,"[376.37872132747685, 14.677944046844503, 194.5924841386042, 225.16590761223162]",data/raw/garbage-classification/metal/taco_000011.jpg
+12,5,Food Can,metal,"[96.51537335285505, 3.435263500325309, 181.4738897022938, 256.0832791151594]",data/raw/garbage-classification/metal/taco_000012.jpg
+13,5,Other plastic bottle,plastic,"[59.03367496339678, 234.5348080676643, 505.0658857979502, 183.94274560832793]",data/raw/garbage-classification/plastic/taco_000013.jpg
+14,5,Plastic bottle cap,plastic,"[59.03367496339678, 282.0039037085231, 64.03123474865788, 70.57905009759271]",data/raw/garbage-classification/plastic/taco_000014.jpg
+15,5,Pop tab,metal,"[177.725719863348, 42.784645413142485, 70.9028794533919, 33.72804163955758]",data/raw/garbage-classification/metal/taco_000015.jpg
+16,5,Pop tab,metal,"[481.01512933138116, 53.40273259596617, 76.83748169838947, 34.664931685100846]",data/raw/garbage-classification/metal/taco_000016.jpg
+17,6,Aerosol,metal,"[160.83279115159402, 137.1205466081015, 111.48991541964867, 351.39092240117134]",data/raw/garbage-classification/metal/taco_000017.jpg
+18,7,Clear plastic bottle,plastic,"[257.99902391410444, 232.34873129473002, 144.929233772572, 64.02081977878986]",data/raw/garbage-classification/plastic/taco_000018.jpg
+20,8,Clear plastic bottle,plastic,"[257.33246584255045, 173.97755002440215, 27.794404684450228, 73.71400683260127]",data/raw/garbage-classification/plastic/taco_000020.jpg
+21,9,Food Can,metal,"[227.97657774886144, 39.35578330893119, 85.88158750813272, 190.21961932650075]",data/raw/garbage-classification/metal/taco_000021.jpg
+22,9,Glass cup,glass,"[251.08653220559532, 0.0, 69.32986337020169, 49.97559785261103]",data/raw/garbage-classification/glass/taco_000022.jpg
+24,10,Glass bottle,glass,"[118.3604424202993, 352.01561737432894, 132.72608978529604, 99.32650073206443]",data/raw/garbage-classification/glass/taco_000024.jpg
+26,11,Styrofoam piece,styrofoam,"[334.78204294079376, 307.037579306979, 38.72478854912167, 45.91508052708639]",data/raw/garbage-classification/styrofoam/taco_000026.jpg
+27,11,Styrofoam piece,styrofoam,"[285.4391672088484, 408.5505124450952, 75.88809368900456, 58.408979990239146]",data/raw/garbage-classification/styrofoam/taco_000027.jpg
+28,11,Drink can,metal,"[209.86337020169162, 333.89946315275745, 68.39297332465843, 50.28794533918985]",data/raw/garbage-classification/metal/taco_000028.jpg
+29,11,Plastic film,vinyl,"[125.2309694209499, 322.65495363592, 85.25699414443721, 85.27086383601757]",data/raw/garbage-classification/vinyl/taco_000029.jpg
+30,11,Other carton,cardboard,"[261.0800260247235, 315.47096144460716, 105.86857514638908, 64.65592972181553]",data/raw/garbage-classification/cardboard/taco_000030.jpg
+31,11,Other plastic,plastic,"[242.02992843201042, 284.2362127867252, 49.6551724137931, 30.922401171303076]",data/raw/garbage-classification/plastic/taco_000031.jpg
+32,12,Other plastic bottle,plastic,"[476.9546120058565, 143.65647364996747, 129.62420693020985, 322.60247234873134]",data/raw/garbage-classification/plastic/taco_000032.jpg
+33,12,Clear plastic bottle,plastic,"[180.84919472913617, 162.70657124268055, 100.5758906783797, 287.6252439817827]",data/raw/garbage-classification/plastic/taco_000033.jpg
+34,12,Glass bottle,glass,"[65.9053196681308, 0.3122966818477554, 130.2489019033675, 442.5243981782694]",data/raw/garbage-classification/glass/taco_000034.jpg
+35,12,Drink carton,cardboard,"[377.3157637872133, 190.81327260897854, 115.25622254758419, 275.44567338972024]",data/raw/garbage-classification/cardboard/taco_000035.jpg
+36,12,Drink carton,cardboard,"[269.55588091752077, 189.87638256343527, 110.25866276232308, 268.57514638906963]",data/raw/garbage-classification/cardboard/taco_000036.jpg
+37,12,Plastic bottle cap,plastic,"[523.8067349926794, 143.65647364996747, 65.9053196681308, 30.605074821080027]",data/raw/garbage-classification/plastic/taco_000037.jpg
+38,12,Plastic bottle cap,plastic,"[413.8604197169351, 207.05270006506183, 48.41386041971694, 35.91411841249187]",data/raw/garbage-classification/plastic/taco_000038.jpg
+39,12,Plastic bottle cap,plastic,"[302.66471449487557, 198.6206896551724, 45.602733040507566, 38.72478854912167]",data/raw/garbage-classification/plastic/taco_000039.jpg
+40,12,Plastic bottle cap,plastic,"[190.53196681307955, 162.70657124268055, 57.7842850170815, 30.292778139232272]",data/raw/garbage-classification/plastic/taco_000040.jpg
+41,12,Metal bottle cap,metal,"[66.21766715470962, 0.3122966818477554, 52.7867252318204, 32.166558230318806]",data/raw/garbage-classification/metal/taco_000041.jpg
+42,13,Clear plastic bottle,plastic,"[124.29407937540664, 128.06246949731576, 354.1444372153546, 311.7227916056613]",data/raw/garbage-classification/plastic/taco_000042.jpg
+43,13,Plastic bottle cap,plastic,"[417.2283669486012, 128.06246949731576, 61.210149642160054, 65.59297218155197]",data/raw/garbage-classification/plastic/taco_000043.jpg
+44,13,Plastic film,vinyl,"[0.0, 0.31234748657881894, 105.55627846454132, 207.39873108833578]",data/raw/garbage-classification/vinyl/taco_000044.jpg
+45,13,Disposable food container,plastic,"[0.0, 115.25622254758419, 152.08848405985688, 99.63884821864325]",data/raw/garbage-classification/plastic/taco_000045.jpg
+46,14,Other plastic bottle,plastic,"[130.8523096942095, 2.4987798926305516, 222.66753415744958, 579.0922401171304]",data/raw/garbage-classification/plastic/taco_000046.jpg
+47,15,Other plastic bottle,plastic,"[46.84450227716331, 102.44997559785261, 177.38451528952507, 407.30112249877993]",data/raw/garbage-classification/plastic/taco_000047.jpg
+48,15,Other plastic bottle,plastic,"[250.4619388418998, 126.50073206442167, 170.82628497072218, 438.5358711566618]",data/raw/garbage-classification/plastic/taco_000048.jpg
+49,15,Plastic bottle cap,plastic,"[303.24007807417047, 126.50073206442167, 92.4398178269356, 59.65836993655442]",data/raw/garbage-classification/plastic/taco_000049.jpg
+50,16,Aerosol,metal,"[234.22251138581655, 76.21278672523182, 125.54326610279766, 458.21376281112737]",data/raw/garbage-classification/metal/taco_000050.jpg

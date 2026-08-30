@@ -1,0 +1,14 @@
+torch==2.4.1
+torchvision==0.19.1
+numpy==1.26.4
+scikit-learn==1.5.2
+matplotlib==3.9.2
+tqdm==4.66.5
+onnx==1.17.0
+onnxruntime==1.19.2
+pytest==8.3.3
+
+# retrain.py 의 Supabase 연동 + 이미지 다운로드
+supabase==2.7.4
+python-dotenv==1.0.1
+requests==2.32.3
