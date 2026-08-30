@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
 import '../core/di/app_scope.dart';
+import '../core/feedback/app_snackbar.dart';
 import '../data/confidence.dart';
 import '../data/haptics.dart';
 import '../data/image_quality.dart';
@@ -265,11 +266,11 @@ class _ResultModalState extends State<_ResultModal> {
     if (img == null) {
       // 크기 미해석 — 조용히 무시하지 않고 피드백 + 재시도
       _resolveImageSize();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('사진 정보를 준비 중이에요 — 잠시 후 다시 탭해주세요'),
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
-      ));
+      showAppSnackBar(
+        context,
+        '사진 정보를 준비 중이에요 — 잠시 후 다시 탭해주세요',
+        duration: const Duration(seconds: 2),
+      );
       return;
     }
     final scale = math.max(view.width / img.width, view.height / img.height);
@@ -304,11 +305,7 @@ class _ResultModalState extends State<_ResultModal> {
       unawaited(_fetchRegions(tap: Offset(nx, ny)));
     } on Exception catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(friendlyError(e)),
-            behavior: SnackBarBehavior.floating),
-      );
+      showAppErrorSnackBar(context, e);
     } finally {
       if (mounted) setState(() => _retapBusy = false);
     }

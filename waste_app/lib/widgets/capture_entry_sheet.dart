@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/feedback/app_snackbar.dart';
 import '../data/haptics.dart';
 import '../screens/gallery_confirm_screen.dart';
 import '../screens/live_camera_screen.dart';
@@ -45,12 +46,10 @@ Future<void> pickFromGalleryAndAnalyze(BuildContext context) async {
   } on Exception {
     if (!context.mounted) return;
     Haptics.heavy();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('사진을 불러오지 못했어요. 다시 시도해 주세요.'),
-        backgroundColor: Theme.of(context).colorScheme.error,
-        behavior: SnackBarBehavior.floating,
-      ),
+    showAppSnackBar(
+      context,
+      '사진을 불러오지 못했어요. 다시 시도해 주세요.',
+      kind: AppSnackKind.error,
     );
   }
 }

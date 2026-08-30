@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../api/api_client.dart';
 import '../core/di/app_scope.dart';
+import '../core/feedback/app_snackbar.dart';
 import '../data/collection_schedule.dart';
 import '../data/haptics.dart';
 import '../data/settings_store.dart';
@@ -86,9 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (url.isEmpty) return;
     await _store.setApiUrl(url);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('저장됨')),
-    );
+    showAppSnackBar(context, '저장됨');
   }
 
   Future<void> _testConnection() async {
@@ -160,14 +159,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_versionTaps < 7) {
       // 힌트는 디버그 빌드에서만 — 베타 사용자에게 개발자 옵션을 광고하지 않는다.
       if (_versionTaps >= 4 && kDebugMode) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(
-            content: Text(_devMode
-                ? '${7 - _versionTaps}번 더 누르면 개발자 옵션을 숨겨요'
-                : '${7 - _versionTaps}번 더 누르면 개발자 옵션이 열려요'),
-            duration: const Duration(milliseconds: 900),
-          ));
+        showAppSnackBar(
+          context,
+          _devMode
+              ? '${7 - _versionTaps}번 더 누르면 개발자 옵션을 숨겨요'
+              : '${7 - _versionTaps}번 더 누르면 개발자 옵션이 열려요',
+          duration: const Duration(milliseconds: 900),
+          replace: true,
+        );
       }
       return;
     }
@@ -177,10 +176,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _store.setDevOptionsEnabled(next);
     if (!mounted) return;
     setState(() => _devMode = next);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-          content: Text(next ? '개발자 옵션이 열렸어요' : '개발자 옵션을 숨겼어요')));
+    showAppSnackBar(
+      context,
+      next ? '개발자 옵션이 열렸어요' : '개발자 옵션을 숨겼어요',
+      replace: true,
+    );
   }
 
   /// 개발용 — 더미 기록 10건 (배너 이미지를 사진으로, 최근 2주에 분산).
@@ -223,12 +223,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(lastError == null
+    showAppSnackBar(
+      context,
+      lastError == null
           ? '더미 기록 $n건을 추가했어요 — 기록 탭에서 당겨서 새로고침'
-          : '더미 기록 $n건 추가 · 실패: $lastError'),
+          : '더미 기록 $n건 추가 · 실패: $lastError',
       duration: const Duration(seconds: 5),
-    ));
+    );
   }
 
   Future<void> _clearHistory() async {
@@ -255,8 +256,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (ok != true) return;
     await AppScope.history.clear();
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('기록을 모두 지웠어요')));
+    showAppSnackBar(context, '기록을 모두 지웠어요');
   }
 
   /// 다크 모드 스위치 — 명시적 라이트/다크 전환.

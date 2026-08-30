@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart' show CupertinoPicker;
 import 'package:flutter/material.dart';
 
 import '../core/di/app_scope.dart';
+import '../core/feedback/app_snackbar.dart';
 import '../data/collection_schedule.dart';
 import '../data/haptics.dart';
 import '../data/settings_store.dart';
@@ -62,11 +63,12 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
     }
     await _reminders.save(list);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(result.action == ReminderAction.save
+    showAppSnackBar(
+      context,
+      result.action == ReminderAction.save
           ? '${result.reminder!.timeLabel} 수거일 알림을 저장했어요 · 발송은 준비 중이에요'
-          : '알림을 껐어요'),
-    ));
+          : '알림을 껐어요',
+    );
   }
 
   Color? _dotColor(DsTokens t, PickupKind kind) => switch (kind) {
