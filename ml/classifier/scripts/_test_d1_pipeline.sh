@@ -30,7 +30,7 @@ echo "[D1] Phase 1: TACO manifest 등재..." | tee -a "$LOG"
 echo "[D1] Phase 2: Test A 백업..." | tee -a "$LOG"
 mkdir -p outputs/backups/test_D1_pre
 cp outputs/models/cnn/classifier.onnx outputs/backups/test_D1_pre/classifier.onnx
-cp ../waste-preprocessor/data/processed/manifest.json outputs/backups/test_D1_pre/manifest.json
+cp ../preprocessor/data/processed/manifest.json outputs/backups/test_D1_pre/manifest.json
 if [ -f data/splits/splits.json ]; then
   cp data/splits/splits.json outputs/backups/test_D1_pre/splits.json
 fi
@@ -55,7 +55,7 @@ cp outputs/models/cnn/classifier.onnx outputs/backups/test_D1/classifier.onnx
 # ─── Phase 6: Test A 복원 (active 보호) ──────────────
 echo "[D1] Phase 6: Test A 복원..." | tee -a "$LOG"
 cp outputs/backups/test_D1_pre/classifier.onnx outputs/models/cnn/classifier.onnx
-cp outputs/backups/test_D1_pre/manifest.json ../waste-preprocessor/data/processed/manifest.json
+cp outputs/backups/test_D1_pre/manifest.json ../preprocessor/data/processed/manifest.json
 if [ -f data/splits/splits.json.bak_pre_D1 ]; then
   mv data/splits/splits.json.bak_pre_D1 data/splits/splits.json
 fi

@@ -42,7 +42,7 @@ done
 # 5. 합성 결과 spot check
 echo "[pipeline] synthesis counts:" | tee -a "$LOG"
 for cls in etc cardboard food_waste; do
-  cnt=$(ls ../waste-preprocessor/data/raw/synthetic_indoor/"$cls"/ 2>/dev/null | wc -l)
+  cnt=$(ls ../preprocessor/data/raw/synthetic_indoor/"$cls"/ 2>/dev/null | wc -l)
   echo "  $cls: $cnt synthesized" | tee -a "$LOG"
 done
 

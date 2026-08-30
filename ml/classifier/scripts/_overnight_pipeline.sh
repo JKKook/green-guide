@@ -36,7 +36,7 @@ echo "[overnight v2] Phase 1: extending manifest with surviving TACO files..." |
 echo "[overnight v2] Phase 2: extracting indoor backgrounds (per-category=30)..." | tee -a "$LOG"
 .venv/bin/python scripts/build_indoor_bg_pool.py --per-category 30 >> "$LOG" 2>&1 \
   || fail "Phase 2 (bg pool)"
-BG_COUNT=$(ls ../waste-preprocessor/data/raw/_aux/backgrounds/*.jpg 2>/dev/null | wc -l | tr -d ' ')
+BG_COUNT=$(ls ../preprocessor/data/raw/_aux/backgrounds/*.jpg 2>/dev/null | wc -l | tr -d ' ')
 echo "  배경 풀: $BG_COUNT 장" | tee -a "$LOG"
 if [ "$BG_COUNT" -lt 200 ]; then
   fail "Phase 2 (too few backgrounds: $BG_COUNT)"
@@ -64,7 +64,7 @@ echo "[overnight v2] Phase 4: full synthesis..." | tee -a "$LOG"
 
 total=0
 for cls in etc cardboard food_waste trash electronics; do
-  n=$(ls ../waste-preprocessor/data/raw/synthetic_indoor/"$cls"/synth_*.jpg 2>/dev/null | wc -l | tr -d ' ')
+  n=$(ls ../preprocessor/data/raw/synthetic_indoor/"$cls"/synth_*.jpg 2>/dev/null | wc -l | tr -d ' ')
   echo "  $cls: $n synthesized" | tee -a "$LOG"
   total=$((total + n))
 done
@@ -75,7 +75,7 @@ echo "  TOTAL: $total" | tee -a "$LOG"
 echo "[overnight v2] Phase 5: backup Test A baseline..." | tee -a "$LOG"
 mkdir -p outputs/backups/test_C1_pre
 cp outputs/models/cnn/classifier.onnx outputs/backups/test_C1_pre/classifier.onnx
-cp ../waste-preprocessor/data/processed/manifest.json outputs/backups/test_C1_pre/manifest.json
+cp ../preprocessor/data/processed/manifest.json outputs/backups/test_C1_pre/manifest.json
 if [ -f data/splits/splits.json ]; then
   cp data/splits/splits.json outputs/backups/test_C1_pre/splits.json
 fi
@@ -104,7 +104,7 @@ cp outputs/models/cnn/classifier.onnx outputs/backups/test_C1/classifier.onnx
 # ─── Phase 9: Test A 복원 + 합성 garbage-classification 정리 ─
 echo "[overnight v2] Phase 9: restore Test A baseline + cleanup..." | tee -a "$LOG"
 cp outputs/backups/test_C1_pre/classifier.onnx outputs/models/cnn/classifier.onnx
-cp outputs/backups/test_C1_pre/manifest.json ../waste-preprocessor/data/processed/manifest.json
+cp outputs/backups/test_C1_pre/manifest.json ../preprocessor/data/processed/manifest.json
 if [ -f data/splits/splits.json.bak_pre_C1 ]; then
   mv data/splits/splits.json.bak_pre_C1 data/splits/splits.json
 fi
