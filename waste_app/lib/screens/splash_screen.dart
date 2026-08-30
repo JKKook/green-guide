@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/di/app_scope.dart';
+import '../features/onboarding/onboarding_screen.dart';
 import '../theme/app_theme.dart';
 import 'main_shell.dart';
-import 'onboarding_screen.dart';
 
 /// 앱 진입점 — 첫 실행 여부에 따라 Onboarding 또는 Home 으로 라우팅.
 /// 네이티브 스플래시가 사라진 직후 표시되는 Flutter 스플래시.

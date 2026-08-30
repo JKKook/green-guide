@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../data/haptics.dart';
+import '../features/history/history_screen.dart';
 import '../theme/app_theme.dart';
 import '../theme/design_tokens.dart';
 import '../widgets/capture_entry_sheet.dart';
-import 'history_screen.dart';
 import 'home_screen.dart';
 import 'settings_screen.dart';
 import 'unified_search_screen.dart';

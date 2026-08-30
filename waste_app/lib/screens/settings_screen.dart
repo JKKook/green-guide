@@ -13,11 +13,12 @@ import '../core/ui/ds_card.dart';
 import '../data/collection_schedule.dart';
 import '../data/haptics.dart';
 import '../data/settings_store.dart';
+import '../features/onboarding/housing_type_sheet.dart';
+import '../features/schedule/collection_reminders_screen.dart';
+import '../features/schedule/pickup_weekdays_sheet.dart';
 import '../theme/app_theme.dart';
 import '../theme/design_tokens.dart';
 import '../widgets/region_picker.dart';
-import 'collection_schedule_screen.dart';
-import 'onboarding_screen.dart';
 import 'splash_screen.dart';
 import 'terms_screen.dart';
 

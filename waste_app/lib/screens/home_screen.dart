@@ -6,11 +6,11 @@ import '../data/collection_schedule.dart';
 import '../data/haptics.dart';
 import '../data/settings_store.dart';
 import '../data/tips.dart';
+import '../features/schedule/collection_schedule_screen.dart';
 import '../theme/app_theme.dart';
 import '../theme/design_tokens.dart';
 import '../widgets/animated_entry.dart';
 import '../widgets/region_picker.dart';
-import 'collection_schedule_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   /// 하단 내비게이션 탭 전환 (MainShell이 주입).

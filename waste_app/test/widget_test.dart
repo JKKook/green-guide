@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waste_app/screens/onboarding_screen.dart';
+import 'package:waste_app/features/onboarding/onboarding_screen.dart';
 import 'package:waste_app/theme/app_theme.dart';
 
 void main() {
