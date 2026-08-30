@@ -12,7 +12,7 @@ load_dotenv()  # 아래 os.getenv 전에 .env 반영 (이미 설정된 env 는 �
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]  # src/core/config.py → 레포 루트
 
 # 자매 프로젝트의 ONNX 모델 직접 참조 (로컬 개발용)
-CLASSIFIER_ROOT: Path = PROJECT_ROOT.parent / "waste-classifier"
+CLASSIFIER_ROOT: Path = PROJECT_ROOT.parents[1] / "ml" / "classifier"  # services/inference-api → 레포 루트/ml/classifier
 DEFAULT_MODEL_ARCH: str = "cnn"  # mlp | cnn
 
 
@@ -20,7 +20,7 @@ def _resolve_model_path() -> Path:
     """Color stream 모델 — 우선순위:
     1. WASTE_API_MODEL_PATH 환경변수
     2. waste-api/models/classifier.onnx  (배포 패키지 내 번들 — Docker 등)
-    3. ../waste-classifier/outputs/models/cnn/classifier.onnx  (로컬 sibling)
+    3. ../../ml/classifier/outputs/models/cnn/classifier.onnx  (로컬 sibling)
     """
     env_path = os.getenv("WASTE_API_MODEL_PATH")
     if env_path:

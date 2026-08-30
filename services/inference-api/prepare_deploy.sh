@@ -9,7 +9,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-SRC=../waste-classifier/outputs/models/cnn_hier
+SRC=../../ml/classifier/outputs/models/cnn_hier
 for f in classifier.onnx taxonomy.json ood.npz; do
   [ -f "$SRC/$f" ] || { echo "누락: $SRC/$f"; exit 1; }
 done

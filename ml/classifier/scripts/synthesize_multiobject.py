@@ -26,14 +26,14 @@ import numpy as np
 import onnxruntime as ort
 from _base import PROJECT_ROOT, make_parser
 from PIL import Image, ImageFilter
-from waste_common import imaging
+from waste_common import imaging, settings
 
-STAGING_CROPS = PROJECT_ROOT.parent / "aihub_71385_staging" / "crops"
-BACKGROUNDS = (PROJECT_ROOT.parent / "waste-preprocessor" / "data" / "raw"
+STAGING_CROPS = settings.WASTE_ROOT / "ml" / "data" / "raw" / "aihub_71385" / "crops"
+BACKGROUNDS = (settings.PREPROCESSOR_ROOT / "data" / "raw"
                / "_aux" / "backgrounds")
-FINE_STAGING = (PROJECT_ROOT.parent / "waste-preprocessor" / "data" / "raw"
+FINE_STAGING = (settings.PREPROCESSOR_ROOT / "data" / "raw"
                 / "fine-staging")
-U2NETP = PROJECT_ROOT.parent / "waste-api" / "models" / "u2netp.onnx"
+U2NETP = settings.API_ROOT / "models" / "u2netp.onnx"
 
 CANVAS = (640, 480)
 OBJ_SCALE = (0.30, 0.52)      # 캔버스 짧은변 대비 객체 크기

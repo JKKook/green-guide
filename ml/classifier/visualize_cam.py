@@ -29,7 +29,7 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
-from waste_common import imaging
+from waste_common import imaging, settings
 from waste_common.logging import get_logger
 
 from src import config
@@ -186,7 +186,7 @@ def visualize(
 def _sample_images_for_label(label: str, n: int) -> list[Path]:
     """waste-preprocessor 의 raw 폴더에서 해당 라벨 이미지 n 장 샘플."""
     raw_dir = (
-        PROJECT_ROOT.parent / "waste-preprocessor"
+        settings.PREPROCESSOR_ROOT
         / "data" / "raw" / "garbage-classification" / label
     )
     if not raw_dir.exists():

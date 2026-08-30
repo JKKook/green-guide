@@ -24,8 +24,8 @@ def sample_image_bytes() -> bytes:
 def real_sample_image_bytes() -> bytes | None:
     """waste-preprocessor의 실제 cardboard 샘플을 bytes 로 반환 (있으면)."""
     candidate = (
-        Path(__file__).resolve().parent.parent.parent
-        / "waste-preprocessor" / "data" / "raw" / "garbage-classification"
+        Path(__file__).resolve().parents[3]
+        / "ml" / "preprocessor" / "data" / "raw" / "garbage-classification"
         / "cardboard" / "cardboard1.jpg"
     )
     if not candidate.exists():

@@ -28,7 +28,7 @@ REALWORLD_DIR = Path(
     "/private/tmp/claude-501/-Users-ethan-practice-waste/"
     "142cc691-4ab6-48ea-a632-274f14f81459/scratchpad/realworld")
 U2NETP = settings.API_ROOT / "models" / "u2netp.onnx"
-OUT_DIR = settings.WASTE_ROOT / "synth_indoor_staging"
+OUT_DIR = settings.WASTE_ROOT / "ml" / "data" / "raw" / "synth_indoor"
 
 CANVAS = 640                     # 합성 캔버스 (긴 변)
 BG_MAX_SALIENCY = 0.10           # 배경 패치 평균 saliency 상한

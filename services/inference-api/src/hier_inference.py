@@ -34,7 +34,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _CANDIDATES = [
     Path(_ENV_PATH) if _ENV_PATH else None,
     _PROJECT_ROOT / "models" / "classifier_hier.onnx",
-    _PROJECT_ROOT.parent / "waste-classifier" / "outputs" / "models" / "cnn_hier"
+    _PROJECT_ROOT.parents[1] / "ml" / "classifier" / "outputs" / "models" / "cnn_hier"
     / "classifier.onnx",
 ]
 
