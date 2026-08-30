@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+.venv/
+venv/
+
+# Outputs (학습 산출물은 git 미포함, 별도 모델 레지스트리 권장)
+outputs/checkpoints/*
+outputs/models/*
+outputs/logs/*
+outputs/plots/*
+!outputs/**/.gitkeep
+
+# Splits (재현 가능하므로 보존 가능하지만 안전하게 ignore)
+data/splits/*.json
+!data/splits/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# setuptools 산출물
+*.egg-info/

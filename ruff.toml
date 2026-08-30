@@ -1,0 +1,14 @@
+# 루트 공통 lint 설정. 기준선 위반은 고치지 않고, "새 위반 0" 을 통과 기준으로 삼는다.
+line-length = 110
+target-version = "py312"
+extend-exclude = [
+    ".venv*", "data", "outputs", "cache", "models",
+    "ml/data", "apps", "wiki", ".worktrees",
+]
+
+[lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]  # 줄 길이는 기준선 위반이 많아 제외
+
+[lint.isort]
+known-first-party = ["greenguide_classifier", "greenguide_preprocessor", "greenguide_common", "src"]

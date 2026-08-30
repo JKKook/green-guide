@@ -1,0 +1,45 @@
+{
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.venv",
+    "**/.git",
+    "**/.worktrees",
+    "ml/data",
+    "apps",
+    "ml/classifier/data",
+    "ml/classifier/outputs",
+    "ml/preprocessor/data",
+    "services/inference-api/cache",
+    "services/inference-api/models"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "ml/classifier",
+      "extraPaths": [
+        "ml/classifier",
+        "libs/greenguide-common"
+      ]
+    },
+    {
+      "root": "ml/preprocessor",
+      "extraPaths": [
+        "ml/preprocessor",
+        "libs/greenguide-common"
+      ]
+    },
+    {
+      "root": "services/inference-api",
+      "extraPaths": [
+        "services/inference-api",
+        "libs/greenguide-common"
+      ]
+    },
+    {
+      "root": "libs/greenguide-common",
+      "extraPaths": [
+        "libs/greenguide-common"
+      ]
+    }
+  ]
+}

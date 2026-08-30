@@ -8,15 +8,9 @@
 **/local.properties
 
 # ── 대용량 데이터·모델 (로컬 전용) ──────────────────────────────────
-aihub_71385_staging/
-aihub_71647_staging/
-aihub_staging/
-openimages_staging/
-synth_indoor_staging/
-taco_staging/
-data/
-**/data/raw/
-**/data/processed/
+ml/data/
+ml/*/data/
+.worktrees/
 **/cache/
 **/local_feedback/
 **/models/*.onnx
@@ -46,3 +40,6 @@ data/
 .DS_Store
 *.swp
 *.log
+
+# 편집 가능 설치 산출물
+*.egg-info/

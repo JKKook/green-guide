@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "greenguide-classifier"
+version = "0.1.0"
+description = "GreenGuide AI — 폐기물 분류기 학습 파이프라인 (PyTorch + ONNX)"
+requires-python = ">=3.12"
+# 의존성은 requirements.txt 로만 관리 (-e 경로 줄 때문에 dynamic dependencies 사용 불가)
+
+[tool.setuptools]
+packages = ["greenguide_classifier", "scripts"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["outputs", "data", "diagnostics", "migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]  # 긴 줄은 이번 리팩토링 범위 밖 (기존 스타일 유지)
+
+[tool.ruff.lint.isort]
+known-first-party = ["greenguide_classifier", "scripts"]
