@@ -96,24 +96,24 @@ def test_predict_rejects_empty_file(client: TestClient) -> None:
 # 음식물 — 이때 확신도와 무관하게 VLM 중재가 발동해야 한다.
 
 def test_evidence_conflict_triggers_on_strong_identity_mismatch():
-    from src.api import _evidence_conflicts
+    from src.services.regions_service import evidence_conflicts
     f2c = {"food_waste": "food_waste", "clothes": "clothes"}
     ev = [{"type": "identity", "mapped_class": "food_waste", "score": 0.84}]
-    assert _evidence_conflicts(ev, "clothes", f2c) is True
+    assert evidence_conflicts(ev, "clothes", f2c) is True
 
 
 def test_evidence_conflict_ignores_agreement_and_weak_or_ocr():
-    from src.api import _evidence_conflicts
+    from src.services.regions_service import evidence_conflicts
     f2c = {"glass_deposit": "glass", "food_waste": "food_waste"}
     # 일치 → 중재 불필요
-    assert _evidence_conflicts(
+    assert evidence_conflicts(
         [{"type": "identity", "mapped_class": "glass_deposit", "score": 0.9}],
         "glass", f2c) is False
     # 약한 증거(<0.6) → 미발동
-    assert _evidence_conflicts(
+    assert evidence_conflicts(
         [{"type": "identity", "mapped_class": "food_waste", "score": 0.53}],
         "clothes", f2c) is False
     # OCR 계열(score 는 부스트 배수) → 제외
-    assert _evidence_conflicts(
+    assert evidence_conflicts(
         [{"type": "mark", "mapped_class": "food_waste", "score": 6.0}],
         "clothes", f2c) is False
