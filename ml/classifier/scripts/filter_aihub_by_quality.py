@@ -28,9 +28,9 @@ import numpy as np
 import onnxruntime as ort
 from _base import PROJECT_ROOT, RAW_DIR
 from PIL import Image
-from waste_common import imaging
+from waste_common import imaging, settings
 
-U2NETP_PATH = PROJECT_ROOT.parent / "waste-api" / "models" / "u2netp.onnx"
+U2NETP_PATH = settings.API_ROOT / "models" / "u2netp.onnx"
 CLASSIFIER_PATH = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx"
 
 # u2netp 입출력 사양

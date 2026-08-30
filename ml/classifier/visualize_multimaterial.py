@@ -23,7 +23,7 @@ import onnxruntime as ort
 import torch
 from PIL import Image
 from torchvision import transforms
-from waste_common import imaging
+from waste_common import imaging, settings
 from waste_common.logging import get_logger
 
 from src import config
@@ -33,7 +33,7 @@ log = get_logger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 CKPT_PATH = PROJECT_ROOT / "outputs" / "checkpoints" / "cnn" / "best.pt"
-U2NETP_PATH = PROJECT_ROOT.parent / "waste-api" / "models" / "u2netp.onnx"
+U2NETP_PATH = settings.API_ROOT / "models" / "u2netp.onnx"
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "multimaterial"
 
 _NORM = transforms.Normalize(list(imaging.IMAGENET_MEAN), list(imaging.IMAGENET_STD))
@@ -172,7 +172,7 @@ def main() -> int:
     if args.image:
         images = [args.image]
     else:
-        raw = (PROJECT_ROOT.parent / "waste-preprocessor" / "data" / "raw"
+        raw = (settings.PREPROCESSOR_ROOT / "data" / "raw"
                / "garbage-classification" / args.label)
         if not raw.exists():
             sys.exit(f"라벨 폴더 없음: {raw}")

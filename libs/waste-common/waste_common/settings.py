@@ -11,16 +11,16 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-WASTE_ROOT: Path = Path(__file__).resolve().parents[2]
+WASTE_ROOT: Path = Path(__file__).resolve().parents[3]  # libs/waste-common/waste_common/ → 레포 루트
 
 
 def _root(env_name: str, default_dirname: str) -> Path:
     return Path(os.getenv(env_name, WASTE_ROOT / default_dirname)).resolve()
 
 
-PREPROCESSOR_ROOT: Path = _root("WASTE_PREPROCESSOR_ROOT", "waste-preprocessor")
-CLASSIFIER_ROOT: Path = _root("WASTE_CLASSIFIER_ROOT", "waste-classifier")
-API_ROOT: Path = _root("WASTE_API_ROOT", "waste-api")
+PREPROCESSOR_ROOT: Path = _root("WASTE_PREPROCESSOR_ROOT", "ml/preprocessor")
+CLASSIFIER_ROOT: Path = _root("WASTE_CLASSIFIER_ROOT", "ml/classifier")
+API_ROOT: Path = _root("WASTE_API_ROOT", "services/inference-api")
 
 
 def load_env() -> None:

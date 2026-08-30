@@ -1,0 +1,45 @@
+{
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.venv",
+    "**/.git",
+    "**/.worktrees",
+    "ml/data",
+    "apps",
+    "ml/classifier/data",
+    "ml/classifier/outputs",
+    "ml/preprocessor/data",
+    "services/inference-api/cache",
+    "services/inference-api/models"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "ml/classifier",
+      "extraPaths": [
+        "ml/classifier",
+        "libs/waste-common"
+      ]
+    },
+    {
+      "root": "ml/preprocessor",
+      "extraPaths": [
+        "ml/preprocessor",
+        "libs/waste-common"
+      ]
+    },
+    {
+      "root": "services/inference-api",
+      "extraPaths": [
+        "services/inference-api",
+        "libs/waste-common"
+      ]
+    },
+    {
+      "root": "libs/waste-common",
+      "extraPaths": [
+        "libs/waste-common"
+      ]
+    }
+  ]
+}

@@ -8,13 +8,9 @@
 **/local.properties
 
 # ── 대용량 데이터·모델 (로컬 전용) ──────────────────────────────────
-aihub_71385_staging/
-aihub_71647_staging/
-aihub_staging/
-openimages_staging/
-synth_indoor_staging/
-taco_staging/
+ml/data/
 data/
+.worktrees/
 **/data/raw/
 **/data/processed/
 **/cache/

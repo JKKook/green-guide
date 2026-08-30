@@ -47,8 +47,10 @@ from pathlib import Path
 from _base import PROJECT_ROOT, RAW_DIR
 from PIL import Image
 
-STAGING = PROJECT_ROOT.parent / "aihub_staging"
-STAGING_140 = PROJECT_ROOT.parent / "aihub_staging_140"
+from waste_common import settings  # noqa: E402
+
+STAGING = settings.WASTE_ROOT / "ml" / "data" / "raw" / "aihub"
+STAGING_140 = settings.WASTE_ROOT / "ml" / "data" / "raw" / "aihub_140"
 STORE_SIZE = 256   # 저장 해상도 (학습은 224 로 resize)
 IMG_EXT = (".jpg", ".jpeg", ".png")
 

@@ -37,14 +37,14 @@
 ## 세션 간 경계
 | 세션 | 담당 범위 |
 | --- | --- |
-| waste_app | `waste_app/` 내부 |
-| waste-api | `waste-api/` 내부 (+ `waste-common/`). 2026-08-30 모노레포 편입 — 자체 git 없음. HF 배포는 `git subtree push --prefix=waste-api hf main` (사용자 요청 시) |
-| waste-classifier | `waste-classifier/` 내부 |
-| waste-preprocessor | `waste-preprocessor/` 내부 |
-| 상위 구조(repo) | 루트 파일, `docs/`, `wiki/`, `.github/`, 폴더 이동(`apps/` `services/` `ml/`) |
+| waste_app | `apps/mobile/` 내부 |
+| waste-api | `services/inference-api/` 내부. 모노레포 편입 — 자체 git 없음. HF 배포는 `git subtree push --prefix=services/inference-api hf main` (사용자 요청 시) |
+| waste-classifier | `ml/classifier/` 내부 |
+| waste-preprocessor | `ml/preprocessor/` 내부 |
+| 상위 구조(repo) | 루트 파일, `docs/`, `wiki/`, `.github/`, `libs/waste-common/`(공통 패키지 — 변경은 사용 세션과 합의) |
 
 - 다른 범위의 파일을 고쳐야 하면 직접 수정하지 말고 담당 세션(또는 사용자)에게 요청한다.
-- 폴더 이동(`waste_app → apps/mobile` 등)은 상위 구조 세션이 **각 폴더 세션의 작업이 커밋된 뒤** 한 번에 수행한다. 그 전까지 폴더 위치를 바꾸지 않는다.
+- 폴더 구조(`apps/` `services/` `ml/` `libs/`)는 2026-08-30 확정. 폴더 이동·이름 변경은 상위 구조 세션만 한다.
 
 ## 검증
 - 커밋 전 해당 범위의 검증을 통과시킨다: Flutter `flutter analyze` + `flutter test`, Python `pytest`(네트워크 불필요 테스트), 서버는 `py_compile` 이상.
