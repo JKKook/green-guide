@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "waste-common"
+version = "0.1.0"
+description = "waste-preprocessor / waste-classifier / waste-api 공통단 — 설정, 분류체계, 이미지 전처리, Supabase, 로깅, CLI"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy",
+    "Pillow",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+supabase = ["supabase"]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["waste_common*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
