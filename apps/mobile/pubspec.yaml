@@ -1,4 +1,4 @@
-name: waste_app
+name: greenguide
 description: "GreenGuide AI - Waste Classification"
 publish_to: 'none'
 version: 1.0.0-beta.1+1

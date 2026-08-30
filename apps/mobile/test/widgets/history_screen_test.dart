@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waste_app/data/history_repository.dart';
-import 'package:waste_app/features/history/history_screen.dart';
+import 'package:greenguide/data/history_repository.dart';
+import 'package:greenguide/features/history/history_screen.dart';
 
 import '../helpers/test_env.dart';
 

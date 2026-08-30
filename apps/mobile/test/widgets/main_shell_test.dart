@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waste_app/features/shell/main_shell.dart';
+import 'package:greenguide/features/shell/main_shell.dart';
 
 import '../helpers/test_env.dart';
 

@@ -4,11 +4,11 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:waste_app/api/api_client.dart';
-import 'package:waste_app/api/models.dart';
-import 'package:waste_app/data/settings_store.dart';
-import 'package:waste_app/features/result/result_controller.dart';
-import 'package:waste_app/services/prediction_service.dart';
+import 'package:greenguide/api/api_client.dart';
+import 'package:greenguide/api/models.dart';
+import 'package:greenguide/data/settings_store.dart';
+import 'package:greenguide/features/result/result_controller.dart';
+import 'package:greenguide/services/prediction_service.dart';
 
 Prediction _pred(String cls, {String? uploadId}) => Prediction(
   predictedClass: cls,

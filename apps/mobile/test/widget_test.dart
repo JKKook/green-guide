@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:waste_app/features/onboarding/onboarding_screen.dart';
-import 'package:waste_app/theme/app_theme.dart';
+import 'package:greenguide/features/onboarding/onboarding_screen.dart';
+import 'package:greenguide/theme/app_theme.dart';
 
 void main() {
   testWidgets('OnboardingScreen 첫 화면 — 브랜드 소개 + 동의 시트', (tester) async {
