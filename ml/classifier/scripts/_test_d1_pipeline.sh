@@ -24,7 +24,7 @@ set -e
 
 # ─── Phase 1: TACO manifest 등재 ─────────────────────
 echo "[D1] Phase 1: TACO manifest 등재..." | tee -a "$LOG"
-.venv/bin/python scripts/extend_manifest_taco.py >> "$LOG" 2>&1 || fail "Phase 1"
+.venv/bin/python scripts/archive/extend_manifest_taco.py >> "$LOG" 2>&1 || fail "Phase 1"
 
 # ─── Phase 2: Test A 백업 ─────────────────────────────
 echo "[D1] Phase 2: Test A 백업..." | tee -a "$LOG"
@@ -49,7 +49,7 @@ echo "[D1] Phase 5: export + measure..." | tee -a "$LOG"
 mkdir -p outputs/backups/test_D1
 cp outputs/models/cnn/classifier.onnx outputs/backups/test_D1/classifier.onnx
 
-.venv/bin/python realworld_eval.py > outputs/logs/test_D1_realworld.log 2>&1 || true
+.venv/bin/python scripts/realworld_eval.py > outputs/logs/test_D1_realworld.log 2>&1 || true
 .venv/bin/python diagnose.py --arch cnn --version test_D1 > outputs/logs/test_D1_diagnose.log 2>&1 || true
 
 # ─── Phase 6: Test A 복원 (active 보호) ──────────────
