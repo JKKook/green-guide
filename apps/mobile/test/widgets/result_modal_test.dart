@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:image/image.dart' as img;
 import 'package:greenguide/features/result/result_modal.dart';
+import 'package:image/image.dart' as img;
 
 import '../helpers/test_env.dart';
 

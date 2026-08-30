@@ -9,10 +9,8 @@
 
 # ── 대용량 데이터·모델 (로컬 전용) ──────────────────────────────────
 ml/data/
-data/
+ml/*/data/
 .worktrees/
-**/data/raw/
-**/data/processed/
 **/cache/
 **/local_feedback/
 **/models/*.onnx
