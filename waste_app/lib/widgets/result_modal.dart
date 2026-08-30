@@ -12,12 +12,12 @@ import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../core/di/app_scope.dart';
 import '../data/confidence.dart';
 import '../data/haptics.dart';
 import '../data/image_quality.dart';
-import '../data/settings_store.dart';
 import '../data/waste_info.dart';
-import '../services/prediction_service.dart' show PredictionService, isCloudFallback;
+import '../services/prediction_service.dart' show isCloudFallback;
 import '../theme/app_theme.dart';
 import '../theme/design_tokens.dart';
 import '../widgets/animated_entry.dart';
@@ -157,12 +157,11 @@ class _ResultModalState extends State<_ResultModal> {
   /// 지역별 배출 규정 — 설정된 지역이 있으면 조회 (실패해도 무해).
   Future<void> _fetchRegionInfo() async {
     try {
-      final region = await SettingsStore().getRegion();
+      final region = await AppScope.settings.getRegion();
       if (region == null) return;
       if (mounted) setState(() => _regionSet = true);
-      final baseUrl = await SettingsStore().getApiUrl();
-      final info = await WasteApiClient(baseUrl: baseUrl)
-          .fetchRegionInfo(region.$1, region.$2);
+      final client = await AppScope.api();
+      final info = await client.fetchRegionInfo(region.$1, region.$2);
       if (mounted && info != null) setState(() => _regionInfo = info);
     } catch (_) {}
   }
@@ -170,8 +169,7 @@ class _ResultModalState extends State<_ResultModal> {
   /// 탐지-후-분류 — 장면의 객체 후보들 (백그라운드, 실패해도 무해).
   Future<void> _fetchObjects() async {
     try {
-      final baseUrl = await SettingsStore().getApiUrl();
-      final client = WasteApiClient(baseUrl: baseUrl);
+      final client = await AppScope.api();
       final r = await client.predictObjects(widget.image);
       if (!mounted) return;
       setState(() => _objects = r);
@@ -291,8 +289,7 @@ class _ResultModalState extends State<_ResultModal> {
     });
     Haptics.selection();
     try {
-      final baseUrl = await SettingsStore().getApiUrl();
-      final client = WasteApiClient(baseUrl: baseUrl);
+      final client = await AppScope.api();
       final r = await client.predictHier(widget.image, tapX: nx, tapY: ny);
       if (!mounted) return;
       _pushSnapshot();  // 되돌리기용 — 성공 시에만 이전 상태 보존 (다중 화면·빗금 포함)
@@ -328,8 +325,7 @@ class _ResultModalState extends State<_ResultModal> {
   /// tap 좌표를 주면 그 성분에 집중한 재분석 — 탭 시 빗금도 함께 이동.
   Future<void> _fetchRegions({Offset? tap}) async {
     try {
-      final baseUrl = await SettingsStore().getApiUrl();
-      final client = WasteApiClient(baseUrl: baseUrl);
+      final client = await AppScope.api();
       final r = await client.predictWithRegions(widget.image,
           tapX: tap?.dx, tapY: tap?.dy);
       if (!mounted) return;
@@ -350,7 +346,7 @@ class _ResultModalState extends State<_ResultModal> {
 
   Future<void> _classify() async {
     try {
-      final result = await PredictionService().predict(
+      final result = await AppScope.prediction.predict(
         widget.image,
         centered: widget.isSmartCapture,
         onUploadProgress: (sent, total) {
@@ -2256,8 +2252,7 @@ class _ExplainButtonState extends State<_ExplainButton> {
     Haptics.selection();
 
     try {
-      final baseUrl = await SettingsStore().getApiUrl();
-      final client = WasteApiClient(baseUrl: baseUrl);
+      final client = await AppScope.api();
       final result = await client.predictWithCam(widget.image);
       if (!mounted) return;
       if (!result.camAvailable || result.camBase64 == null) {

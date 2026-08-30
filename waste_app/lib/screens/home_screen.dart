@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/di/app_scope.dart';
 import '../data/collection_schedule.dart';
 import '../data/haptics.dart';
 import '../data/settings_store.dart';
@@ -30,7 +31,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final SettingsStore _settings = SettingsStore();
+  final SettingsStore _settings = AppScope.settings;
   final ScrollController _scrollController = ScrollController();
 
   bool _showScrollTop = false;

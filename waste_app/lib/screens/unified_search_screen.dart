@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/di/app_scope.dart';
 import '../data/collection_schedule.dart';
 import '../data/haptics.dart';
 import '../data/history_repository.dart';
@@ -49,8 +50,8 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
 
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focus = FocusNode();
-  final HistoryRepository _history = HistoryRepository();
-  final SettingsStore _settings = SettingsStore();
+  final HistoryRepository _history = AppScope.history;
+  final SettingsStore _settings = AppScope.settings;
 
   late String _filter = _filters.contains(widget.initialFilter)
       ? widget.initialFilter

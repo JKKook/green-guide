@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/di/app_scope.dart';
 import '../data/collection_schedule.dart';
 import '../data/haptics.dart';
 import '../data/legal_terms.dart';
@@ -22,7 +23,7 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  final SettingsStore _settings = SettingsStore();
+  final SettingsStore _settings = AppScope.settings;
   int _step = 0; // 0 동의 · 1 지역 · 2 수거 설정/마무리
   (String, String)? _region;
   HousingType _housing = HousingType.house;
@@ -1003,7 +1004,7 @@ class _PickupSetupStep extends StatefulWidget {
 }
 
 class _PickupSetupStepState extends State<_PickupSetupStep> {
-  final SettingsStore _settings = SettingsStore();
+  final SettingsStore _settings = AppScope.settings;
   final ReminderStore _reminders = ReminderStore();
 
   /// 동네 기본값 — 플라스틱·비닐 수거 요일 (DateTime.weekday 1~7).
@@ -1355,7 +1356,7 @@ class _ApartmentFinishStepState extends State<_ApartmentFinishStep> {
                   ? null
                   : () async {
                       setState(() => _busy = true);
-                      await SettingsStore().setTipsNotificationEnabled(_tips);
+                      await AppScope.settings.setTipsNotificationEnabled(_tips);
                       await widget.onDone();
                     },
             ),

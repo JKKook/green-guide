@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../core/di/app_scope.dart';
 import '../data/region_data.dart';
-import '../data/settings_store.dart';
 import '../theme/app_theme.dart';
 import 'korea_map.dart';
 
@@ -120,7 +120,7 @@ class _RegionPickerSheetState extends State<_RegionPickerSheet> {
       });
       return;
     }
-    await SettingsStore().setRegion(result.region!.$1, result.region!.$2);
+    await AppScope.settings.setRegion(result.region!.$1, result.region!.$2);
     if (mounted) Navigator.of(context).pop(result.region);
   }
 
@@ -260,7 +260,7 @@ class _RegionPickerSheetState extends State<_RegionPickerSheet> {
         return ListTile(
           title: Text(name),
           onTap: () async {
-            await SettingsStore().setRegion(_sido!, name);
+            await AppScope.settings.setRegion(_sido!, name);
             if (context.mounted) {
               Navigator.of(context).pop((_sido!, name));
             }

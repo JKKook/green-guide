@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart' show CupertinoPicker;
 import 'package:flutter/material.dart';
 
+import '../core/di/app_scope.dart';
 import '../data/collection_schedule.dart';
 import '../data/haptics.dart';
 import '../data/settings_store.dart';
@@ -18,7 +19,7 @@ class CollectionScheduleScreen extends StatefulWidget {
 }
 
 class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
-  final SettingsStore _settings = SettingsStore();
+  final SettingsStore _settings = AppScope.settings;
   final ReminderStore _reminders = ReminderStore();
   (String, String)? _region;
 

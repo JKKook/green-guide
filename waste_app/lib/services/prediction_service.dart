@@ -15,7 +15,9 @@ import '../data/settings_store.dart';
 
 
 class PredictionService {
-  final SettingsStore _settings = SettingsStore();
+  final SettingsStore _settings;
+
+  PredictionService(this._settings);
 
   /// [centered] 는 구버전 서버 폴백 시 `/predict-centered` 선택에만 쓰인다.
   Future<Prediction> predict(File image,

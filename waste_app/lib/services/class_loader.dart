@@ -10,17 +10,15 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/di/app_scope.dart';
 import '../data/settings_store.dart';
 import '../data/waste_info.dart';
 
 
 class ClassLoader {
-  final SettingsStore _settings = SettingsStore();
+  final SettingsStore _settings = AppScope.settings;
   final Duration timeout;
-
-  static const String _kCacheKey = 'cached_labels_classes_json';
 
   ClassLoader({this.timeout = const Duration(seconds: 8)});
 
@@ -50,8 +48,7 @@ class ClassLoader {
   /// 마지막으로 성공한 /labels 응답을 디스크에서 복원.
   Future<bool> _loadFromCache() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final cached = prefs.getString(_kCacheKey);
+      final cached = await _settings.getCachedClassesJson();
       if (cached == null) return false;
       final classes = (jsonDecode(cached) as List).cast<Map<String, dynamic>>();
       WasteClassRegistry.setFromApi(classes);
@@ -63,8 +60,7 @@ class ClassLoader {
 
   Future<void> _saveCache(List<dynamic> classes) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kCacheKey, jsonEncode(classes));
+      await _settings.setCachedClassesJson(jsonEncode(classes));
     } catch (_) {
       // 캐시 저장 실패는 무시 — 다음 부팅에 다시 시도
     }

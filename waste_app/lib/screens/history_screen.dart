@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 
+import '../core/di/app_scope.dart';
 import '../data/haptics.dart';
 import '../data/history_repository.dart';
 import '../data/waste_info.dart';
@@ -18,7 +19,7 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  final HistoryRepository _repo = HistoryRepository();
+  final HistoryRepository _repo = AppScope.history;
   List<HistoryEntry> _entries = [];
   bool _loading = true;
   DateTimeRange? _range; // null = 전체 (일 단위로 정규화)

@@ -5,12 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/api_client.dart';
+import '../core/di/app_scope.dart';
 import '../data/collection_schedule.dart';
 import '../data/haptics.dart';
-import '../data/history_repository.dart';
 import '../data/settings_store.dart';
 import '../theme/app_theme.dart';
 import '../theme/design_tokens.dart';
@@ -29,7 +28,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final SettingsStore _store = SettingsStore();
+  final SettingsStore _store = AppScope.settings;
   final ReminderStore _reminders = ReminderStore();
   final TextEditingController _urlController = TextEditingController();
   bool _loading = true;
@@ -60,8 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final reminders = await _reminders.load();
     final housing = await _store.getHousingType();
     final pickupDays = await _store.getPickupWeekdays();
-    final prefs = await SharedPreferences.getInstance();
-    final dev = prefs.getBool('dev_options_enabled') ?? false;
+    final dev = await _store.isDevOptionsEnabled();
     String version = '';
     try {
       final info = await PackageInfo.fromPlatform();
@@ -175,9 +173,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     _versionTaps = 0;
     Haptics.medium();
-    final prefs = await SharedPreferences.getInstance();
     final next = !_devMode;
-    await prefs.setBool('dev_options_enabled', next);
+    await _store.setDevOptionsEnabled(next);
     if (!mounted) return;
     setState(() => _devMode = next);
     ScaffoldMessenger.of(context)
@@ -201,7 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ('battery', 0.77, 'assets/banners/tip_13i.png', 10, 13, 50),
       ('clothes', 0.81, 'assets/banners/tip_13j.png', 13, 17, 30),
     ];
-    final repo = HistoryRepository();
+    final repo = AppScope.history;
     final tmp = await getTemporaryDirectory();
     final now = DateTime.now();
     var n = 0;
@@ -256,7 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (ok != true) return;
-    await HistoryRepository().clear();
+    await AppScope.history.clear();
     if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('기록을 모두 지웠어요')));

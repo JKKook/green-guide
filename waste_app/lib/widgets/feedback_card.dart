@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../core/di/app_scope.dart';
 import '../data/haptics.dart';
 import '../data/history_repository.dart';
-import '../data/settings_store.dart';
 import '../data/waste_info.dart';
 import '../theme/app_theme.dart';
 import '../theme/design_tokens.dart';
@@ -39,8 +39,7 @@ class FeedbackCard extends StatefulWidget {
 }
 
 class _FeedbackCardState extends State<FeedbackCard> {
-  final SettingsStore _settings = SettingsStore();
-  final HistoryRepository _history = HistoryRepository();
+  final HistoryRepository _history = AppScope.history;
   bool _sending = false;
   String? _sentLabel; // 확정된 라벨 (정확함/피드백 후 lock)
   bool _saved = false; // 기록 탭 저장 완료
@@ -92,7 +91,7 @@ class _FeedbackCardState extends State<FeedbackCard> {
       return;
     }
     try {
-      final client = WasteApiClient(baseUrl: await _settings.getApiUrl());
+      final client = await AppScope.api();
       final result = await client.sendFeedback(
         uploadId: p.uploadId!,
         confirmed: confirmed,

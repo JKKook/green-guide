@@ -11,6 +11,7 @@ import 'package:path_provider_platform_interface/path_provider_platform_interfac
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:waste_app/data/history_repository.dart';
 import 'package:waste_app/theme/app_theme.dart';
 
 class _FakePathProvider extends PathProviderPlatform
@@ -40,6 +41,7 @@ Future<Directory> setUpTestEnv({Map<String, Object> prefs = const {}}) async {
   );
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
+  await HistoryRepository.reset();
   final dir = await Directory.systemTemp.createTemp('waste_app_test_');
   PathProviderPlatform.instance = _FakePathProvider(dir.path);
   return dir;

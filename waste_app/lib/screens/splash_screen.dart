@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../data/settings_store.dart';
+import '../core/di/app_scope.dart';
 import '../theme/app_theme.dart';
 import 'main_shell.dart';
 import 'onboarding_screen.dart';
@@ -73,8 +73,7 @@ class _SplashRouterState extends State<SplashRouter>
     if (_navigating || !mounted) return;
     _navigating = true;
 
-    final settings = SettingsStore();
-    final done = await settings.isOnboardingDone();
+    final done = await AppScope.settings.isOnboardingDone();
     if (!mounted) return;
 
     Navigator.of(context).pushReplacement(PageRouteBuilder(

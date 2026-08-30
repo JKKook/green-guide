@@ -3,8 +3,8 @@
 /// 마칠 즈음엔 서버가 준비된 상태가 된다. 실패해도 무해(분석 때 다시 시도).
 library;
 
-import '../api/api_client.dart';
-import '../data/settings_store.dart';
+import '../core/di/app_scope.dart';
+
 
 class ServerWarmup {
   const ServerWarmup._();
@@ -16,11 +16,8 @@ class ServerWarmup {
     if (_started) return;
     _started = true;
     try {
-      final url = await SettingsStore().getApiUrl();
-      await WasteApiClient(
-        baseUrl: url,
-        timeout: const Duration(minutes: 3),
-      ).isHealthy();
+      final client = await AppScope.api(timeout: const Duration(minutes: 3));
+      await client.isHealthy();
     } catch (_) {
       // 절전 해제 실패 — 실제 분석 요청에서 다시 시도된다.
     }
