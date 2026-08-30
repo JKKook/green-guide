@@ -11,7 +11,7 @@ from src.core.errors import register_exception_handlers
 from src.cam_renderer import render_overlay_png_base64
 from src.classes import ClassRegistry
 from src.inference import get_active_meta, get_classifier, reset_classifier
-from src.preprocess import ImageDecodeError, normalize_orientation, preprocess_both
+from src.preprocess import ImageDecodeError, preprocess_both
 from src.schemas import (
     FeedbackRequest,
     FeedbackResponse,
@@ -33,6 +33,7 @@ from src.schemas import (
 from src.hand_detector import get_hand_detector
 from src.regions import extract_regions, render_hatching
 from src.segment import get_segmenter
+from src.services.image_io import auto_crop_to_object, crop_at_tap, read_and_validate_image, read_validate_with_orientation
 from src.services.recording import record_safely
 from src.dinov2_classifier import get_dinov2_classifier
 from src.stage1_classifier import get_stage1_classifier
@@ -205,7 +206,7 @@ async def predict_hier(
         degs_for_orientation, get_hier_classifier, predict_rotations,
     )
 
-    raw, exif_tag = await _read_validate_with_orientation(image)
+    raw, exif_tag = await read_validate_with_orientation(image)
     try:
         clf = get_hier_classifier()
     except FileNotFoundError as exc:
@@ -254,7 +255,7 @@ async def predict_hier(
     # 탭 좌표가 오면 탭 지점의 saliency 성분만 크롭 (탭-투-셀렉트 — 기능상 필수).
     tap_region: list[float] | None = None
     if tap_x is not None and tap_y is not None:
-        cropped_raw, tap_region = _crop_at_tap(raw, tap_x, tap_y)
+        cropped_raw, tap_region = crop_at_tap(raw, tap_x, tap_y)
     else:
         cropped_raw = raw
 
@@ -425,7 +426,7 @@ async def predict_objects(
     )
     from src.segment import all_component_bboxes  # noqa: PLC0415
 
-    raw, exif_tag = await _read_validate_with_orientation(image)
+    raw, exif_tag = await read_validate_with_orientation(image)
     try:
         clf = get_hier_classifier()
     except FileNotFoundError as exc:
@@ -584,53 +585,11 @@ def reload_model() -> ReloadModelResponse:
     )
 
 
-async def _read_validate_with_orientation(image: UploadFile) -> tuple[bytes, int]:
-    """업로드 검증 + (EXIF 정규화 bytes, 원본 Orientation 태그) 반환.
-
-    태그는 회전 TTA 축소(청사진 v2 트랙 B2)에 사용 — 학습 데이터가 센서
-    방향이므로 "어느 회전이 유효 후보인지"를 태그가 알려준다.
-    """
-    if image.content_type not in config.SUPPORTED_CONTENT_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"지원하지 않는 파일 형식: {image.content_type}. "
-                   f"지원 형식: {', '.join(config.SUPPORTED_CONTENT_TYPES)}",
-        )
-    raw = await image.read()
-    if len(raw) > config.MAX_UPLOAD_SIZE_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"파일이 너무 큼: {len(raw):,} bytes > "
-                   f"{config.MAX_UPLOAD_SIZE_BYTES:,} bytes",
-        )
-    if len(raw) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="빈 파일이 업로드됨",
-        )
-    orientation = 1
-    try:
-        import io as _io  # noqa: PLC0415
-        from PIL import Image as _Image  # noqa: PLC0415
-        orientation = int(_Image.open(_io.BytesIO(raw)).getexif().get(274, 1))
-    except Exception:  # noqa: BLE001
-        pass
-    # EXIF 회전 태그를 픽셀에 적용 — Flutter 표시(태그 적용)와 서버 처리
-    # (분류·CAM·빗금·누끼) 의 방향을 일치시킴.
-    return normalize_orientation(raw), orientation
-
-
-async def _read_and_validate_image(image: UploadFile) -> bytes:
-    """공통 헬퍼 — 업로드 검증 + EXIF 정규화 bytes 반환."""
-    raw, _ = await _read_validate_with_orientation(image)
-    return raw
-
-
 @app.post("/predict", response_model=PredictionResponse, tags=["inference"])
 async def predict(
     image: UploadFile = File(..., description="분류할 폐기물 이미지"),
 ) -> PredictionResponse:
-    raw = await _read_and_validate_image(image)
+    raw = await read_and_validate_image(image)
 
     classifier = get_classifier()
     color_input, edge_input = preprocess_both(raw)
@@ -640,42 +599,6 @@ async def predict(
     upload_id = record_safely(raw, image, result)
 
     return PredictionResponse(**result, upload_id=upload_id)
-
-
-def _auto_crop_to_object(raw: bytes, expand: float = 0.10) -> bytes:
-    """u2netp 으로 객체 bbox 검출 → bbox + padding 으로 크롭 → JPEG bytes 반환.
-
-    bbox 검출 실패 또는 크롭 너무 작으면 원본 그대로. /predict-centered 와
-    /predict-with-regions 가 공통 사용. 객체 중심 입력으로 표준화 → 잡배경 영향 ↓.
-    """
-    import io  # noqa: PLC0415
-    from PIL import Image  # noqa: PLC0415
-
-    try:
-        seg = get_segmenter().segment(raw)
-        bbox_norm = seg.get("bbox_norm")
-    except Exception as exc:  # noqa: BLE001
-        log.warning(f"segment for auto-crop failed: {exc}")
-        return raw
-
-    if not bbox_norm:
-        return raw
-
-    try:
-        img = Image.open(io.BytesIO(raw)).convert("RGB")
-        W, H = img.size
-        x0 = max(0, int((bbox_norm[0] - expand) * W))
-        y0 = max(0, int((bbox_norm[1] - expand) * H))
-        x1 = min(W, int((bbox_norm[2] + expand) * W))
-        y1 = min(H, int((bbox_norm[3] + expand) * H))
-        if x1 - x0 < 64 or y1 - y0 < 64:
-            return raw  # 너무 작은 크롭은 의미 없음 — 원본
-        buf = io.BytesIO()
-        img.crop((x0, y0, x1, y1)).save(buf, format="JPEG", quality=92)
-        return buf.getvalue()
-    except Exception as exc:  # noqa: BLE001
-        log.warning(f"bbox crop failed: {exc}")
-        return raw
 
 
 def _tap_silhouette_regions(
@@ -838,62 +761,6 @@ def _evidence_conflicts(
     return False
 
 
-def _crop_at_tap(raw: bytes, tap_x: float, tap_y: float,
-                 expand: float = 0.12) -> tuple[bytes, list[float] | None]:
-    """탭 지점의 saliency 연결 성분 bbox 로 크롭 (탭-투-셀렉트).
-
-    성분 미검출 시 탭 중심 window-crop (shortestSide 50%) fallback —
-    사용자가 지목했다는 사실 자체가 '그 근처에 객체가 있다'는 신호이므로
-    전역 크롭보다 탭 중심이 낫다.
-    반환: (crop bytes, region bbox_norm|None) — bbox 는 CAM 재질 융합용.
-    """
-    import io  # noqa: PLC0415
-    from PIL import Image  # noqa: PLC0415
-    from src.segment import component_bbox_at, grabcut_object_at  # noqa: PLC0415
-
-    try:
-        img = Image.open(io.BytesIO(raw)).convert("RGB")
-        w, h = img.size
-        # 1순위 GrabCut(픽셀 경계 실루엣) — 맞닿은 물체도 탭 물건만 크롭.
-        # 실패 시 saliency 성분 fallback.
-        bbox = None
-        try:
-            _, bbox = grabcut_object_at(raw, tap_x, tap_y, 14)
-        except Exception:  # noqa: BLE001
-            bbox = None
-        if bbox is None:
-            bbox = component_bbox_at(raw, tap_x, tap_y)
-        if bbox is not None:
-            x0, y0, x1, y1 = bbox
-            # 파편 성분(하이라이트 조각 등) 보정 — 크롭 최소 변 35% 보장.
-            # 저대비 물체는 성분이 조각나 sliver 크롭이 되면 분류가 망가짐.
-            min_side = 0.35 * min(w, h)
-            cx, cy = (x0 + x1) / 2 * w, (y0 + y1) / 2 * h
-            bw, bh = max((x1 - x0) * w, min_side), max((y1 - y0) * h, min_side)
-            x0, y0 = (cx - bw / 2) / w, (cy - bh / 2) / h
-            x1, y1 = (cx + bw / 2) / w, (cy + bh / 2) / h
-            px, py = (x1 - x0) * expand, (y1 - y0) * expand
-            box = (max(0, int((x0 - px) * w)), max(0, int((y0 - py) * h)),
-                   min(w, int((x1 + px) * w)), min(h, int((y1 + py) * h)))
-            region = [max(0.0, x0), max(0.0, y0), min(1.0, x1), min(1.0, y1)]
-        else:
-            # window fallback: 탭 중심 정사각 (shortestSide 50%)
-            side = int(min(w, h) * 0.5)
-            cx, cy = int(tap_x * w), int(tap_y * h)
-            x0 = min(max(0, cx - side // 2), w - side)
-            y0 = min(max(0, cy - side // 2), h - side)
-            box = (x0, y0, x0 + side, y0 + side)
-            region = [box[0] / w, box[1] / h, box[2] / w, box[3] / h]
-        if box[2] - box[0] < 48 or box[3] - box[1] < 48:
-            return raw, None
-        buf = io.BytesIO()
-        img.crop(box).save(buf, format="JPEG", quality=92)
-        return buf.getvalue(), region
-    except Exception as exc:  # noqa: BLE001
-        log.warning(f"tap crop failed: {exc}")
-        return raw, None
-
-
 def _ensemble_with_dinov2(
     resnet_result: dict, raw: bytes, w_dino: float = 0.7,
 ) -> dict:
@@ -983,7 +850,7 @@ async def predict_centered(
       Stage 1 (MobileNetV3-Small binary): waste/non_object 이진 판정
       Stage 2 (ResNet18 13-class): waste 면 정밀 분류
     """
-    raw = await _read_and_validate_image(image)
+    raw = await read_and_validate_image(image)
 
     # ─ Stage 0: 손 dominance 체크 ──────────────────────
     try:
@@ -1010,7 +877,7 @@ async def predict_centered(
         return PredictionResponse(**result, upload_id=upload_id)
 
     # ─ Stage 2: 자동 크롭 + 13-class 분류 ─────────────
-    cropped_raw = _auto_crop_to_object(raw)
+    cropped_raw = auto_crop_to_object(raw)
 
     classifier = get_classifier()
     color_input, edge_input = preprocess_both(cropped_raw)
@@ -1042,7 +909,7 @@ async def predict_with_cam(
     응답의 `cam_base64` 를 그대로 `<img src=...>` / Flutter Image.memory 로 표시.
     모델이 cam-aware ONNX 가 아니면 `cam_available=false` + `cam_base64=null`.
     """
-    raw = await _read_and_validate_image(image)
+    raw = await read_and_validate_image(image)
 
     classifier = get_classifier()
     color_input, edge_input = preprocess_both(raw)
@@ -1081,7 +948,7 @@ async def predict_with_mask(
     앱이 mask 로 배경을 dim 하고 객체 위에 단일 재질 라벨을 오버레이.
     grid(9타일) 방식 대체 — 객체 하나에 라벨 하나로 깔끔하게.
     """
-    raw = await _read_and_validate_image(image)
+    raw = await read_and_validate_image(image)
 
     classifier = get_classifier()
     color_input, edge_input = preprocess_both(raw)
@@ -1124,7 +991,7 @@ async def predict_with_regions(
                         후 셀별 argmax 로 재질 영역 추출. /predict-with-cam 과
                         같은 원본 입력 사용 — 둘의 영역 표시가 일치하도록.
     """
-    raw_orig = await _read_and_validate_image(image)
+    raw_orig = await read_and_validate_image(image)
 
     # Stage 1: binary waste/non-waste 판정
     try:
@@ -1314,7 +1181,7 @@ async def segment(
     image: UploadFile = File(..., description="누끼할 이미지"),
 ) -> dict:
     """객체 누끼만 — 분류 없이 cutout + bbox 반환 (앱이 분류와 병렬 호출)."""
-    raw = await _read_and_validate_image(image)
+    raw = await read_and_validate_image(image)
     try:
         return get_segmenter().segment(raw)
     except Exception as exc:  # noqa: BLE001
