@@ -12,23 +12,33 @@ import '../api/models.dart';
 import '../core/log.dart';
 import '../data/settings_store.dart';
 
-
 class PredictionService {
   final SettingsStore _settings;
 
   PredictionService(this._settings);
 
   /// [centered] 는 구버전 서버 폴백 시 `/predict-centered` 선택에만 쓰인다.
-  Future<Prediction> predict(File image,
-      {bool centered = false, UploadProgress? onUploadProgress}) {
-    return _cloudPredict(image,
-        centered: centered, onUploadProgress: onUploadProgress);
+  Future<Prediction> predict(
+    File image, {
+    bool centered = false,
+    UploadMeta? meta,
+    UploadProgress? onUploadProgress,
+  }) {
+    return _cloudPredict(
+      image,
+      centered: centered,
+      meta: meta,
+      onUploadProgress: onUploadProgress,
+    );
   }
 
-  Future<Prediction> _cloudPredict(File image,
-      {Duration? timeout,
-      bool centered = false,
-      UploadProgress? onUploadProgress}) async {
+  Future<Prediction> _cloudPredict(
+    File image, {
+    Duration? timeout,
+    bool centered = false,
+    UploadMeta? meta,
+    UploadProgress? onUploadProgress,
+  }) async {
     final baseUrl = await _settings.getApiUrl();
     final client = WasteApiClient(
       baseUrl: baseUrl,
@@ -37,18 +47,29 @@ class PredictionService {
     // 계층 분류(/predict-hier) 우선 — 대분류(항상 견고) + 세부(확신 시).
     // 구버전 서버(404) / 계층 모델 미배치(503) 는 기존 경로로 fallback.
     try {
-      return await client.predictHier(image, onUploadProgress: onUploadProgress);
+      return await client.predictHier(
+        image,
+        meta: meta,
+        onUploadProgress: onUploadProgress,
+      );
     } on ApiException catch (e) {
       if (e.statusCode == 404 || e.statusCode == 503) {
         appLog('[predict] hier 미지원 서버 (${e.statusCode}) → 기존 경로 fallback');
         return centered
-            ? client.predictCentered(image, onUploadProgress: onUploadProgress)
-            : client.predict(image, onUploadProgress: onUploadProgress);
+            ? client.predictCentered(
+                image,
+                meta: meta,
+                onUploadProgress: onUploadProgress,
+              )
+            : client.predict(
+                image,
+                meta: meta,
+                onUploadProgress: onUploadProgress,
+              );
       }
       rethrow;
     }
   }
-
 
   /// 피드백 전송 — 온디바이스 모드에선 인터넷 있을 때만 가능.
   /// 인터넷 없으면 silently fail (또는 UI 에서 경고).
@@ -66,12 +87,11 @@ class PredictionService {
         correctedLabel: correctedLabel,
       );
     } catch (_) {
-      return null;  // 오프라인 등 — UI 에서 처리
+      return null; // 오프라인 등 — UI 에서 처리
     }
   }
 }
 
-
 /// modelArch 가 fallback 으로 반환됐는지 판별 (UI 배지용).
-bool isCloudFallback(String modelArch) => modelArch.startsWith('cloud-fallback');
-
+bool isCloudFallback(String modelArch) =>
+    modelArch.startsWith('cloud-fallback');

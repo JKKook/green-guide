@@ -43,7 +43,6 @@ String friendlyError(Object e) {
   return '분석에 실패했어요. 잠시 후 다시 시도해 주세요.';
 }
 
-
 class WasteApiClient {
   String baseUrl;
   final Duration timeout;
@@ -73,8 +72,12 @@ class WasteApiClient {
   Future<RegionInfo?> fetchRegionInfo(String sido, String sigungu) async {
     try {
       final res = await http
-          .get(_uri('/region-info?sido=${Uri.encodeComponent(sido)}'
-              '&sigungu=${Uri.encodeComponent(sigungu)}'))
+          .get(
+            _uri(
+              '/region-info?sido=${Uri.encodeComponent(sido)}'
+              '&sigungu=${Uri.encodeComponent(sigungu)}',
+            ),
+          )
           .timeout(timeout);
       if (res.statusCode != 200) return null;
       final json =
@@ -96,10 +99,17 @@ class WasteApiClient {
     );
   }
 
-  Future<Prediction> predict(File imageFile,
-      {UploadProgress? onUploadProgress}) async {
-    final json = await _multipartPostJson('/predict', imageFile,
-        onUploadProgress: onUploadProgress);
+  Future<Prediction> predict(
+    File imageFile, {
+    UploadMeta? meta,
+    UploadProgress? onUploadProgress,
+  }) async {
+    final json = await _multipartPostJson(
+      '/predict',
+      imageFile,
+      onUploadProgress: onUploadProgress,
+      fields: meta?.toFields(),
+    );
     return Prediction.fromJson(json);
   }
 
@@ -108,15 +118,25 @@ class WasteApiClient {
   ///
   /// [tapX]/[tapY] (정규화 0~1): 탭-투-셀렉트 — 혼재 장면에서 사용자가
   /// 지목한 객체의 saliency 성분만 서버가 크롭해 분류.
-  Future<Prediction> predictHier(File imageFile,
-      {double? tapX, double? tapY, UploadProgress? onUploadProgress}) async {
+  Future<Prediction> predictHier(
+    File imageFile, {
+    double? tapX,
+    double? tapY,
+    UploadMeta? meta,
+    UploadProgress? onUploadProgress,
+  }) async {
     final json = await _multipartPostJson(
-      '/predict-hier', imageFile,
+      '/predict-hier',
+      imageFile,
       timeoutOverride: const Duration(seconds: 30),
       onUploadProgress: onUploadProgress,
-      fields: (tapX != null && tapY != null)
-          ? {'tap_x': tapX.toStringAsFixed(4), 'tap_y': tapY.toStringAsFixed(4)}
-          : null,
+      fields: {
+        ...?meta?.toFields(),
+        if (tapX != null && tapY != null) ...{
+          'tap_x': tapX.toStringAsFixed(4),
+          'tap_y': tapY.toStringAsFixed(4),
+        },
+      },
     );
     return Prediction.fromHierJson(json);
   }
@@ -124,12 +144,17 @@ class WasteApiClient {
   /// `/predict-centered` — u2netp 자동 객체 크롭 → 분류.
   /// Smart capture 가 사용해 객체 중심 입력으로 분류 정확도 ↑
   /// (Test C1 70% 크롭 +4.4pp 효과 직접 적용).
-  Future<Prediction> predictCentered(File imageFile,
-      {UploadProgress? onUploadProgress}) async {
+  Future<Prediction> predictCentered(
+    File imageFile, {
+    UploadMeta? meta,
+    UploadProgress? onUploadProgress,
+  }) async {
     final json = await _multipartPostJson(
-      '/predict-centered', imageFile,
-      timeoutOverride: const Duration(seconds: 30),  // u2netp 분리 추가 시간 여유
+      '/predict-centered',
+      imageFile,
+      timeoutOverride: const Duration(seconds: 30), // u2netp 분리 추가 시간 여유
       onUploadProgress: onUploadProgress,
+      fields: meta?.toFields(),
     );
     return Prediction.fromJson(json);
   }
@@ -138,7 +163,8 @@ class WasteApiClient {
   /// 각 saliency 성분을 개별 계층 분류. 후보 ≥2 면 다중 물건 장면.
   Future<PredictObjects> predictObjects(File imageFile) async {
     final json = await _multipartPostJson(
-      '/predict-objects', imageFile,
+      '/predict-objects',
+      imageFile,
       timeoutOverride: const Duration(seconds: 30),
     );
     return PredictObjects.fromJson(json);
@@ -149,7 +175,8 @@ class WasteApiClient {
   Future<PredictionWithCam> predictWithCam(File imageFile) async {
     // CAM 렌더링이 추가되어 약간 더 오래 걸릴 수 있음 — timeout 여유 두기
     final json = await _multipartPostJson(
-      '/predict-with-cam', imageFile,
+      '/predict-with-cam',
+      imageFile,
       timeoutOverride: const Duration(seconds: 30),
     );
     return PredictionWithCam.fromJson(json);
@@ -157,10 +184,14 @@ class WasteApiClient {
 
   /// `/predict-with-regions` — 예측 + 다중재질 영역 + 원본 위 빗금 오버레이.
   /// 확실히 다른 재질만 영역으로 분리 (없으면 1개 = 단일재질).
-  Future<PredictionWithRegions> predictWithRegions(File imageFile,
-      {double? tapX, double? tapY}) async {
+  Future<PredictionWithRegions> predictWithRegions(
+    File imageFile, {
+    double? tapX,
+    double? tapY,
+  }) async {
     final json = await _multipartPostJson(
-      '/predict-with-regions', imageFile,
+      '/predict-with-regions',
+      imageFile,
       timeoutOverride: const Duration(seconds: 30),
       fields: {
         if (tapX != null) 'tap_x': tapX.toStringAsFixed(4),
@@ -177,8 +208,11 @@ class WasteApiClient {
     Map<String, String>? fields,
     UploadProgress? onUploadProgress,
   }) async {
-    final request =
-        _ProgressMultipartRequest('POST', _uri(path), onProgress: onUploadProgress);
+    final request = _ProgressMultipartRequest(
+      'POST',
+      _uri(path),
+      onProgress: onUploadProgress,
+    );
     request.files.add(
       await http.MultipartFile.fromPath(
         'image',
@@ -187,12 +221,15 @@ class WasteApiClient {
       ),
     );
     if (fields != null) request.fields.addAll(fields);
-    final streamedRes = await request.send().timeout(timeoutOverride ?? timeout);
+    final streamedRes = await request.send().timeout(
+      timeoutOverride ?? timeout,
+    );
     final res = await http.Response.fromStream(streamedRes);
     if (res.statusCode != 200) {
       String detail = '';
       try {
-        final body = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final body =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         detail = body['detail']?.toString() ?? body.toString();
       } catch (_) {
         detail = utf8.decode(res.bodyBytes);
@@ -223,7 +260,8 @@ class WasteApiClient {
     if (res.statusCode != 200) {
       String detail = '';
       try {
-        final body = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final body =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         detail = body['detail']?.toString() ?? body.toString();
       } catch (_) {
         detail = utf8.decode(res.bodyBytes);
@@ -246,7 +284,6 @@ class WasteApiClient {
     return null;
   }
 }
-
 
 /// 업로드 진행률 콜백 — (보낸 바이트, 전체 바이트).
 typedef UploadProgress = void Function(int sent, int total);

@@ -27,15 +27,21 @@ class ResultController extends ChangeNotifier {
   ResultController({
     required this.image,
     required this.isSmartCapture,
+    this.meta,
+    ImageQualityResult? initialQuality,
     PredictionService? prediction,
     ApiFactory? api,
     SettingsStore? settings,
-  }) : _prediction = prediction ?? AppScope.prediction,
+  }) : _quality = initialQuality,
+       _prediction = prediction ?? AppScope.prediction,
        _api = api ?? AppScope.api,
        _settings = settings ?? AppScope.settings;
 
   final File image;
   final bool isSmartCapture;
+
+  /// 업로드 폼 필드 메타(촬영 경로·EXIF 방향·품질 측정값·크롭) — 분류 요청에 실린다.
+  final UploadMeta? meta;
   final PredictionService _prediction;
   final ApiFactory _api;
   final SettingsStore _settings;
@@ -43,7 +49,7 @@ class ResultController extends ChangeNotifier {
   final String capturedAt = _clockLabel(DateTime.now());
 
   Prediction? _result;
-  ImageQualityResult? _quality; // 캡처 사진 품질 (어두움/흔들림)
+  ImageQualityResult? _quality; // 캡처 사진 품질 — 게이트에서 전달받으면 재평가 생략
   PredictionWithRegions? _regions; // 다중재질 영역 + 빗금 오버레이
   RegionInfo? _regionInfo; // 지역별 배출 규정 (지역 미설정/미적재면 null)
   bool _regionSet = false; // 지역 설정 여부 (안내 캡션 분기)
@@ -120,7 +126,7 @@ class ResultController extends ChangeNotifier {
   /// 6개 작업 병렬 시작 — 위젯 initState 에서 1회.
   void start() {
     unawaited(classify());
-    unawaited(_assessQuality());
+    if (_quality == null) unawaited(_assessQuality());
     unawaited(fetchRegions());
     unawaited(_fetchObjects());
     unawaited(_fetchRegionInfo());
@@ -350,6 +356,7 @@ class ResultController extends ChangeNotifier {
       final result = await _prediction.predict(
         image,
         centered: isSmartCapture,
+        meta: meta,
         onUploadProgress: (sent, total) {
           if (_disposed) return;
           _uploadSent = sent;
