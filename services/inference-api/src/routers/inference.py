@@ -36,6 +36,14 @@ async def predict_hier(
     image: UploadFile = File(..., description="분류할 폐기물 이미지"),
     tap_x: float | None = Form(default=None, ge=0.0, le=1.0),
     tap_y: float | None = Form(default=None, ge=0.0, le=1.0),
+    # ── 촬영 메타 (전부 선택, 필드명은 앱과 계약 — 변경 금지) ──────────────
+    orientation: int | None = Form(default=None, ge=1, le=8,
+                                   description="앱이 읽은 EXIF Orientation (1/3/6/8)"),
+    capture_mode: str | None = Form(default=None, pattern="^(smart|gallery)$"),
+    quality_blur: float | None = Form(default=None),
+    quality_brightness: float | None = Form(default=None),
+    crop_applied: bool | None = Form(default=None),
+    crop_box: str | None = Form(default=None, description='"x,y,w,h"'),
 ) -> PredictionHierResponse:
     """계층 분류 — 대분류(항상) + 세부(신뢰도 게이트 통과 시).
 
@@ -95,8 +103,11 @@ async def predict_hier(
     # ── 1차 패스: EXIF 태그 기반 축소 TTA (트랙 B2 — 3×→평균 1.7×) ──────────
     # 게이트를 통과했다 = stage1 이 '폐기물'로 판정 (또는 fail-open)
     # → 분류기의 non_object 는 모순된 답이므로 마스킹 (실측 +5.9pp)
+    # 앱이 orientation 을 보내면 서버 EXIF 판독보다 신뢰 (갤러리 재인코딩 등으로
+    # EXIF 가 소실된 사진에서도 TTA 후보를 2개로 축소).
+    tta_tag = orientation if orientation is not None else exif_tag
     result, best_tensor = predict_rotations(
-        clf, cropped_raw, degs_for_orientation(exif_tag),
+        clf, cropped_raw, degs_for_orientation(tta_tag),
         mask_non_object=True, ood_relax=tap_x is not None)
 
     # ── 시맨틱 증거 융합 (SEMANTIC_FUSION_PLAN §3 + 청사진 v2 트랙 B1) ──────
@@ -237,6 +248,17 @@ async def predict_hier(
         "all_probabilities": result["coarse_probabilities"],
         "model_arch": result["model_arch"],
         "inference_ms": result["inference_ms"],
+    }, meta={
+        "orientation": orientation,
+        "capture_mode": capture_mode,
+        "quality_blur": quality_blur,
+        "quality_brightness": quality_brightness,
+        "crop_applied": crop_applied,
+        "crop_box": crop_box,
+        "exif_orientation": exif_tag,
+        "tta_rotation": result.get("tta_rotation"),
+        "tap_x": tap_x,
+        "tap_y": tap_y,
     })
 
     return PredictionHierResponse(**result, upload_id=upload_id)

@@ -12,7 +12,8 @@ from src.uploads import get_recorder
 log = get_logger(__name__)
 
 
-def record_safely(raw: bytes, image: UploadFile, prediction: dict[str, Any]) -> str | None:
+def record_safely(raw: bytes, image: UploadFile, prediction: dict[str, Any],
+                  meta: dict[str, Any] | None = None) -> str | None:
     """예측 결과와 원본 이미지를 기록하고 upload_id 를 돌려준다.
 
     fail-open: 수집이 꺼져 있거나(COLLECT_USER_UPLOADS=false) Supabase 기록이
@@ -25,6 +26,7 @@ def record_safely(raw: bytes, image: UploadFile, prediction: dict[str, Any]) -> 
             image_bytes=raw,
             content_type=image.content_type or "application/octet-stream",
             prediction=prediction,
+            meta=meta,
         )
     except Exception as exc:  # noqa: BLE001 — fail-open (위 docstring)
         log.warning(f"upload collection failed: {exc}")
