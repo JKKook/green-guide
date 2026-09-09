@@ -127,11 +127,12 @@ class UploadRecorder:
 
     # ── 로컬 폴백 ────────────────────────────────────────────────────────
     @staticmethod
-    def _local_record(image_bytes: bytes, ext: str, prediction: dict[str, Any]) -> str:
+    def _local_record(image_bytes: bytes, ext: str, prediction: dict[str, Any],
+                      meta: dict[str, Any] | None = None) -> str:
         upload_id = "local-" + uuid.uuid4().hex[:12]
         _LOCAL_DIR.mkdir(parents=True, exist_ok=True)
         (_LOCAL_DIR / f"{upload_id}{ext}").write_bytes(image_bytes)
-        meta = {
+        row = {
             "id": upload_id,
             "predicted_class": prediction["predicted_class"],
             "predicted_confidence": prediction.get("confidence"),
@@ -139,9 +140,10 @@ class UploadRecorder:
             "uploaded_at": datetime.now(timezone.utc).isoformat(),
             "ext": ext,
             "feedback_status": "pending",
+            **{k: v for k, v in (meta or {}).items() if v is not None},
         }
         with (_LOCAL_DIR / "meta.jsonl").open("a", encoding="utf-8") as f:
-            f.write(json.dumps(meta, ensure_ascii=False) + "\n")
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
         return upload_id
 
     @staticmethod
@@ -172,10 +174,13 @@ class UploadRecorder:
         image_bytes: bytes,
         content_type: str,
         prediction: dict[str, Any],
+        meta: dict[str, Any] | None = None,
     ) -> str:
         """업로드 + INSERT 후 upload_id 반환.
 
         prediction 은 inference.WasteClassifier.predict() 결과 dict.
+        meta 는 촬영 메타(orientation·capture_mode·quality_* 등) — None 값은
+        제외하고 저장하며, 컬럼 미배포 시 기본 컬럼만으로 재시도한다.
         """
         upload_id = uuid.uuid4().hex[:16]
         # 저장용 재압축 (무료 쿼터 지속성): 긴 변 640px·WebP q75 → 장당
@@ -188,14 +193,16 @@ class UploadRecorder:
 
         try:
             return self._remote_record(
-                upload_id, ext, storage_path, image_bytes, content_type, prediction)
+                upload_id, ext, storage_path, image_bytes, content_type,
+                prediction, meta)
         except Exception as exc:  # noqa: BLE001
             log.info(f"Supabase 실패 → 로컬 폴백: {str(exc)[:80]}")
-            return self._local_record(image_bytes, ext, prediction)
+            return self._local_record(image_bytes, ext, prediction, meta)
 
     def _remote_record(
         self, upload_id: str, ext: str, storage_path: str,
         image_bytes: bytes, content_type: str, prediction: dict[str, Any],
+        meta: dict[str, Any] | None = None,
     ) -> str:
         # 1) Storage 업로드
         self.client.storage.from_(_UPLOAD_BUCKET).upload(
@@ -217,7 +224,15 @@ class UploadRecorder:
             "inference_ms": prediction["inference_ms"],
             "feedback_status": "pending",
         }
-        self.client.table(_UPLOAD_TABLE).insert(row).execute()
+        extras = {k: v for k, v in (meta or {}).items() if v is not None}
+        try:
+            self.client.table(_UPLOAD_TABLE).insert({**row, **extras}).execute()
+        except Exception as exc:
+            if not extras:
+                raise
+            # 메타 컬럼 미배포(마이그레이션 전) 가능성 — 기본 컬럼만으로 재시도
+            log.warning(f"메타 포함 INSERT 실패 → 기본 컬럼 재시도: {str(exc)[:80]}")
+            self.client.table(_UPLOAD_TABLE).insert(row).execute()
         return upload_id
 
     def record_feedback(
