@@ -7,8 +7,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../api/models.dart';
 import '../../core/feedback/app_snackbar.dart';
 import '../../data/haptics.dart';
+import '../../data/image_quality.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/design_tokens.dart';
 import 'result_controller.dart';
@@ -32,6 +34,8 @@ Future<bool?> showResultModal(
   BuildContext context,
   File image, {
   bool isSmartCapture = false,
+  UploadMeta? meta,
+  ImageQualityResult? initialQuality,
 }) {
   return showModalBottomSheet<bool>(
     context: context,
@@ -49,6 +53,8 @@ Future<bool?> showResultModal(
         image: image,
         scrollController: controller,
         isSmartCapture: isSmartCapture,
+        meta: meta,
+        initialQuality: initialQuality,
       ),
     ),
   );
@@ -58,10 +64,14 @@ class _ResultModal extends StatefulWidget {
   final File image;
   final ScrollController scrollController;
   final bool isSmartCapture;
+  final UploadMeta? meta;
+  final ImageQualityResult? initialQuality;
   const _ResultModal({
     required this.image,
     required this.scrollController,
     this.isSmartCapture = false,
+    this.meta,
+    this.initialQuality,
   });
 
   @override
@@ -72,6 +82,8 @@ class _ResultModalState extends State<_ResultModal> {
   late final ResultController c = ResultController(
     image: widget.image,
     isSmartCapture: widget.isSmartCapture,
+    meta: widget.meta,
+    initialQuality: widget.initialQuality,
   );
 
   @override

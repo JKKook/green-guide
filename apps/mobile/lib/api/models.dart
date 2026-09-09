@@ -8,6 +8,7 @@ class HierInfo {
   final String displayLevel;
   final String coarseClass;
   final double coarseConfidence;
+
   /// 세부 게이트 통과 시에만 non-null.
   final String? fineClass;
   final double fineConfidence;
@@ -28,11 +29,11 @@ class HierInfo {
 
 /// 지역별 배출 규정 한 건 — /region-info 응답 (공공데이터 표준 필드).
 class RegionRule {
-  final String district;         // 관리구역 (없으면 '')
-  final String? methodGeneral;   // 생활쓰레기 배출방법
-  final String? methodFood;      // 음식물 배출방법
-  final String? methodRecycle;   // 재활용품 배출방법
-  final String? methodBulk;      // 대형/일시다량 배출방법
+  final String district; // 관리구역 (없으면 '')
+  final String? methodGeneral; // 생활쓰레기 배출방법
+  final String? methodFood; // 음식물 배출방법
+  final String? methodRecycle; // 재활용품 배출방법
+  final String? methodBulk; // 대형/일시다량 배출방법
   final String? daysGeneral;
   final String? daysFood;
   final String? daysRecycle;
@@ -55,18 +56,18 @@ class RegionRule {
   });
 
   factory RegionRule.fromJson(Map<String, dynamic> json) => RegionRule(
-        district: json['district'] as String? ?? '',
-        methodGeneral: json['method_general'] as String?,
-        methodFood: json['method_food'] as String?,
-        methodRecycle: json['method_recycle'] as String?,
-        methodBulk: json['method_bulk'] as String?,
-        daysGeneral: json['days_general'] as String?,
-        daysFood: json['days_food'] as String?,
-        daysRecycle: json['days_recycle'] as String?,
-        emitTime: json['emit_time'] as String?,
-        noCollectDay: json['no_collect_day'] as String?,
-        phone: json['phone'] as String?,
-      );
+    district: json['district'] as String? ?? '',
+    methodGeneral: json['method_general'] as String?,
+    methodFood: json['method_food'] as String?,
+    methodRecycle: json['method_recycle'] as String?,
+    methodBulk: json['method_bulk'] as String?,
+    daysGeneral: json['days_general'] as String?,
+    daysFood: json['days_food'] as String?,
+    daysRecycle: json['days_recycle'] as String?,
+    emitTime: json['emit_time'] as String?,
+    noCollectDay: json['no_collect_day'] as String?,
+    phone: json['phone'] as String?,
+  );
 }
 
 /// /region-info 응답 — 선택 지역의 배출 규정 목록.
@@ -82,17 +83,20 @@ class RegionInfo {
   });
 
   factory RegionInfo.fromJson(Map<String, dynamic> json) => RegionInfo(
-        sido: json['sido'] as String,
-        sigungu: json['sigungu'] as String,
-        rules: (json['rules'] as List<dynamic>? ?? const [])
-            .map((r) => RegionRule.fromJson(r as Map<String, dynamic>))
-            .toList(),
-      );
+    sido: json['sido'] as String,
+    sigungu: json['sigungu'] as String,
+    rules: (json['rules'] as List<dynamic>? ?? const [])
+        .map((r) => RegionRule.fromJson(r as Map<String, dynamic>))
+        .toList(),
+  );
 
   /// 대표 규정 — 시군구 공통(district='') 우선, 없으면 첫 항목.
   RegionRule? get representative {
     if (rules.isEmpty) return null;
-    return rules.firstWhere((r) => r.district.isEmpty, orElse: () => rules.first);
+    return rules.firstWhere(
+      (r) => r.district.isEmpty,
+      orElse: () => rules.first,
+    );
   }
 }
 
@@ -112,11 +116,11 @@ class EvidenceItem {
   });
 
   factory EvidenceItem.fromJson(Map<String, dynamic> json) => EvidenceItem(
-        type: json['type'] as String,
-        token: json['token'] as String,
-        mappedClass: json['mapped_class'] as String,
-        score: (json['score'] as num).toDouble(),
-      );
+    type: json['type'] as String,
+    token: json['token'] as String,
+    mappedClass: json['mapped_class'] as String,
+    score: (json['score'] as num).toDouble(),
+  );
 }
 
 class Prediction {
@@ -167,10 +171,8 @@ class Prediction {
   /// - allProbabilities = 대분류 확률 분포 (확률 카드용)
   /// - confidence = 노출 레벨에 맞는 확신도
   factory Prediction.fromHierJson(Map<String, dynamic> json) {
-    final coarseProbs =
-        (json['coarse_probabilities'] as Map<String, dynamic>).map(
-      (k, v) => MapEntry(k, (v as num).toDouble()),
-    );
+    final coarseProbs = (json['coarse_probabilities'] as Map<String, dynamic>)
+        .map((k, v) => MapEntry(k, (v as num).toDouble()));
     final level = json['display_level'] as String;
     final hier = HierInfo(
       displayLevel: level,
@@ -183,8 +185,7 @@ class Prediction {
     return Prediction(
       predictedClass: json['display_class'] as String,
       predictedIndex: -1,
-      confidence:
-          level == 'fine' ? hier.fineConfidence : hier.coarseConfidence,
+      confidence: level == 'fine' ? hier.fineConfidence : hier.coarseConfidence,
       allProbabilities: coarseProbs,
       modelArch: json['model_arch'] as String,
       inferenceMs: (json['inference_ms'] as num).toDouble(),
@@ -224,7 +225,6 @@ class FeedbackResult {
   }
 }
 
-
 class ServiceInfo {
   final String name;
   final String version;
@@ -254,12 +254,13 @@ class ServiceInfo {
   }
 }
 
-
 /// `/predict-with-cam` 응답 — 예측 + heatmap PNG (base64 data URI).
 class PredictionWithCam {
   final Prediction prediction;
+
   /// `data:image/png;base64,...` 형식 (Flutter `Image.memory` 로 디코드해서 표시).
   final String? camBase64;
+
   /// false 면 서버가 cam-aware ONNX 가 아니라 CAM 생성 불가.
   final bool camAvailable;
 
@@ -278,10 +279,10 @@ class PredictionWithCam {
   }
 }
 
-
 /// `/predict-with-regions` 에서 검출된 한 재질 영역.
 class MaterialRegion {
   final String slug;
+
   /// [x0,y0,x1,y1] 0~1 (라벨 위치용).
   final List<double> bboxNorm;
   final double avgConf;
@@ -310,12 +311,13 @@ class MaterialRegion {
   double get cy => (bboxNorm[1] + bboxNorm[3]) / 2;
 }
 
-
 /// `/predict-with-regions` 응답 — 예측 + 다중재질 영역 + 원본 위 빗금 오버레이.
 class PredictionWithRegions {
   final Prediction prediction;
+
   /// 원본에 영역별 빗금을 그린 JPEG (data:image/jpeg;base64,…). 누끼 대신 표시.
   final String? overlayBase64;
+
   /// 검출된 재질 영역들 (확실히 다른 재질만). 1개면 단일재질, 2+면 다중재질.
   final List<MaterialRegion> regions;
   final int gridH;
@@ -345,7 +347,6 @@ class PredictionWithRegions {
   bool get isMultiMaterial => regions.length >= 2;
   bool get hasOverlay => overlayBase64 != null && regions.isNotEmpty;
 }
-
 
 /// `/predict-objects` 의 객체 후보 — 혼재 장면에서 분리된 물건 하나.
 class ObjectCandidate {
@@ -381,8 +382,9 @@ class ObjectCandidate {
       fineClass: json['fine_class'] as String?,
       fineConfidence: (json['fine_confidence'] as num?)?.toDouble() ?? 0.0,
       coarseProbabilities:
-          ((json['coarse_probabilities'] as Map<String, dynamic>?) ?? {})
-              .map((k, v) => MapEntry(k, (v as num).toDouble())),
+          ((json['coarse_probabilities'] as Map<String, dynamic>?) ?? {}).map(
+            (k, v) => MapEntry(k, (v as num).toDouble()),
+          ),
     );
   }
 
@@ -394,8 +396,7 @@ class ObjectCandidate {
     return Prediction(
       predictedClass: displayClass,
       predictedIndex: -1,
-      confidence:
-          displayLevel == 'fine' ? fineConfidence : coarseConfidence,
+      confidence: displayLevel == 'fine' ? fineConfidence : coarseConfidence,
       allProbabilities: coarseProbabilities,
       modelArch: 'object-select',
       inferenceMs: 0,
@@ -410,7 +411,6 @@ class ObjectCandidate {
     );
   }
 }
-
 
 /// `/predict-objects` 응답.
 class PredictObjects {
@@ -429,4 +429,39 @@ class PredictObjects {
   }
 
   bool get isMultiObject => objects.length >= 2;
+}
+
+/// 업로드 메타 — 학습/서빙 분포 정렬용 폼 필드 (필드명은 waste-api 와 합의됨).
+///
+/// - `capture_mode`: "smart" | "gallery"
+/// - `orientation`: 원본 EXIF Orientation (1/3/6/8; 갤러리는 picker 가 회전을
+///   픽셀에 반영한 뒤라 1 = 정보 없음)
+/// - `quality_blur` / `quality_brightness`: 클라이언트 품질 측정값
+/// - `crop_applied` / `crop_box`: 가이드 프레임 크롭 적용 여부·원본 좌표
+class UploadMeta {
+  final String captureMode;
+  final int orientation;
+  final double? qualityBlur;
+  final double? qualityBrightness;
+  final bool cropApplied;
+  final String? cropBox; // "x,y,w,h" (정수, 원본 픽셀)
+
+  const UploadMeta({
+    required this.captureMode,
+    this.orientation = 1,
+    this.qualityBlur,
+    this.qualityBrightness,
+    this.cropApplied = false,
+    this.cropBox,
+  });
+
+  Map<String, String> toFields() => {
+    'capture_mode': captureMode,
+    'orientation': '$orientation',
+    if (qualityBlur != null) 'quality_blur': qualityBlur!.toStringAsFixed(2),
+    if (qualityBrightness != null)
+      'quality_brightness': qualityBrightness!.toStringAsFixed(2),
+    if (cropApplied) 'crop_applied': 'true',
+    if (cropApplied && cropBox != null) 'crop_box': cropBox!,
+  };
 }

@@ -3,7 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../api/models.dart';
+import '../../core/feedback/app_snackbar.dart';
 import '../../data/haptics.dart';
+import '../../data/image_quality.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/design_tokens.dart';
 import '../result/result_modal.dart';
@@ -35,7 +38,23 @@ class _GalleryConfirmScreenState extends State<GalleryConfirmScreen> {
   Future<void> _analyze() async {
     Haptics.medium();
     setState(() => _analyzing = true);
-    final close = await showResultModal(context, _image);
+    // 업로드 전 품질 확인(제안 A) — 갤러리는 재촬영을 강제할 수 없으니 안내만.
+    final quality = await assessImageQuality(_image);
+    if (!mounted) return;
+    if (quality.hasIssue) {
+      showAppSnackBar(context, '사진이 흔들리거나 어두워요 — 결과가 부정확할 수 있어요');
+    }
+    final close = await showResultModal(
+      context,
+      _image,
+      initialQuality: quality,
+      // 갤러리는 picker 가 1600px 재인코딩하며 회전을 픽셀에 반영 → orientation=1(정보 없음)
+      meta: UploadMeta(
+        captureMode: 'gallery',
+        qualityBlur: quality.sharpness,
+        qualityBrightness: quality.brightness,
+      ),
+    );
     if (!mounted) return;
     setState(() => _analyzing = false);
     // 분석 취소(false) — 확인 화면에 그대로 머문다. 사진을 바꾸려면
@@ -106,8 +125,11 @@ class _GalleryConfirmScreenState extends State<GalleryConfirmScreen> {
                             color: kAccent600,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.check,
-                              size: 13, color: kNeutral100),
+                          child: const Icon(
+                            Icons.check,
+                            size: 13,
+                            color: kNeutral100,
+                          ),
                         ),
                       ),
                     ],
@@ -141,7 +163,9 @@ class _GalleryConfirmScreenState extends State<GalleryConfirmScreen> {
                       const Text(
                         '1장 선택됨',
                         style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const Spacer(),
                       Text(
@@ -162,8 +186,11 @@ class _GalleryConfirmScreenState extends State<GalleryConfirmScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.bolt_outlined,
-                                size: 17, color: kNeutral100),
+                            Icon(
+                              Icons.bolt_outlined,
+                              size: 17,
+                              color: kNeutral100,
+                            ),
                             SizedBox(width: 8),
                             Text(
                               '재질 분석 시작',

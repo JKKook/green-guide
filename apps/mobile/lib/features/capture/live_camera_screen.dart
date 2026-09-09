@@ -9,8 +9,10 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../api/models.dart';
 import '../../data/haptics.dart';
 import '../../data/image_prep.dart';
+import '../../data/image_quality.dart';
 import '../../services/stability_detector.dart';
 import '../../theme/app_theme.dart';
 import '../result/result_modal.dart';
@@ -18,6 +20,9 @@ import 'capture_entry_sheet.dart' show pickFromGalleryAndAnalyze;
 import 'widgets/camera_overlays.dart';
 
 const Duration _kCountdown = Duration(seconds: 5);
+
+/// 코너 브래킷의 뷰파인더 가장자리 패딩 — 가이드 프레임 크롭의 inset.
+const double _kGuideInset = 14;
 const Duration _kStableGrace = Duration(seconds: 3);
 
 class LiveCameraScreen extends StatefulWidget {
@@ -26,7 +31,6 @@ class LiveCameraScreen extends StatefulWidget {
   @override
   State<LiveCameraScreen> createState() => _LiveCameraScreenState();
 }
-
 
 class _LiveCameraScreenState extends State<LiveCameraScreen>
     with WidgetsBindingObserver {
@@ -43,6 +47,7 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
   Duration _elapsed = Duration.zero;
   bool _armed = false; // 카운트다운 종료 — 안정되는 즉시 촬영
   bool _capturing = false;
+  Size? _viewfinderSize; // 가이드 크롭용 뷰파인더 실측 (build 에서 갱신)
   bool _paused = false;
 
   String? _initError;
@@ -90,7 +95,8 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
     } on CameraException catch (e) {
       if (!mounted) return;
       final code = e.code.toLowerCase();
-      final isPermission = code.contains('permission') ||
+      final isPermission =
+          code.contains('permission') ||
           code.contains('denied') ||
           code.contains('access');
       setState(() {
@@ -176,14 +182,41 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
       }
       if (!mounted) return;
 
-      // 크롭 판단은 서버가 u2netp saliency 로 수행하므로 프레임 전체를 보내되,
-      // 업로드량을 갤러리 경로와 같은 크기(긴 변 1600px)로 줄인다.
-      final upload = await prepareForUpload(File(shot.path));
+      // 가이드 프레임(코너 브래킷 안쪽)을 실제 크롭 영역으로 사용 — 학습 데이터가
+      // bbox 밀착 크롭이라 분포가 정렬된다(제안 E). 업로드량도 긴 변 1600px 로 축소.
+      final view = _viewfinderSize;
+      final prep = await prepareForUpload(
+        File(shot.path),
+        guideViewW: view?.width,
+        guideViewH: view?.height,
+        guideInset: _kGuideInset,
+      );
       if (!mounted) return;
+
+      // 업로드 전 품질 게이트(제안 A) — 흔들림/저조도면 재촬영이 기본.
+      final quality = await assessImageQuality(prep.file);
+      if (!mounted) return;
+      if (quality.hasIssue && await _shouldRetake(quality)) {
+        if (!mounted) return;
+        _paused = false;
+        _startCountdown();
+        return;
+      }
+      if (!mounted) return;
+
       final closeCamera = await showResultModal(
         context,
-        upload,
+        prep.file,
         isSmartCapture: true,
+        initialQuality: quality,
+        meta: UploadMeta(
+          captureMode: 'smart',
+          orientation: prep.orientation,
+          qualityBlur: quality.sharpness,
+          qualityBrightness: quality.brightness,
+          cropApplied: prep.cropApplied,
+          cropBox: prep.cropBox,
+        ),
       );
 
       if (!mounted) return;
@@ -197,6 +230,35 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
     } finally {
       if (mounted) setState(() => _capturing = false);
     }
+  }
+
+  /// 품질 미달 시 재촬영 확인 — 스마트 촬영은 재촬영이 기본(닫아도 재촬영).
+  Future<bool> _shouldRetake(ImageQualityResult quality) async {
+    Haptics.medium();
+    final blurry = quality.issues.contains(ImageQualityIssue.tooBlurry);
+    final dark = quality.issues.contains(ImageQualityIssue.tooDark);
+    final reason = [
+      if (blurry) '초점이 맞지 않았어요',
+      if (dark) '사진이 어두워요',
+    ].join(' · ');
+    final retake = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('다시 찍는 게 좋겠어요'),
+        content: Text('$reason.\n이대로 보내면 분석 정확도가 떨어져요.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('그대로 분석'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('다시 촬영'),
+          ),
+        ],
+      ),
+    );
+    return retake ?? true;
   }
 
   Future<void> _toggleTorch() async {
@@ -275,8 +337,8 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
   Widget build(BuildContext context) {
     final controller = _controller;
     final ready = controller != null && controller.value.isInitialized;
-    final progress =
-        (_elapsed.inMilliseconds / _kCountdown.inMilliseconds).clamp(0.0, 1.0);
+    final progress = (_elapsed.inMilliseconds / _kCountdown.inMilliseconds)
+        .clamp(0.0, 1.0);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -299,8 +361,11 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                       size: 38,
                       semanticLabel: '촬영 닫기',
                       onTap: () => Navigator.of(context).pop(),
-                      child: const Icon(Icons.close,
-                          size: 17, color: kNeutral100),
+                      child: const Icon(
+                        Icons.close,
+                        size: 17,
+                        color: kNeutral100,
+                      ),
                     ),
                     const Expanded(
                       child: Text(
@@ -338,6 +403,16 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
+                          // 가이드 크롭 역변환용 뷰파인더 실측 (그리지 않음)
+                          LayoutBuilder(
+                            builder: (ctx, box) {
+                              _viewfinderSize = Size(
+                                box.maxWidth,
+                                box.maxHeight,
+                              );
+                              return const SizedBox.shrink();
+                            },
+                          ),
                           if (ready)
                             FittedBox(
                               fit: BoxFit.cover,
@@ -353,7 +428,8 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                           else if (_initError == null)
                             const Center(
                               child: CircularProgressIndicator(
-                                  color: kNeutral100),
+                                color: kNeutral100,
+                              ),
                             ),
                           // 코너 브래킷
                           for (final (a, top, left) in const [
@@ -395,7 +471,9 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                                   const SizedBox(height: 8),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 14, vertical: 7),
+                                      horizontal: 14,
+                                      vertical: 7,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: kInkDeep.withValues(alpha: 0.65),
                                       borderRadius: BorderRadius.circular(999),
@@ -450,8 +528,11 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.timer_outlined,
-                            size: 14, color: kAccent400),
+                        const Icon(
+                          Icons.timer_outlined,
+                          size: 14,
+                          color: kAccent400,
+                        ),
                         const SizedBox(width: 7),
                         const Text(
                           '스마트 캡처 · 5초 뒤 자동 촬영',
@@ -466,8 +547,8 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                           _armed
                               ? '안정되면 촬영'
                               : ready
-                                  ? '$_secondsLeft초 남음'
-                                  : '준비 중',
+                              ? '$_secondsLeft초 남음'
+                              : '준비 중',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -506,31 +587,34 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                       outlined: true,
                       semanticLabel: '갤러리에서 사진 선택',
                       onTap: _openGallery,
-                      child: const Icon(Icons.image_outlined,
-                          size: 20, color: kNeutral100),
+                      child: const Icon(
+                        Icons.image_outlined,
+                        size: 20,
+                        color: kNeutral100,
+                      ),
                     ),
                     Semantics(
                       button: true,
                       label: '지금 촬영',
                       child: GestureDetector(
-                      onTap: (ready && !_capturing) ? _capture : null,
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: kNeutral100, width: 4),
-                        ),
-                        padding: const EdgeInsets.all(kSpaceXS),
+                        onTap: (ready && !_capturing) ? _capture : null,
                         child: Container(
+                          width: 72,
+                          height: 72,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: (ready && !_capturing)
-                                ? kNeutral100
-                                : kNeutral500,
+                            border: Border.all(color: kNeutral100, width: 4),
+                          ),
+                          padding: const EdgeInsets.all(kSpaceXS),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: (ready && !_capturing)
+                                  ? kNeutral100
+                                  : kNeutral500,
+                            ),
                           ),
                         ),
-                      ),
                       ),
                     ),
                     GlassButton(
@@ -538,8 +622,11 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                       outlined: true,
                       semanticLabel: '전면·후면 카메라 전환',
                       onTap: _flipCamera,
-                      child: const Icon(Icons.cameraswitch_outlined,
-                          size: 19, color: kNeutral100),
+                      child: const Icon(
+                        Icons.cameraswitch_outlined,
+                        size: 19,
+                        color: kNeutral100,
+                      ),
                     ),
                   ],
                 ),

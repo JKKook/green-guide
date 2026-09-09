@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:greenguide/api/api_client.dart';
 import 'package:greenguide/api/models.dart';
+import 'package:greenguide/data/image_quality.dart';
 import 'package:greenguide/data/settings_store.dart';
 import 'package:greenguide/features/result/result_controller.dart';
 import 'package:greenguide/services/prediction_service.dart';
@@ -25,12 +26,16 @@ class _FakePrediction extends PredictionService {
   final Object? error;
   int calls = 0;
 
+  UploadMeta? lastMeta;
+
   @override
   Future<Prediction> predict(
     File image, {
     bool centered = false,
+    UploadMeta? meta,
     UploadProgress? onUploadProgress,
   }) async {
+    lastMeta = meta;
     calls++;
     onUploadProgress?.call(10, 10);
     if (error != null) throw error!;
@@ -76,6 +81,7 @@ class _FakeApi extends WasteApiClient {
     File imageFile, {
     double? tapX,
     double? tapY,
+    UploadMeta? meta,
     UploadProgress? onUploadProgress,
   }) async {
     return _pred('plastic');
@@ -109,6 +115,39 @@ void main() {
     api: () async => api ?? _FakeApi(objects: objects),
     settings: SettingsStore(),
   );
+
+  test('UploadMeta 가 분류 요청까지 전달된다', () async {
+    const meta = UploadMeta(captureMode: 'smart', orientation: 6);
+    final svc = _FakePrediction();
+    final c = ResultController(
+      image: image,
+      isSmartCapture: true,
+      meta: meta,
+      prediction: svc,
+      api: () async => _FakeApi(),
+      settings: SettingsStore(),
+    );
+    await c.classify();
+    expect(svc.lastMeta, same(meta));
+  });
+
+  test('initialQuality 를 받으면 재평가 없이 그대로 쓴다', () async {
+    const q = ImageQualityResult(
+      brightness: 30,
+      sharpness: 10,
+      issues: [ImageQualityIssue.tooDark],
+    );
+    final c = ResultController(
+      image: image,
+      isSmartCapture: false,
+      initialQuality: q,
+      prediction: _FakePrediction(),
+      api: () async => _FakeApi(),
+      settings: SettingsStore(),
+    );
+    c.start();
+    expect(c.quality, same(q));
+  });
 
   test('로더는 분류와 재질 분석이 모두 끝나야 사라진다', () async {
     final c = make();

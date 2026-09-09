@@ -21,9 +21,9 @@ Future<void> showCaptureEntrySheet(BuildContext context) async {
   if (choice == null || !context.mounted) return;
   switch (choice) {
     case _EntryChoice.smartCapture:
-      await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const LiveCameraScreen()),
-      );
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const LiveCameraScreen()));
     case _EntryChoice.gallery:
       await pickFromGalleryAndAnalyze(context);
   }
@@ -74,8 +74,7 @@ class _CaptureEntrySheet extends StatelessWidget {
                 const Expanded(
                   child: Text(
                     '어떻게 분석할까요?',
-                    style:
-                        TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
                   ),
                 ),
                 Semantics(
@@ -117,8 +116,11 @@ class _CaptureEntrySheet extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.16),
                           borderRadius: BorderRadius.circular(kRadiusMedium),
                         ),
-                        child: const Icon(Icons.photo_camera_outlined,
-                            size: 23, color: kNeutral100),
+                        child: const Icon(
+                          Icons.photo_camera_outlined,
+                          size: 23,
+                          color: kNeutral100,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       const Expanded(
@@ -144,9 +146,11 @@ class _CaptureEntrySheet extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Icon(Icons.chevron_right,
-                          size: 16,
-                          color: Colors.white.withValues(alpha: 0.7)),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 16,
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
                     ],
                   ),
                 ),
@@ -176,8 +180,11 @@ class _CaptureEntrySheet extends StatelessWidget {
                           border: Border.all(color: t.accentChipBorder),
                           borderRadius: BorderRadius.circular(kRadiusMedium),
                         ),
-                        child: Icon(Icons.image_outlined,
-                            size: 22, color: t.accentChipText),
+                        child: Icon(
+                          Icons.image_outlined,
+                          size: 22,
+                          color: t.accentChipText,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -187,13 +194,14 @@ class _CaptureEntrySheet extends StatelessWidget {
                             const Text(
                               '갤러리에서 선택',
                               style: TextStyle(
-                                  fontSize: 15.5, fontWeight: FontWeight.w700),
+                                fontSize: 15.5,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               '찍어둔 사진 한 장 골라 분석',
-                              style:
-                                  TextStyle(fontSize: 12, color: t.muted2),
+                              style: TextStyle(fontSize: 12, color: t.muted2),
                             ),
                           ],
                         ),
