@@ -34,8 +34,9 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _CANDIDATES = [
     Path(_ENV_PATH) if _ENV_PATH else None,
     _PROJECT_ROOT / "models" / "classifier_hier.onnx",
-    _PROJECT_ROOT.parents[1] / "ml" / "classifier" / "outputs" / "models" / "cnn_hier"
-    / "classifier.onnx",
+    # sibling 은 config.CLASSIFIER_ROOT 경유 — 컨테이너(/app)에서 parents[1] 이
+    # IndexError 를 내던 HF 배포 회귀 방지.
+    config.CLASSIFIER_ROOT / "outputs" / "models" / "cnn_hier" / "classifier.onnx",
 ]
 
 
