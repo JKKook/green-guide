@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
-from greenguide_common import imaging
+from greenguide_common import imaging, settings
 from greenguide_common.logging import fail_open, get_logger
 from PIL import Image
 
@@ -142,7 +142,7 @@ def calibrate(percentile: float = _DEFAULT_PERCENTILE) -> dict:
         import requests
 
         from etc_queue import _supabase  # 재사용
-        rows = (_supabase().table("user_uploads")
+        rows = (_supabase().table(settings.SUPABASE_TABLE_USER_UPLOADS)
                 .select("image_url,feedback_label")
                 .eq("feedback_label", "etc").limit(20).execute()).data or []
         ood_emb = []

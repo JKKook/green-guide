@@ -100,15 +100,6 @@ CNN_FREEZE_BACKBONE: bool = False  # True 면 마지막 FC layer 만 학습
 # 기본 4.0(기존 동작 보존). 실험 시 env WASTE_CNN_WEIGHT_CAP 로 override.
 CNN_CLASS_WEIGHT_CAP: float = float(os.getenv("WASTE_CNN_WEIGHT_CAP", "4.0"))
 
-# 기존 MLP-only 코드가 참조하던 짧은 이름들 (alias)
-HIDDEN_DIMS = MLP_HIDDEN_DIMS
-DROPOUT_RATES = MLP_DROPOUT_RATES
-BATCH_SIZE = MLP_BATCH_SIZE
-NUM_EPOCHS = MLP_NUM_EPOCHS
-LEARNING_RATE = MLP_LEARNING_RATE
-WEIGHT_DECAY = MLP_WEIGHT_DECAY
-EARLY_STOPPING_PATIENCE = MLP_EARLY_STOPPING_PATIENCE
-
 
 def arch_subdir(category_dir: Path, arch: str) -> Path:
     """outputs/<category>/<arch>/ 경로 반환 + 생성."""
