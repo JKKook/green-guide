@@ -11,9 +11,21 @@ load_dotenv()  # 아래 os.getenv 전에 .env 반영 (이미 설정된 env 는 �
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]  # src/core/config.py → 레포 루트
 
+
+
+def monorepo_root(project_root: Path) -> Path:
+    """services/inference-api → 모노레포 루트. 컨테이너(/app)처럼 부모가 하나뿐인
+    얕은 경로면 자기 자신을 돌려준다 — parents[1] 이 IndexError 로 import 를
+    죽이던 HF Space 배포 회귀(2026-09-11) 방지. sibling 경로는 그 경우 어차피 없다."""
+    parents = project_root.parents
+    return parents[1] if len(parents) > 1 else project_root
+
+
+MONOREPO_ROOT: Path = monorepo_root(PROJECT_ROOT)
+
 # 자매 프로젝트의 ONNX 모델 직접 참조 (로컬 개발용)
 # services/inference-api → <레포 루트>/ml/classifier
-CLASSIFIER_ROOT: Path = PROJECT_ROOT.parents[1] / "ml" / "classifier"
+CLASSIFIER_ROOT: Path = MONOREPO_ROOT / "ml" / "classifier"
 DEFAULT_MODEL_ARCH: str = "cnn"  # mlp | cnn
 
 

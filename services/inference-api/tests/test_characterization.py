@@ -77,5 +77,16 @@ def test_project_root_points_to_repo() -> None:
     assert (config.PROJECT_ROOT / "design" / "tokens.json").is_file()
 
 
+def test_monorepo_root_survives_shallow_container_path() -> None:
+    """HF Space 는 코드가 /app 에 있어 parents[1] 이 IndexError 로 import 를 죽이던
+    회귀(2026-09-11) 방지."""
+    from pathlib import Path
+
+    from src.core import config
+    assert config.monorepo_root(Path("/app")) == Path("/app")
+    assert config.monorepo_root(config.PROJECT_ROOT) == config.PROJECT_ROOT.parents[1]
+    assert config.CLASSIFIER_ROOT == config.MONOREPO_ROOT / "ml" / "classifier"
+
+
 def test_design_tokens_endpoint(client: TestClient) -> None:
     assert client.get("/design/tokens.json").status_code == 200
