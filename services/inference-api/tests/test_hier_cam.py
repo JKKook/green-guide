@@ -53,7 +53,8 @@ def _post(client: TestClient, image: bytes, **form: str) -> dict:
 def test_want_cam_returns_overlay_from_same_tensor(
         client: TestClient, sample_image_bytes: bytes, hier_cam_stub: dict[str, Any]) -> None:
     body = _post(client, sample_image_bytes, want_cam="true")
-    assert body["cam_base64"] is not None and body["cam_base64"].startswith("data:image/png;base64,")
+    assert body["cam_base64"] is not None
+    assert body["cam_base64"].startswith("data:image/png;base64,")
     cam_calls = [c for c in hier_cam_stub["predict_calls"] if c["want_cam"]]
     assert len(cam_calls) == 1 and cam_calls[0]["same_tensor"]
     # 카드 결과는 그대로 (CAM 계산이 표시 결과를 바꾸지 않음)
