@@ -227,12 +227,14 @@ class RejectCard extends StatelessWidget {
   final bool isMultiMaterial;
   final bool isMultiObject;
   final File? image;
+  final Offset? tapNorm; // CAM 요청에 같은 탭 크롭을 쓰기 위한 좌표
   const RejectCard({
     super.key,
     required this.prediction,
     this.isMultiMaterial = false,
     this.isMultiObject = false,
     this.image,
+    this.tapNorm,
   });
 
   @override
@@ -353,6 +355,7 @@ class RejectCard extends StatelessWidget {
               accent: accent,
               info: etc,
               prediction: prediction,
+              tapNorm: tapNorm,
             ),
           ],
         ],

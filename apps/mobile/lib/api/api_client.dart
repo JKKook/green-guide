@@ -182,6 +182,29 @@ class WasteApiClient {
     return PredictionWithCam.fromJson(json);
   }
 
+  /// `/predict-hier` + `want_cam=true` — 결과 카드와 같은 모델·탭 크롭·prior 로
+  /// 만든 CAM. `/predict-with-cam`(구형 단일 분류기·전체 프레임) 과 달리 표시
+  /// 결과와 히트맵이 어긋나지 않는다. 탭 좌표는 결과를 만들 때 쓴 값을 그대로.
+  Future<PredictionWithCam> predictHierCam(
+    File imageFile, {
+    double? tapX,
+    double? tapY,
+  }) async {
+    final json = await _multipartPostJson(
+      '/predict-hier',
+      imageFile,
+      timeoutOverride: const Duration(seconds: 30),
+      fields: {
+        'want_cam': 'true',
+        if (tapX != null && tapY != null) ...{
+          'tap_x': tapX.toStringAsFixed(4),
+          'tap_y': tapY.toStringAsFixed(4),
+        },
+      },
+    );
+    return PredictionWithCam.fromHierJson(json);
+  }
+
   /// `/predict-with-regions` — 예측 + 다중재질 영역 + 원본 위 빗금 오버레이.
   /// 확실히 다른 재질만 영역으로 분리 (없으면 1개 = 단일재질).
   Future<PredictionWithRegions> predictWithRegions(

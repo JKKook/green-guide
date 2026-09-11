@@ -21,12 +21,16 @@ class ExplainButton extends StatefulWidget {
   final Color accent;
   final WasteInfo? info;
   final Prediction prediction;
+
+  /// 결과를 만들 때 쓴 탭 좌표(정규화). 있으면 같은 크롭으로 CAM 을 만든다.
+  final Offset? tapNorm;
   const ExplainButton({
     super.key,
     required this.image,
     required this.accent,
     required this.info,
     required this.prediction,
+    this.tapNorm,
   });
 
   @override
@@ -43,7 +47,13 @@ class _ExplainButtonState extends State<ExplainButton> {
 
     try {
       final client = await AppScope.api();
-      final result = await client.predictWithCam(widget.image);
+      // 결과 카드와 같은 요청(계층 모델·탭 크롭)으로 CAM — /predict-with-cam 은
+      // 구형 단일 분류기가 전체 프레임을 보므로 표시 결과와 어긋났음.
+      final result = await client.predictHierCam(
+        widget.image,
+        tapX: widget.tapNorm?.dx,
+        tapY: widget.tapNorm?.dy,
+      );
       if (!mounted) return;
       if (!result.camAvailable || result.camBase64 == null) {
         _showInfoDialog(

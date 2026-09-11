@@ -31,6 +31,7 @@ class ResultLoadedContent extends StatelessWidget {
   final bool regionSet; // 지역 설정 여부 (규정 데이터가 없을 때 캡션 분기)
   final bool isSmartCapture; // 다시 촬영하기 / 다시 선택하기 라벨
   final String? sceneNote; // 장면 결과 vs 물건별 결과 불일치 안내
+  final Offset? tapNorm; // 결과를 만든 탭 좌표 — CAM 요청에 동일 적용
   const ResultLoadedContent({
     super.key,
     required this.image,
@@ -42,6 +43,7 @@ class ResultLoadedContent extends StatelessWidget {
     this.regionSet = false,
     this.isSmartCapture = false,
     this.sceneNote,
+    this.tapNorm,
   });
 
   @override
@@ -98,6 +100,7 @@ class ResultLoadedContent extends StatelessWidget {
               prediction: prediction,
               isMultiMaterial: true,
               image: image,
+              tapNorm: tapNorm,
             ),
           ),
           const SizedBox(height: kSpaceM),
@@ -128,6 +131,7 @@ class ResultLoadedContent extends StatelessWidget {
                   accent: rAccent,
                   info: rInfo,
                   prediction: prediction,
+                  tapNorm: tapNorm,
                 ),
               ),
               if (rInfo != null) ...[
@@ -154,11 +158,18 @@ class ResultLoadedContent extends StatelessWidget {
               prediction: prediction,
               isMultiObject: true,
               image: image,
+              tapNorm: tapNorm,
             ),
           ),
         ] else if (reject) ...[
           // (3) 단일재질이지만 모델이 어느 클래스에도 확신 못 함 → etc reject.
-          AnimatedEntry(child: RejectCard(prediction: prediction, image: image)),
+          AnimatedEntry(
+            child: RejectCard(
+              prediction: prediction,
+              image: image,
+              tapNorm: tapNorm,
+            ),
+          ),
           if (info != null) ...[
             const SizedBox(height: kSpaceM),
             AnimatedEntry(
@@ -187,6 +198,7 @@ class ResultLoadedContent extends StatelessWidget {
               info: info,
               accent: accent,
               assessment: assessment,
+              tapNorm: tapNorm,
             ),
           ),
           if (sceneNote != null) ...[
