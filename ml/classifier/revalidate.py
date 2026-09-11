@@ -31,7 +31,7 @@ from datetime import UTC, datetime
 
 import numpy as np
 import requests
-from greenguide_common import imaging
+from greenguide_common import imaging, settings
 from greenguide_common.logging import get_logger
 from greenguide_common.supabase import get_client
 from PIL import Image
@@ -88,7 +88,7 @@ def main() -> int:
         return _run(sess, inp, img)
 
     cli = get_client()
-    rows = (cli.table("user_uploads")
+    rows = (cli.table(settings.SUPABASE_TABLE_USER_UPLOADS)
             .select("id,image_url,predicted_class,predicted_confidence")
             .eq("feedback_status", "pending").execute().data) or []
     if args.limit:

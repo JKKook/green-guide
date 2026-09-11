@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 import _base  # noqa: F401 — sys.path 설정
 import numpy as np
 import requests
-from greenguide_common import imaging
+from greenguide_common import imaging, settings
 from greenguide_common.logging import get_logger
 from greenguide_common.supabase import Bucket, get_client
 from PIL import Image
@@ -55,7 +55,7 @@ def main() -> int:
         return labels[i], float(p[i])
 
     cli = get_client()
-    rows = (cli.table("user_uploads")
+    rows = (cli.table(settings.SUPABASE_TABLE_USER_UPLOADS)
             .select("id,image_url,storage_path,feedback_label,feedback_status")
             .in_("feedback_status", ["confirmed", "corrected"]).execute().data) or []
     log.info(f"피드백 {len(rows)}건 수집")
