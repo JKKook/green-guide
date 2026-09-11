@@ -11,22 +11,36 @@ import '../../../theme/app_theme.dart';
 /// 재질별 분리 배출을 안내. 위 오버레이의 빗금 색상과 라벨이 1:1 대응.
 class MultiMaterialCard extends StatelessWidget {
   final List<MaterialRegion> regions;
-  const MultiMaterialCard({super.key, required this.regions});
+  final String title;
+  final String subtitle;
+  const MultiMaterialCard({
+    super.key,
+    required this.regions,
+    this.title = '재질이 여러 개 섞여 있어요',
+    this.subtitle = '아래 재질별로 분리해서 배출하면 더 정확하게 재활용돼요.',
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    // 같은 재질이 여러 영역에 걸쳐 잡힐 수 있음 → slug 별로 신뢰도 가장 높은 region 채택.
-    // 그 후 신뢰도 내림차순 정렬 — 가장 확실한 재질이 맨 위.
+    // 같은 재질이 여러 영역에 걸쳐 잡힐 수 있음 → slug 별 첫 영역만(신뢰도는 최대값).
+    // 순서는 오버레이(서버 응답) 순서를 그대로 — 재정렬하면 사진 위 빗금과 어긋남.
     final byMaterial = <String, MaterialRegion>{};
     for (final r in regions) {
       final existing = byMaterial[r.slug];
-      if (existing == null || r.avgConf > existing.avgConf) {
+      if (existing == null) {
         byMaterial[r.slug] = r;
+      } else if (r.avgConf > existing.avgConf) {
+        byMaterial[r.slug] = MaterialRegion(
+          slug: existing.slug,
+          bboxNorm: existing.bboxNorm,
+          avgConf: r.avgConf,
+          cellCount: existing.cellCount + r.cellCount,
+          colorHex: existing.colorHex,
+        );
       }
     }
-    final unique = byMaterial.values.toList()
-      ..sort((a, b) => b.avgConf.compareTo(a.avgConf));
+    final unique = byMaterial.values.toList();
 
     return Container(
       padding: const EdgeInsets.all(kSpaceL),
@@ -44,7 +58,7 @@ class MultiMaterialCard extends StatelessWidget {
               const SizedBox(width: kSpaceS),
               Expanded(
                 child: Text(
-                  '재질이 여러 개 섞여 있어요',
+                  title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -54,7 +68,7 @@ class MultiMaterialCard extends StatelessWidget {
           ),
           const SizedBox(height: kSpaceXS),
           Text(
-            '아래 재질별로 분리해서 배출하면 더 정확하게 재활용돼요.',
+            subtitle,
             style: TextStyle(
               fontSize: 13,
               height: 1.4,
@@ -82,7 +96,8 @@ class MaterialMethodTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final accent = info?.color ?? cs.primary;
+    // 빗금·배지와 같은 색(서버 color_hex) 우선.
+    final accent = region.color ?? info?.color ?? cs.primary;
     final steps = info?.howTo ?? const <String>[];
     final bin = info?.bin ?? '';
     return Container(
@@ -119,7 +134,7 @@ class MaterialMethodTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 이름 | 신뢰도% — 가장 확실한 재질이 위에 정렬되어 있음(부모에서).
+                    // 이름 | 신뢰도% — 순서는 사진 위 빗금 순서와 동일.
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,

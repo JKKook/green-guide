@@ -60,7 +60,9 @@ class RegionBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final info = infoFor(region.slug);
-    final accent = info?.color ?? Theme.of(context).colorScheme.primary;
+    // 빗금과 같은 색(서버 color_hex) 우선 — 앱 팔레트는 구서버 폴백.
+    final accent =
+        region.color ?? info?.color ?? Theme.of(context).colorScheme.primary;
     // bbox 중심 x, 상단 y (BoxFit.cover 라 정확 매핑은 어려워 근사 배치).
     const badgeW = 116.0;
     final left = (region.cx * areaW - badgeW / 2).clamp(
