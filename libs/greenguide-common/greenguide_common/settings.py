@@ -33,6 +33,7 @@ load_env()
 
 # ── Supabase ────────────────────────────────────────────────────────────────
 SUPABASE_TABLE_ITEMS: str = os.getenv("SUPABASE_TABLE", "items")
+SUPABASE_TABLE_USER_UPLOADS: str = os.getenv("SUPABASE_TABLE_USER_UPLOADS", "user_uploads")
 BUCKET_RAW_IMAGES: str = os.getenv("SUPABASE_BUCKET", "raw-images")
 BUCKET_USER_UPLOADS: str = "user-uploads"
 BUCKET_MODELS: str = "models"
