@@ -261,7 +261,7 @@ class ResultLoadedContent extends StatelessWidget {
                 Navigator.of(context).pop(false);
               },
               child: Container(
-                height: 54,
+                height: 56,
                 decoration: BoxDecoration(
                   border: Border.all(color: DsTokens.of(context).accentSoft),
                   borderRadius: BorderRadius.circular(kRadiusMedium),

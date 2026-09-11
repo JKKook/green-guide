@@ -205,7 +205,14 @@ class _ResultModalState extends State<_ResultModal> {
                   )
                 : ListView(
                     controller: widget.scrollController,
-                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 30),
+                    // 하단 인셋(홈 인디케이터)만큼 더 띄움 — 모달 시트는 useSafeArea 여도
+                    // bottom 을 비워 두지 않아 마지막 버튼이 제스처 영역과 겹쳤음
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      6,
+                      20,
+                      30 + MediaQuery.viewPaddingOf(context).bottom,
+                    ),
                     children: [
                       // 분석한 사진 + 영역별 빗금 오버레이 + 재질 라벨
                       // 탭-투-셀렉트: 물건을 탭하면 그 객체만 재분류
