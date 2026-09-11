@@ -184,6 +184,9 @@ class PredictionHierResponse(BaseModel):
     model_arch: str
     inference_ms: float
     upload_id: str | None = Field(default=None, description="user_uploads 기록 id")
+    cam_base64: str | None = Field(
+        default=None,
+        description="want_cam=true 요청 시 — 이 결과를 만든 크롭 위 CAM overlay PNG (data URI)")
     ood_distance: float | None = Field(
         default=None,
         description="최근접 prototype 임베딩 cosine 거리 (낮을수록 in-distribution)")
