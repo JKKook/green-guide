@@ -7,9 +7,9 @@ from greenguide_common import supabase
 
 @pytest.fixture(autouse=True)
 def _reset():
-    supabase.reset_client()
+    supabase.get_client.cache_clear()
     yield
-    supabase.reset_client()
+    supabase.get_client.cache_clear()
 
 
 def test_missing_credentials_raises(monkeypatch: pytest.MonkeyPatch) -> None:
