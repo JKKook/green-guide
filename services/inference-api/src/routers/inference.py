@@ -44,6 +44,9 @@ async def predict_hier(
     quality_brightness: float | None = Form(default=None),
     crop_applied: bool | None = Form(default=None),
     crop_box: str | None = Form(default=None, description='"x,y,w,h"'),
+    want_cam: bool = Form(
+        default=False,
+        description="true 면 이 결과를 만든 텐서·크롭 그대로의 CAM 을 cam_base64 로 반환"),
 ) -> PredictionHierResponse:
     """계층 분류 — 대분류(항상) + 세부(신뢰도 게이트 통과 시).
 
@@ -162,6 +165,16 @@ async def predict_hier(
         refined["inference_ms"] = round(
             result["inference_ms"] + refined["inference_ms"], 2)
         result = refined
+
+    # ── CAM (앱 "왜 이렇게 분류했어?") — 결과 카드를 만든 것과 같은 텐서·prior·
+    # 크롭으로 계산해 판단 근거가 표시 결과와 어긋나지 않게 한다. 실패는 fail-open.
+    if want_cam:
+        try:
+            cam_res = clf.predict(best_tensor, want_cam=True, mask_non_object=True,
+                                  fine_prior=prior, ood_relax=tap_x is not None)
+            result["cam_base64"] = render_overlay_png_base64(cropped_raw, cam_res["cam"])
+        except Exception as exc:  # noqa: BLE001
+            log.warning(f"hier CAM 생성 실패 (근거 없이 진행): {exc}")
 
     # ── VLM 폴백 (트랙 A2) — 융합 후에도 저확신이면 Claude 에 최종 판정 위임 ──
     # 키 미설정/한도초과/실패 시 자동 무시 (fail-open). 결과는 evidence 로 표면화.
