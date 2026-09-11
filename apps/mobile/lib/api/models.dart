@@ -277,6 +277,17 @@ class PredictionWithCam {
       camAvailable: json['cam_available'] as bool? ?? false,
     );
   }
+
+  /// `/predict-hier?want_cam=true` 응답 — 결과 카드를 만든 것과 같은 요청의 CAM.
+  /// 구버전 서버는 want_cam 을 무시하고 cam_base64 를 내려주지 않으므로 그 경우 미지원.
+  factory PredictionWithCam.fromHierJson(Map<String, dynamic> json) {
+    final cam = json['cam_base64'] as String?;
+    return PredictionWithCam(
+      prediction: Prediction.fromHierJson(json),
+      camBase64: cam,
+      camAvailable: cam != null,
+    );
+  }
 }
 
 /// `/predict-with-regions` 에서 검출된 한 재질 영역.

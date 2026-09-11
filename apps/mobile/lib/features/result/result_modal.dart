@@ -422,6 +422,7 @@ class _ResultModalState extends State<_ResultModal> {
                           regionInfo: c.regionInfo,
                           regionSet: c.regionSet,
                           isSmartCapture: widget.isSmartCapture,
+                          tapNorm: c.lastTapNorm,
                         ),
                     ],
                   ),
