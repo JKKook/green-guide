@@ -249,6 +249,7 @@ class ResultController extends ChangeNotifier {
     _selectedObject = idx;
     _result = _withUploadId(objs[idx].toPrediction());
     _lastTapNorm = Offset(objs[idx].cx, objs[idx].cy);
+    _regions = null; // 이전 장면 전체의 빗금은 새 결과와 무관 — 재분석 전까지 비움
     _notify();
     // 선택한 물건 성분에 빗금 재분석 집중
     unawaited(fetchRegions(tap: Offset(objs[idx].cx, objs[idx].cy)));
@@ -308,6 +309,7 @@ class ResultController extends ChangeNotifier {
       // 교체됐음을 인식할 수 있음. 원래 다중 화면은 되돌리기로 복귀.
       _objects = null;
       _selectedObject = null;
+      _regions = null; // 이전 빗금 잔상 제거 — 재분석 결과가 오면 교체
       _notify();
       // 빗금(재질 영역)도 탭 성분 기준으로 재분석 — 마커와 함께 이동
       unawaited(fetchRegions(tap: Offset(nx, ny)));

@@ -88,6 +88,42 @@ class _FakeApi extends WasteApiClient {
   }
 }
 
+class _FakeApiWithRegions extends _FakeApi {
+  @override
+  Future<PredictionWithRegions> predictWithRegions(
+    File imageFile, {
+    double? tapX,
+    double? tapY,
+  }) async {
+    regionTaps.add(tapX == null ? null : Offset(tapX, tapY!));
+    return PredictionWithRegions.fromJson({
+      'predicted_class': 'paper',
+      'predicted_index': 0,
+      'confidence': 0.9,
+      'all_probabilities': {'paper': 0.9},
+      'model_arch': 'test',
+      'inference_ms': 1,
+      'overlay_base64': 'data:image/jpeg;base64,AAAA',
+      'regions': [
+        {
+          'slug': 'paper',
+          'bbox_norm': [0, 0, 0.5, 0.5],
+          'avg_conf': 0.9,
+          'cell_count': 2,
+          'color_hex': '#112233',
+        },
+        {
+          'slug': 'metal',
+          'bbox_norm': [0.5, 0.5, 1, 1],
+          'avg_conf': 0.8,
+          'cell_count': 2,
+          'color_hex': '#445566',
+        },
+      ],
+    });
+  }
+}
+
 Future<void> _settle() =>
     Future<void>.delayed(const Duration(milliseconds: 50));
 
@@ -277,5 +313,17 @@ void main() {
     c.dispose();
     await f;
     expect(notified, 1, reason: '업로드 진행 1회만 (dispose 전)');
+  });
+
+  test('탭 재분류 시 이전 빗금 오버레이를 즉시 비우고 재분석 결과로 교체한다', () async {
+    final api = _FakeApiWithRegions();
+    final c = make(api: api);
+    await c.fetchRegions();
+    expect(c.regions, isNotNull);
+    await c.reclassifyAt(0.5, 0.5);
+    expect(c.regions, isNull); // 재분석 응답 전 — 옛 빗금 잔상 없음
+    await _settle();
+    expect(c.regions, isNotNull); // 탭 기준 재분석 결과로 교체
+    expect(api.regionTaps.last, const Offset(0.5, 0.5));
   });
 }

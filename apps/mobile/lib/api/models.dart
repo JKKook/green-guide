@@ -2,6 +2,8 @@
 /// Python 의 PredictionResponse / Pydantic 스키마와 1:1 대응.
 library;
 
+import 'dart:ui' show Color;
+
 /// `/predict-hier` 의 계층 정보 — 대분류(항상) + 세부(게이트 통과 시).
 class HierInfo {
   /// "fine" | "coarse" | "reject"
@@ -299,12 +301,25 @@ class MaterialRegion {
   final double avgConf;
   final int cellCount;
 
+  /// 서버가 빗금 오버레이에 쓴 색 (#RRGGBB). 배지·목록이 같은 색을 쓰기 위함.
+  final String? colorHex;
+
   const MaterialRegion({
     required this.slug,
     required this.bboxNorm,
     required this.avgConf,
     required this.cellCount,
+    this.colorHex,
   });
+
+  /// [colorHex] 를 파싱한 색. 없거나 형식이 다르면 null (앱 팔레트로 폴백).
+  Color? get color {
+    final hex = colorHex;
+    if (hex == null) return null;
+    final m = RegExp(r'^#?([0-9a-fA-F]{6})$').firstMatch(hex);
+    if (m == null) return null;
+    return Color(0xFF000000 | int.parse(m.group(1)!, radix: 16));
+  }
 
   factory MaterialRegion.fromJson(Map<String, dynamic> json) {
     return MaterialRegion(
@@ -314,6 +329,7 @@ class MaterialRegion {
           .toList(),
       avgConf: (json['avg_conf'] as num).toDouble(),
       cellCount: json['cell_count'] as int,
+      colorHex: json['color_hex'] as String?,
     );
   }
 

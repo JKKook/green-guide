@@ -241,6 +241,20 @@ class ResultLoadedContent extends StatelessWidget {
           ],
         ],
 
+        // 사진 위 빗금과 같은 영역 목록 — 다중재질 카드(realMulti)가 아닌 분기에서도
+        // 오버레이에 그려진 영역과 하단 목록이 같은 집합·순서·색을 갖도록.
+        if (!realMulti && isMulti) ...[
+          const SizedBox(height: kSpaceM),
+          AnimatedEntry(
+            index: 2,
+            child: MultiMaterialCard(
+              regions: regions!.regions,
+              title: '사진 위 영역별 재질',
+              subtitle: '빗금 색·순서와 같아요. 확신이 낮은 영역도 참고용으로 함께 보여줘요.',
+            ),
+          ),
+        ],
+
         // 시맨틱 증거 배지 — 서버가 분류에 실제로 융합한 단서 노출 (신뢰 UI).
         // 분리배출 마크·라벨 문구·형태(정체) 인식 (SEMANTIC_FUSION_PLAN Phase 3)
         if (prediction.evidence.isNotEmpty) ...[
