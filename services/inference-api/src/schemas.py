@@ -121,6 +121,10 @@ class MaterialRegion(BaseModel):
     bbox_norm: list[float] = Field(..., description="[x0,y0,x1,y1] 0~1 (라벨 위치용)")
     avg_conf: float
     cell_count: int
+    color_hex: str | None = Field(
+        default=None,
+        description="빗금 오버레이에 쓴 색 (#RRGGBB) — 앱 배지·목록이 같은 색을 쓰도록",
+    )
 
 
 class PredictionWithRegionsResponse(PredictionResponse):
