@@ -15,6 +15,7 @@ import '../../../theme/design_tokens.dart';
 import '../../../widgets/animated_entry.dart';
 import 'banners.dart';
 import 'evidence_chips.dart';
+import 'explain_button.dart';
 import 'feedback_card.dart';
 import 'guide_card.dart';
 import 'multi_material_card.dart';
@@ -119,6 +120,16 @@ class ResultLoadedContent extends StatelessWidget {
               AnimatedEntry(
                 child: RegionRescueBanner(region: r, info: rInfo),
               ),
+              const SizedBox(height: kSpaceS),
+              AnimatedEntry(
+                index: 1,
+                child: ExplainButton(
+                  image: image,
+                  accent: rAccent,
+                  info: rInfo,
+                  prediction: prediction,
+                ),
+              ),
               if (rInfo != null) ...[
                 const SizedBox(height: kSpaceM),
                 AnimatedEntry(
@@ -139,11 +150,15 @@ class ResultLoadedContent extends StatelessWidget {
           //     "분류 불가" 로 단정하지 않고 물건별 분류(위 후보 카드·마커)로 안내.
           //     장면 reject 는 물건이 하나인데 어렵다는 뜻일 때만 의미가 있음.
           AnimatedEntry(
-            child: RejectCard(prediction: prediction, isMultiObject: true),
+            child: RejectCard(
+              prediction: prediction,
+              isMultiObject: true,
+              image: image,
+            ),
           ),
         ] else if (reject) ...[
           // (3) 단일재질이지만 모델이 어느 클래스에도 확신 못 함 → etc reject.
-          AnimatedEntry(child: RejectCard(prediction: prediction)),
+          AnimatedEntry(child: RejectCard(prediction: prediction, image: image)),
           if (info != null) ...[
             const SizedBox(height: kSpaceM),
             AnimatedEntry(
