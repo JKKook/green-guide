@@ -236,6 +236,7 @@ class _ResultModalState extends State<_ResultModal> {
                                     RegionsView(
                                       image: widget.image,
                                       regions: c.regions,
+                                      prediction: c.prediction,
                                     ),
                                     if (c.lastTapNorm != null &&
                                         c.imgSize != null)
