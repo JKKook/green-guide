@@ -53,10 +53,8 @@ class ResultLoadedContent extends StatelessWidget {
     // reject: (1) 신뢰도 부족 (top1 < 0.55 또는 entropy > 0.7), 또는
     //         (2) 모델이 명시적으로 non_object 라고 분류 (폐기물 아님 — 재촬영 신호)
     //         → 둘 다 "기타/분류 불가" 로 정직하게 결론.
-    final isNonObject = prediction.predictedClass == 'non_object';
-    // 계층 응답의 reject(대분류조차 불확실) 도 동일하게 처리
-    final hierReject = prediction.hier?.isReject ?? false;
-    final reject = assessment.shouldReject || isNonObject || hierReject;
+    //         (3) 계층 응답의 reject(대분류조차 불확실) 도 동일하게 처리
+    final reject = isRejectPrediction(prediction);
     // 계층 응답이면 롤업 조회 — 세부 비활성 시 부모 대분류 카드로 안내
     final info = reject
         ? infoFor('etc')
