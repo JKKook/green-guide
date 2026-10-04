@@ -53,8 +53,8 @@ log = get_logger(__name__)
 
 ARCH = "cnn_hier"
 
-BACKBONE = _os.getenv("WASTE_HIER_BACKBONE", "resnet18")
-LABEL_SMOOTH = float(_os.getenv("WASTE_HIER_LABEL_SMOOTH", "0.0"))
+BACKBONE = _os.getenv("GREENGUIDE_HIER_BACKBONE", "resnet18")
+LABEL_SMOOTH = float(_os.getenv("GREENGUIDE_HIER_LABEL_SMOOTH", "0.0"))
 CKPT_DIR = config.CHECKPOINTS_DIR / ARCH
 LOG_DIR = config.LOGS_DIR / ARCH
 

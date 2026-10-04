@@ -31,7 +31,7 @@
 
 - B1: OCR 조건부(확신≥0.75 스킵). B2: EXIF 태그 TTA(태그有 2방향; tag=1 축소는
   -3건 회귀로 기각). **B4: DINOv2 제거** — 순수 홀드아웃 기여 0 실측(11/20 동률,
-  이전 +2는 오염 표본 암기). env WASTE_API_DINO_W 로 재활성 가능.
+  이전 +2는 오염 표본 암기). env GREENGUIDE_API_DINO_W 로 재활성 가능.
 - **B3(INT8)는 기각**: QUInt8/per-channel 3변형 모두 정확도 -1~-5 + Apple 로컬
   속도 역효과. (부산물: CAM einsum→1×1 conv 교체 — 향후 export 표준)
 - 모든 판정은 순수 홀드아웃 20장 + 지연 3회 중앙값 실측 쌍 기준 (§1 원칙).

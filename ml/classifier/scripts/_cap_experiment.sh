@@ -5,12 +5,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-export WASTE_CNN_WEIGHT_CAP="${WASTE_CNN_WEIGHT_CAP:-2.5}"
+export GREENGUIDE_CNN_WEIGHT_CAP="${GREENGUIDE_CNN_WEIGHT_CAP:-2.5}"
 PY=.venv/bin/python
 BASELINE=outputs/backups/test_A_baseline/classifier.onnx
 TS() { date "+%Y-%m-%d %H:%M:%S"; }
 
-echo "[cap-exp $(TS)] START cap=${WASTE_CNN_WEIGHT_CAP}"
+echo "[cap-exp $(TS)] START cap=${GREENGUIDE_CNN_WEIGHT_CAP}"
 
 echo "[cap-exp $(TS)] 1/4 train+evaluate+export (main.py all --arch cnn)"
 $PY main.py all --arch cnn

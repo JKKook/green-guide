@@ -50,7 +50,7 @@ def _resolve_hier_paths() -> tuple[Path, Path]:
     raise FileNotFoundError(
         "계층 ONNX 를 찾을 수 없음 — greenguide-classifier 에서 "
         "`python -m src.hier_export` 를 먼저 실행하거나 "
-        "WASTE_API_HIER_MODEL_PATH 를 설정하세요."
+        "GREENGUIDE_API_HIER_MODEL_PATH 를 설정하세요."
     )
 
 
@@ -76,7 +76,7 @@ class HierWasteClassifier:
         # DINOv2 계층 앙상블 — 기본 비활성 (청사진 v2 트랙 B4, 2026-07-21).
         # 순수 홀드아웃 20장 실측: 기여 0 (solo 11/20 = 앙상블 11/20; 이전 +2는
         # 오염 표본 암기 효과). 원칙 "실측 이득 없으면 제거" — 추론 ~2× 단축.
-        # 재활성: env WASTE_API_DINO_W=0.3 (홀드아웃 커지면 트랙 A3 재스윕)
+        # 재활성: env GREENGUIDE_API_DINO_W=0.3 (홀드아웃 커지면 트랙 A3 재스윕)
         self.dino_session: ort.InferenceSession | None = None
         self.dino_weight = config.DINO_WEIGHT
         if self.dino_weight > 0:

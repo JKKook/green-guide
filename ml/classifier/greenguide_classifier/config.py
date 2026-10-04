@@ -97,8 +97,8 @@ CNN_FREEZE_BACKBONE: bool = False  # True 면 마지막 FC layer 만 학습
 # inverse-frequency 클래스 가중치 상한 = median * 이 배수. (Stage D, B-1.1)
 # 낮출수록 rare 클래스 과가중 완화 → OOD-sink(cardboard/non_object) 약화.
 # 현 train(49,240): rare 6클래스가 전부 이 천장에 붙음. 4.0→2.97, 2.5→1.85, 2.0→1.48.
-# 기본 4.0(기존 동작 보존). 실험 시 env WASTE_CNN_WEIGHT_CAP 로 override.
-CNN_CLASS_WEIGHT_CAP: float = float(os.getenv("WASTE_CNN_WEIGHT_CAP", "4.0"))
+# 기본 4.0(기존 동작 보존). 실험 시 env GREENGUIDE_CNN_WEIGHT_CAP 로 override.
+CNN_CLASS_WEIGHT_CAP: float = float(os.getenv("GREENGUIDE_CNN_WEIGHT_CAP", "4.0"))
 
 
 def arch_subdir(category_dir: Path, arch: str) -> Path:

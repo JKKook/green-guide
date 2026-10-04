@@ -45,7 +45,7 @@ class ClipIdentity:
     def __init__(self) -> None:
         self.available = False
         if not config.CLIP_ENABLED:
-            log.info("정체 인식 비활성 (WASTE_API_CLIP=0)")
+            log.info("정체 인식 비활성 (GREENGUIDE_API_CLIP=0)")
             return
         onnx_path = _CLIP_DIR / "clip_image.onnx"
         npz_path = _CLIP_DIR / "clip_concepts.npz"

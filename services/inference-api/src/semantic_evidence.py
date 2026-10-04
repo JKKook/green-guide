@@ -117,7 +117,7 @@ class SemanticEvidence:
         self.available = False
         self._ocr = None
         if not config.OCR_ENABLED:
-            log.info("OCR 비활성 (WASTE_API_OCR=0)")
+            log.info("OCR 비활성 (GREENGUIDE_API_OCR=0)")
             return
         det = _OCR_DIR / "det.onnx"
         rec = _OCR_DIR / "korean_rec_v5.onnx"

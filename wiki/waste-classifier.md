@@ -16,7 +16,7 @@ GreenGuide AI 파이프라인의 학습 전담 서브프로젝트. **폐기물 �
 
 ## 모델 아키텍처
 
-- **현행**: `src/model.py::build_hier_model()` — resnet18 / convnext_tiny / resnet50 선택(env `WASTE_HIER_BACKBONE`). **배포 아티팩트는 resnet50** (ONNX 94MB). 출력은 **fine 25클래스 단일 head**, 대분류는 확률 롤업 `P(coarse) = Σ P(fine children)`.
+- **현행**: `src/model.py::build_hier_model()` — resnet18 / convnext_tiny / resnet50 선택(env `GREENGUIDE_HIER_BACKBONE`). **배포 아티팩트는 resnet50** (ONNX 94MB). 출력은 **fine 25클래스 단일 head**, 대분류는 확률 롤업 `P(coarse) = Σ P(fine children)`.
 - CAM export 래퍼: `(logits, cam, embedding)` 3-output. CAM은 `fc.weight`를 1×1 conv로 적용(INT8 양자화 호환), embedding은 GAP 512d(OOD reject용 → [ood-openset](ood-openset.md)).
 - 레거시 flat: MLP(39.84% — baseline 유물) / ResNet18 CNN(92.35%) / cnn_edge(Sobel 앙상블 실험). ConvNeXt는 MPS에서 ~40배 느려 실사용 제외.
 - 실험 백본: DINOv2 head, CLIP concepts(→ [semantic-fusion](semantic-fusion.md)), Stage1 binary(6MB, 캐스케이드 전단).

@@ -31,11 +31,11 @@ DEFAULT_MODEL_ARCH: str = "cnn"  # mlp | cnn
 
 def _resolve_model_path() -> Path:
     """Color stream 모델 — 우선순위:
-    1. WASTE_API_MODEL_PATH 환경변수
+    1. GREENGUIDE_API_MODEL_PATH 환경변수
     2. waste-api/models/classifier.onnx  (배포 패키지 내 번들 — Docker 등)
     3. ../../ml/classifier/outputs/models/cnn/classifier.onnx  (로컬 sibling)
     """
-    env_path = os.getenv("WASTE_API_MODEL_PATH")
+    env_path = os.getenv("GREENGUIDE_API_MODEL_PATH")
     if env_path:
         return Path(env_path)
 
@@ -48,7 +48,7 @@ def _resolve_model_path() -> Path:
 
 def _resolve_edge_model_path() -> Path | None:
     """Edge stream 모델 (선택). 없으면 ensemble 비활성."""
-    env_path = os.getenv("WASTE_API_EDGE_MODEL_PATH")
+    env_path = os.getenv("GREENGUIDE_API_EDGE_MODEL_PATH")
     if env_path:
         p = Path(env_path)
         return p if p.exists() else None
@@ -69,7 +69,7 @@ EDGE_MODEL_PATH: Path | None = _resolve_edge_model_path()
 # Ensemble 가중치 (color weight)
 # 0.8 이 test set 에서 최적 (92.61% vs color 단독 91.82%)
 ENSEMBLE_COLOR_WEIGHT: float = float(
-    os.getenv("WASTE_API_ENSEMBLE_COLOR_WEIGHT", "0.8"),
+    os.getenv("GREENGUIDE_API_ENSEMBLE_COLOR_WEIGHT", "0.8"),
 )
 
 # 클래스 정의 (greenguide-preprocessor·greenguide-classifier와 동일 순서)
@@ -93,7 +93,7 @@ SUPPORTED_CONTENT_TYPES: tuple[str, ...] = (
 # 사용자 사진 수집 (active learning loop) 활성 여부.
 # False 면 Supabase 호출 자체를 안 함 → 오프라인 추론만 동작.
 COLLECT_USER_UPLOADS: bool = (
-    os.getenv("WASTE_API_COLLECT_UPLOADS", "true").lower() in ("1", "true", "yes")
+    os.getenv("GREENGUIDE_API_COLLECT_UPLOADS", "true").lower() in ("1", "true", "yes")
 )
 
 # 서버
@@ -125,16 +125,16 @@ SUPABASE_KEY: str | None = os.getenv("SUPABASE_KEY")
 ANTHROPIC_API_KEY: str | None = os.getenv("ANTHROPIC_API_KEY")
 
 # ── 계층 분류(hier) ──
-HIER_MODEL_PATH_ENV: str | None = os.getenv("WASTE_API_HIER_MODEL_PATH")
-DINO_WEIGHT: float = float(os.getenv("WASTE_API_DINO_W", "0"))       # 0 = DINOv2 앙상블 비활성
-CAM_PRIOR_WEIGHT: float = float(os.getenv("WASTE_API_CAM_W", "0.15"))
+HIER_MODEL_PATH_ENV: str | None = os.getenv("GREENGUIDE_API_HIER_MODEL_PATH")
+DINO_WEIGHT: float = float(os.getenv("GREENGUIDE_API_DINO_W", "0"))       # 0 = DINOv2 앙상블 비활성
+CAM_PRIOR_WEIGHT: float = float(os.getenv("GREENGUIDE_API_CAM_W", "0.15"))
 
 # ── 증거 엔진 (CLIP 정체 / OCR) ──
-CLIP_ENABLED: bool = os.getenv("WASTE_API_CLIP", "1") != "0"
-CLIP_PRIOR_WEIGHT: float = float(os.getenv("WASTE_API_CLIP_W", "0.5"))
-CLIP_SCENE_WEIGHT: float = float(os.getenv("WASTE_API_CLIP_SCENE_W", "0.2"))
-OCR_ENABLED: bool = os.getenv("WASTE_API_OCR", "1") != "0"
-OCR_SKIP_CONFIDENCE: float = float(os.getenv("WASTE_API_OCR_SKIP_CONF", "0.75"))
+CLIP_ENABLED: bool = os.getenv("GREENGUIDE_API_CLIP", "1") != "0"
+CLIP_PRIOR_WEIGHT: float = float(os.getenv("GREENGUIDE_API_CLIP_W", "0.5"))
+CLIP_SCENE_WEIGHT: float = float(os.getenv("GREENGUIDE_API_CLIP_SCENE_W", "0.2"))
+OCR_ENABLED: bool = os.getenv("GREENGUIDE_API_OCR", "1") != "0"
+OCR_SKIP_CONFIDENCE: float = float(os.getenv("GREENGUIDE_API_OCR_SKIP_CONF", "0.75"))
 
 # ── VLM 폴백 ──
 VLM_MODEL: str = os.getenv("VLM_MODEL", "claude-haiku-4-5-20251001")

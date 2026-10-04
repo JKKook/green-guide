@@ -175,7 +175,7 @@ class CamWasteClassifierConvNeXt(nn.Module):
 
 
 def build_hier_model(num_classes: int, backbone: str = "resnet18") -> nn.Module:
-    """계층 학습용 백본 팩토리 (A1 실험 — env WASTE_HIER_BACKBONE 로 선택)."""
+    """계층 학습용 백본 팩토리 (A1 실험 — env GREENGUIDE_HIER_BACKBONE 로 선택)."""
     if backbone == "resnet18":
         return WasteClassifierCNN(num_classes=num_classes)
     if backbone == "convnext_tiny":

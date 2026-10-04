@@ -29,7 +29,7 @@ from PIL import Image, ImageFilter
 
 from greenguide_classifier.infer import load_session
 
-STAGING_CROPS = settings.WASTE_ROOT / "ml" / "data" / "raw" / "aihub_71385" / "crops"
+STAGING_CROPS = settings.GREENGUIDE_ROOT / "ml" / "data" / "raw" / "aihub_71385" / "crops"
 BACKGROUNDS = (settings.PREPROCESSOR_ROOT / "data" / "raw"
                / "_aux" / "backgrounds")
 FINE_STAGING = (settings.PREPROCESSOR_ROOT / "data" / "raw"

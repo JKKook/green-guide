@@ -45,7 +45,7 @@ green-guide/
 ```
 
 네이밍 규칙: 폴더 `kebab-case`, import 패키지·파일 `snake_case`, 접두어 `greenguide`.
-외부 식별자(Android `applicationId` `com.greenguide.waste_app`, HF Space `waste-api`, Supabase 테이블명, 환경변수 `WASTE_*`)는 그대로 둡니다.
+외부 식별자(Android `applicationId` `com.greenguide.waste_app`, HF Space `waste-api`, Supabase 테이블명, 환경변수 `GREENGUIDE_*`)는 그대로 둡니다.
 학습 데이터·모델 가중치·`.env`·서명 키는 저장소에 포함하지 않습니다 (`.gitignore`).
 
 <details>

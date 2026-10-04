@@ -82,7 +82,7 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 
 ### Phase 1 — Characterization tests (1일) ✅ 2026-08-30 완료
 - [x] `tests/test_golden_inference.py` + `tests/fixtures/golden_logits.json` — seed 고정 난수 입력 3장 → `cnn`(13 logits)·`cnn_hier`(25 logits) 출력 고정, `rtol/atol=1e-4`. 모델 파일 없으면 skip. 재생성 `python -m tests.test_golden_inference --update`
-  (worktree 처럼 `outputs/` 가 없는 체크아웃은 `WASTE_GOLDEN_MODELS_DIR=<main tree>/ml/classifier/outputs/models` 지정)
+  (worktree 처럼 `outputs/` 가 없는 체크아웃은 `GREENGUIDE_GOLDEN_MODELS_DIR=<main tree>/ml/classifier/outputs/models` 지정)
 - [x] `_softmax` 5벌 비교 — 전부 max-shift 방식으로 수치 동일, 차이는 **축뿐**: 1-D(`revalidate`) / axis=1(`eval_ensemble*`, `etc_queue`) / axis=0(`visualize_multimaterial`) → `softmax(x, axis)` 하나로 대체 가능
 - [x] 전처리 상수 16곳 → greenguide_common 이관으로 이미 `greenguide_common.imaging` 1곳(0.485 grep 1건). 세부 옵션 차이는 이관 세션이 처리
 - [x] Supabase fake — `greenguide_common.supabase.get_client()` 로 이관됐으므로 conftest 에서 그 함수를 monkeypatch 하면 됨 (classifier 내 `create_client` 직접 호출 0건)

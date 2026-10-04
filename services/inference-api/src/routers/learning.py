@@ -18,7 +18,7 @@ def feedback(req: FeedbackRequest) -> FeedbackResponse:
     if not config.COLLECT_USER_UPLOADS:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="사용자 업로드 수집이 비활성화됨 (WASTE_API_COLLECT_UPLOADS=false)",
+            detail="사용자 업로드 수집이 비활성화됨 (GREENGUIDE_API_COLLECT_UPLOADS=false)",
         )
 
     if not req.confirmed and req.corrected_label is None:
