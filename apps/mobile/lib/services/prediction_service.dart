@@ -44,6 +44,8 @@ class PredictionService {
       baseUrl: baseUrl,
       timeout: timeout ?? const Duration(seconds: 30),
     );
+    // AI 학습 활용 동의(선택 약관)를 업로드 메타에 실어 서버가 기록하게 한다.
+    meta = meta?.withAiTrainingOptIn(await _settings.isAiTrainingOptIn());
     // 계층 분류(/predict-hier) 우선 — 대분류(항상 견고) + 세부(확신 시).
     // 구버전 서버(404) / 계층 모델 미배치(503) 는 기존 경로로 fallback.
     try {

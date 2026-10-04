@@ -27,4 +27,15 @@ void main() {
     expect(f, {'capture_mode': 'gallery', 'orientation': '1'});
     expect(f.containsKey('crop_applied'), isFalse);
   });
+
+  test('AI 학습 동의는 설정값이 실릴 때만 ai_training_opt_in 으로 보낸다', () {
+    const meta = UploadMeta(captureMode: 'gallery');
+    expect(meta.toFields().containsKey('ai_training_opt_in'), isFalse);
+    expect(meta.withAiTrainingOptIn(true).toFields()['ai_training_opt_in'],
+        'true');
+    expect(meta.withAiTrainingOptIn(false).toFields()['ai_training_opt_in'],
+        'false');
+    expect(meta.withAiTrainingOptIn(true).toFields()['capture_mode'],
+        'gallery');
+  });
 }

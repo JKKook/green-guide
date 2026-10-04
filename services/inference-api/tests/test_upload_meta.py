@@ -77,7 +77,8 @@ def test_meta_reaches_recorder(client: TestClient, sample_image_bytes: bytes,
     body = _post_hier(client, sample_image_bytes, orientation="3",
                       capture_mode="smart", quality_blur="0.12",
                       quality_brightness="0.8", crop_applied="true",
-                      crop_box="0.1,0.2,0.5,0.6", tap_x="0.4", tap_y="0.7")
+                      crop_box="0.1,0.2,0.5,0.6", tap_x="0.4", tap_y="0.7",
+                      ai_training_opt_in="true")
     assert body["upload_id"] == "test-upload-id"
     meta = hier_stub["meta"]
     assert meta["orientation"] == 3
@@ -90,6 +91,13 @@ def test_meta_reaches_recorder(client: TestClient, sample_image_bytes: bytes,
     assert meta["tta_rotation"] == 90             # 채택 회전
     assert meta["tap_x"] == pytest.approx(0.4)
     assert meta["tap_y"] == pytest.approx(0.7)
+    assert meta["ai_training_opt_in"] is True
+
+
+def test_ai_opt_in_absent_is_none(client: TestClient, sample_image_bytes: bytes,
+                                  hier_stub: dict) -> None:
+    _post_hier(client, sample_image_bytes)
+    assert hier_stub["meta"]["ai_training_opt_in"] is None  # 미전송 = 미동의로 취급
 
 
 def test_invalid_capture_mode_rejected(client: TestClient,
