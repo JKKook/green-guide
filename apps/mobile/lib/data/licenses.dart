@@ -12,7 +12,11 @@ void registerBundledLicenses() {
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks(
       const ['Pretendard'],
-      await rootBundle.loadString('assets/licenses/pretendard-OFL.txt'),
+      // OFL 수정본 고지 — 번들본은 글리프 서브셋(KS X 1001 한글 + 라틴·기호)이며
+      // Reserved Font Name 규정에 따라 내부 이름을 'GreenGuide Sans' 로 바꿨다.
+      '이 앱의 번들 글꼴 "GreenGuide Sans" 는 Pretendard 의 서브셋 수정본입니다 '
+      '(원본: https://github.com/orioncactus/pretendard).\n\n'
+      '${await rootBundle.loadString('assets/licenses/pretendard-OFL.txt')}',
     );
     yield const LicenseEntryWithLineBreaks(
       ['우리강산 푸른숲체 (YK Green Forest)'],

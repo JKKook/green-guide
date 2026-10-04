@@ -75,11 +75,7 @@ Future<void> _loadFonts() async {
       'Pretendard-SemiBold.otf',
       'Pretendard-Bold.otf',
     ],
-    'PureunSup': [
-      'PureunSup-Light.otf',
-      'PureunSup-Medium.otf',
-      'PureunSup-Bold.otf',
-    ],
+    'PureunSup': ['PureunSup-Bold.otf'],
   };
   for (final MapEntry(key: family, value: files) in families.entries) {
     final loader = FontLoader(family);
