@@ -115,7 +115,10 @@ class TermsDetailScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, kSpaceS, 20, kSpaceXXL),
           children: [
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Container(
                   padding:
@@ -138,7 +141,6 @@ class TermsDetailScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
                 Text(
                   '시행일 ${doc.effectiveDate}',
                   style: TextStyle(fontSize: 11.5, color: t.muted),

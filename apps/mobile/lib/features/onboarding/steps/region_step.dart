@@ -64,8 +64,7 @@ class _RegionStepState extends State<RegionStep> {
   @override
   Widget build(BuildContext context) {
     final t = DsTokens.of(context);
-    return SafeArea(
-      bottom: false,
+    return _FitOrScroll(
       child: Column(
         children: [
           Padding(
@@ -73,19 +72,38 @@ class _RegionStepState extends State<RegionStep> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 제목은 폭이 좁거나 글꼴이 크면 줄바꿈 — 아이콘·배지는 첫 줄에 맞춘다.
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.place_outlined, size: 20, color: t.accentStrong),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Icon(Icons.place_outlined,
+                          size: 20, color: t.accentStrong),
+                    ),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        '어느 지역에 사시나요?',
-                        style:
-                            TextStyle(fontSize: 26, fontWeight: FontWeight.w600),
+                        keepAll('어느 지역에 사시나요?'),
+                        style: const TextStyle(
+                            fontSize: 26, fontWeight: FontWeight.w600),
                       ),
                     ),
-                    const StepBadge('1/3'),
-                    const SizedBox(width: 10),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: StepBadge('1/3'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '지역마다 분리배출 기준(조례)이 조금씩 달라요',
+                        style: TextStyle(fontSize: 12.5, color: t.muted2),
+                      ),
+                    ),
                     InkWell(
                       borderRadius: BorderRadius.circular(999),
                       onTap: () {
@@ -107,12 +125,7 @@ class _RegionStepState extends State<RegionStep> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '지역마다 분리배출 기준(조례)이 조금씩 달라요',
-                  style: TextStyle(fontSize: 12.5, color: t.muted2),
-                ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 OnboardingButton(
                   label: _locating ? '위치 확인 중...' : '내 위치로 설정',
                   icon: Icons.my_location,
@@ -151,20 +164,24 @@ class _RegionStepState extends State<RegionStep> {
               ],
             ),
           ),
-          // 지도 — 핀치 줌/팬
+          // 지도 — 핀치 줌/팬. SizedBox 높이는 스크롤 모드일 때의 최소 높이이자
+          // IntrinsicHeight 계산값(KoreaMap 의 LayoutBuilder 는 고유 높이를 못 낸다).
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(6, 4, 6, 0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(kRadiusMedium),
-                child: InteractiveViewer(
-                  maxScale: 6,
-                  child: Center(
-                    child: KoreaMap(
-                      onSelect: (sido) {
-                        Haptics.selection();
-                        setState(() => _sido = sido);
-                      },
+            child: SizedBox(
+              height: 220,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(6, 4, 6, 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(kRadiusMedium),
+                  child: InteractiveViewer(
+                    maxScale: 6,
+                    child: Center(
+                      child: KoreaMap(
+                        onSelect: (sido) {
+                          Haptics.selection();
+                          setState(() => _sido = sido);
+                        },
+                      ),
                     ),
                   ),
                 ),
@@ -227,6 +244,30 @@ class _RegionStepState extends State<RegionStep> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+/// 머리글+바닥글이 화면을 넘치면(큰 글꼴·낮은 화면) 전체가 스크롤되고,
+/// 여유가 있으면 Expanded 자식(지도)이 남은 높이를 채운다.
+class _FitOrScroll extends StatelessWidget {
+  final Widget child;
+  const _FitOrScroll({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(child: child),
+          ),
+        ),
       ),
     );
   }
@@ -371,12 +412,14 @@ class _SigunguSheetState extends State<SigunguSheet> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            '전체 ${all.length}개 시·군·구 보기',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: t.muted,
+                          Flexible(
+                            child: Text(
+                              '전체 ${all.length}개 시·군·구 보기',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: t.muted,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 5),

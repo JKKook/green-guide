@@ -121,6 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true, // 큰 글꼴·낮은 화면에서 내용이 길면 시트가 자란다
       builder: (_) => const HowSheet(),
     );
   }
