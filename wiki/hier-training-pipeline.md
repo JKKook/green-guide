@@ -25,7 +25,7 @@
 - **export (`hier_export`)**: opset 17, 3-output ONNX(logits, cam, embedding) + `taxonomy.json` 사이드카(게이트 임계 포함). CAM은 1×1 conv 재구성(INT8 호환).
 - **OOD prototype**: `build_hier_prototypes.py` — 클래스별 평균 임베딩 + val 97.5퍼센타일 τ → `ood.npz`. → [ood-openset](ood-openset.md)
 
-백본 선택은 env `WASTE_HIER_BACKBONE` (현행 배포 resnet50). 실행: `python -m src.hier_train`, 전체 사이클은 [retrain-loop](retrain-loop.md).
+백본 선택은 env `GREENGUIDE_HIER_BACKBONE` (현행 배포 resnet50). 실행: `python -m src.hier_train`, 전체 사이클은 [retrain-loop](retrain-loop.md).
 
 ## 검증된 기법 효과 (가이드 §5-5 실측)
 

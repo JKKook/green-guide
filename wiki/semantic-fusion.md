@@ -8,7 +8,7 @@
 
 - **OCR** (RapidOCR PP-OCRv5 korean, onnxruntime): 어휘 2계층 — **A급 분리배출표시/재질어 boost ×6**(무색페트, HDPE, 종이팩…), **B급 정체어 ×2.5**(소주→glass_deposit, 영수증→paper_other…). 요청당 원본에서 1회만 실행, 확신 ≥0.75면 스킵(운영 -2~4s, [model-versions-accuracy](model-versions-accuracy.md) B1). 탭 경로는 항상 실행.
 - **CLIP 제로샷** (이미지 인코더 INT8 84MB + 사전계산 66컨셉 `clip_concepts.npz`): **경로를 가린다** — 장면(풀프레임) 적용은 역효과(검은 기기를 'computer mouse' 0.99)라 기각, **탭 고립 crop만 +4건(w=0.5)**. 초기 설계의 '조용한 클래스 벌점'은 -3건이라 **부스트 전용 + 확신 임계 0.30 + 우도비 상한 8**로 재설계.
-- **CAM 융합**: 448² 고해상 CAM(25클래스 14×14)의 탭 bbox 평균 활성을 prior로. **자기강화 위험 실증**(w≥0.4에서 -1~-4) → **w=0.15(무해 실측), 탭 경로만**. env `WASTE_API_CAM_W`.
+- **CAM 융합**: 448² 고해상 CAM(25클래스 14×14)의 탭 bbox 평균 활성을 prior로. **자기강화 위험 실증**(w≥0.4에서 -1~-4) → **w=0.15(무해 실측), 탭 경로만**. env `GREENGUIDE_API_CAM_W`.
 - 융합 후 베스트 회전 텐서 1장만 재예측.
 
 ## CAM 다중재질 트랙 (CAM_MATERIAL_UPGRADE_PLAN)

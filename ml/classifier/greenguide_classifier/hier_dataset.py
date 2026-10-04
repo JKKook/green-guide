@@ -289,7 +289,7 @@ def load_or_build_hier_splits(items: list[dict[str, Any]]) -> dict[str, list[int
 # 방향 불변 모델이 되면 TTA 제거 가능 — 추론 1/3). SEMANTIC_FUSION_PLAN 참고.
 # 로더(_load_rgb_chw01)는 이제 EXIF 방향 보정을 적용해 서빙 전처리와 정렬됨 —
 # 태그가 있는 소수(위 35장)만 세워지고, 태그 없는 크롭은 이 증강이 계속 담당.
-ROT90_AUG = os.getenv("WASTE_HIER_ROT90_AUG", "0") == "1"
+ROT90_AUG = os.getenv("GREENGUIDE_HIER_ROT90_AUG", "0") == "1"
 
 
 class HierImageDataset(Dataset):
@@ -297,7 +297,7 @@ class HierImageDataset(Dataset):
 
     sup_kind_flag: 1=fine, 0=coarse — collate 후 loss 에서 마스크로 사용.
     변환(리사이즈/정규화/증강)은 기존 WasteImageDataset 과 동일
-    (+ WASTE_HIER_ROT90_AUG=1 이면 90° 단위 회전 무작위 적용).
+    (+ GREENGUIDE_HIER_ROT90_AUG=1 이면 90° 단위 회전 무작위 적용).
     """
 
     def __init__(self, items: list[dict[str, Any]], augment: bool = False) -> None:

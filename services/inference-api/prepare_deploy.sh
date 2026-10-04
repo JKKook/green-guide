@@ -22,6 +22,6 @@ echo "번들 완료:"
 ls -lh models/classifier_hier.onnx models/taxonomy.json models/ood.npz
 echo
 echo "다음 단계 (사용자 확인 후 수동):"
-echo "  1) 로컬 검증: WASTE_API_HIER_MODEL_PATH 미설정 상태로 서버 기동 → /taxonomy 200 확인"
+echo "  1) 로컬 검증: GREENGUIDE_API_HIER_MODEL_PATH 미설정 상태로 서버 기동 → /taxonomy 200 확인"
 echo "  2) git add models/ src/ && git commit && git push  (HF Spaces 자동 재배포)"
 echo "  3) (선택) scripts/publish_hier_version.py --apply  (model_versions 활성화)"

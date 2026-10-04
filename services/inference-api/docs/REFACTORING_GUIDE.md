@@ -61,7 +61,7 @@ src/
 - [ ] **P1-1** `core/logging.py`: `get_logger(__name__)` + 포맷 `[%(levelname)s] %(name)s: %(message)s`. `print("[warn] …")` → `log.warning(…)`, `[startup]` → `log.info`
   - 100회 치환은 기계적으로: `grep -rn 'print(f\?"\[' src/` 목록 기준
   → verify: `grep -rc 'print(' src/ | grep -v ':0'` 결과 없음 (scripts/ 제외), 테스트 통과
-- [ ] **P1-2** `core/config.py`: `config.py` 밖 `os.getenv` 18개를 전부 이동. 이름 규칙 `WASTE_API_*` 유지, 타입 변환은 config에서만
+- [ ] **P1-2** `core/config.py`: `config.py` 밖 `os.getenv` 18개를 전부 이동. 이름 규칙 `GREENGUIDE_API_*` 유지, 타입 변환은 config에서만
   → verify: `grep -rn 'os.getenv\|os.environ' src/ | grep -v core/config.py` 결과 없음
 - [ ] **P1-3** `core/singleton.py`: 10개 모듈의 `_x = None / get_x / reset_x / global` 를 데코레이터로 통일
   ```python
