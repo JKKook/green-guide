@@ -146,7 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       applicationVersion: '${info.version} (build ${info.buildNumber})',
       applicationIcon: ClipRRect(
         borderRadius: BorderRadius.circular(kRadiusSmall),
-        child: Image.asset('assets/icon/icon.png', width: 48, height: 48),
+        child: Image.asset('assets/icon/icon_about.png', width: 48, height: 48),
       ),
       applicationLegalese:
           '© 2026 GreenGuide AI\n\n'
