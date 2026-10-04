@@ -1,7 +1,7 @@
 # 그린가이드 AI — UI/UX 구조 명세
 
-> **분리수거 AI 가이드** — Flutter 앱 `waste_app`의 전체 UI/UX 구조 명세.
-> 코드 실측 기준: `waste_app/lib/` (main.dart · screens 7종 · widgets 8종 · theme/app_theme.dart), 디자인 토큰: `waste-api/design/tokens.json` v1.1.0 (W3C Design Tokens draft).
+> **분리수거 AI 가이드** — Flutter 앱 `apps/mobile`의 전체 UI/UX 구조 명세.
+> 코드 실측 기준: `apps/mobile/lib/` (main.dart · screens 7종 · widgets 8종 · theme/app_theme.dart), 디자인 토큰: `services/inference-api/design/tokens.json` v1.1.0 (W3C Design Tokens draft).
 > 스냅샷 기준일: 2026-07-28
 
 - **Material 3** (`useMaterial3: true`, `Typography.material2021`, `ColorScheme.fromSeed`)
@@ -128,7 +128,7 @@ flowchart TD
 
 ---
 
-## 4. 디자인 토큰 (`waste-api/design/tokens.json` v1.1.0)
+## 4. 디자인 토큰 (`services/inference-api/design/tokens.json` v1.1.0)
 
 ### 4.1 컬러
 

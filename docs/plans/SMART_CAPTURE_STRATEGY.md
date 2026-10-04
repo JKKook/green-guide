@@ -8,7 +8,7 @@
 
 ## 1. 현재 ONNX 학습·추론 흐름
 
-### 학습 (waste-classifier)
+### 학습 (ml/classifier)
 - **백본**: `torchvision.models.resnet18(weights=IMAGENET1K_V1)` 을 분리수거 12클래스로 fine-tune
 - **헤드**: `CamWasteClassifierCNN` 으로 감싸서 `forward()` 가 `(logits, cam, embedding)` 3-output 동시 반환 — CAM·OOD·재학습 시그널을 1회 forward 로 모두 확보하려는 설계
 - **입력 파이프라인**: PIL → EXIF 회전 보정 → 224×224 → ImageNet mean/std 정규화
@@ -63,7 +63,7 @@
 - **개선**: 라이브 프리뷰 프레임에서 실시간으로 같은 지표 계산 → 품질 미달이면 **stability trigger 발동을 잠그고** "더 밝은 곳으로", "초점이 안 맞아요" 가이드. 품질 OK 일 때만 3초 카운트 시작
 - **비용**: 작음 (간단한 픽셀 통계, GPU 불필요)
 - **기대**: 흔들림·저조도 캡처 자체가 사라짐 → 노이즈 floor 제거. 실측 안 했지만 **+3~5pp** 추정
-- **위치**: [waste_app/lib/services/stability_detector.dart](waste_app/lib/services/stability_detector.dart), [waste_app/lib/screens/live_camera_screen.dart](waste_app/lib/screens/live_camera_screen.dart), [waste_app/lib/data/image_quality.dart](waste_app/lib/data/image_quality.dart)
+- **위치**: [apps/mobile/lib/services/stability_detector.dart](apps/mobile/lib/services/stability_detector.dart), [apps/mobile/lib/screens/live_camera_screen.dart](apps/mobile/lib/screens/live_camera_screen.dart), [apps/mobile/lib/data/image_quality.dart](apps/mobile/lib/data/image_quality.dart)
 
 ### B. u2netp 객체 자동 분리 + 크롭 후 분류 (가장 큰 잠재력)
 - **아이디어**: 캡처 후 u2netp 으로 객체 마스크 추출 → 마스크 bbox 로 타이트하게 크롭 → 224 리사이즈 → 분류기에 넣음
@@ -73,7 +73,7 @@
   - **(B-1)** 학습 데이터에 **u2netp 으로 자동 크롭한 버전 50% 혼합** → 분류기가 양쪽 모두 익숙해짐. 비용 중간, 효과 큼
   - **(B-2)** 원본 + 크롭 둘 다 추론 → softmax 평균 (앙상블). 추론 비용 2배지만 재학습 필요 없음 → 빠른 실험에 적합
 - **기대**: 손·배경 케이스에 대해 **+5~10pp** 잠재
-- **위치**: [waste-api/src/segment.py](waste-api/src/segment.py), [waste-classifier/train.py](waste-classifier/train.py) (B-1 의 경우 학습 변경)
+- **위치**: [services/inference-api/src/segment.py](services/inference-api/src/segment.py), [ml/classifier/train.py](ml/classifier/train.py) (B-1 의 경우 학습 변경)
 
 ### C. 다중 프레임 캡처 + 앙상블 (TTA at capture)
 - **아이디어**: stability 도달 시 1프레임 대신 **1초간 3~5프레임** 자동 캡처 → 각 프레임 분류 → softmax 평균. 프레임 간 top1 이 다르면 reject ("자세 살짝 바꿔 다시 찍어주세요")
@@ -114,4 +114,4 @@
 - **smart capture 는 갭을 좁히지만 닫진 못함**. 데이터 작업과 병행이 정답이라는 결론은 변하지 않음
 
 ### 측정 인프라 한 가지 보강
-어떤 개선이 효과 있었는지 알려면 [waste-classifier/realworld_eval.py](waste-classifier/realworld_eval.py) 가 매 retrain 직후 자동으로 돌도록 파이프라인에 묶고, frozen vs realworld 정확도를 `model_diagnostics` 에 함께 기록해야 함. 그래야 "B-1 적용 → 실사용 67%" 같은 비교가 가능해짐. (현재는 수동 실행)
+어떤 개선이 효과 있었는지 알려면 [ml/classifier/realworld_eval.py](ml/classifier/realworld_eval.py) 가 매 retrain 직후 자동으로 돌도록 파이프라인에 묶고, frozen vs realworld 정확도를 `model_diagnostics` 에 함께 기록해야 함. 그래야 "B-1 적용 → 실사용 67%" 같은 비교가 가능해짐. (현재는 수동 실행)

@@ -1,15 +1,15 @@
-# waste-preprocessor — 데이터 파이프라인
+# ml/preprocessor — 데이터 파이프라인
 
-> 소스: `waste-preprocessor/README.md`, `waste-preprocessor/src/`, `waste-preprocessor/data/` (2026-08-13 탐색)
+> 소스: `ml/preprocessor/README.md`, `ml/preprocessor/greenguide_preprocessor/`, `ml/preprocessor/data/` (2026-08-13 탐색)
 
-첫 서브프로젝트: 이미지 **수집 → 정제 → 전처리 → manifest 생성**. 학습은 안 함(→ [waste-classifier](waste-classifier.md)). git 아님.
+첫 서브프로젝트: 이미지 **수집 → 정제 → 전처리 → manifest 생성**. 학습은 안 함(→ [ml/classifier](waste-classifier.md)). git 아님.
 
 ## 파이프라인 (`src/pipeline.py`)
 
 수집(`collect.py`, Kaggle CLI) → 카탈로그(`catalog.py`, 폴더 auto-discover + uuid 12hex) → 클렌징(`cleanse.py`, PIL verify + phash 중복 제거) → 전처리(224² bilinear + ImageNet 정규화) → 벡터화(선택) → Supabase 업로드(선택) → `data/processed/manifest.json`.
 
 - **현재 실질 운영 모드는 `--no-vectorize` raw-direct** — CNN이 raw JPEG를 직접 로드하므로 `.npz` 벡터(150,528-dim float16, MLP 시절 유산)는 생략. `data/processed/vectors/`는 비어 있음.
-- `CLASS_LABELS`(구 6클래스)는 역사적 시드 — **현재 정본 taxonomy는 `waste-classifier/src/taxonomy.py`** ([hier-taxonomy](hier-taxonomy.md)).
+- `CLASS_LABELS`(구 6클래스)는 역사적 시드 — **현재 정본 taxonomy는 `ml/classifier/greenguide_classifier/taxonomy.py`** ([hier-taxonomy](hier-taxonomy.md)).
 
 ## data/raw 구조 (2026-07-20 manifest: input 73,313 / cleansed 70,524)
 

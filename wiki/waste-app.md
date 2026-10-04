@@ -1,8 +1,8 @@
-# waste_app — Flutter 모바일 앱 (그린가이드 AI)
+# apps/mobile — Flutter 모바일 앱 (그린가이드 AI)
 
-> 소스: `waste_app/lib/`, `waste_app/pubspec.yaml`, `docs/design/GREENGUIDE_UIUX_SPEC.md` (2026-08-13 탐색)
+> 소스: `apps/mobile/lib/`, `apps/mobile/pubspec.yaml`, `docs/design/GREENGUIDE_UIUX_SPEC.md` (2026-08-13 탐색)
 
-**Android 전용** Flutter 앱 (`com.greenguide.waste_app`, iOS 미사용). git 아님. README는 V1(6클래스) 시점으로 낡음 — UI/UX의 as-built 정본은 `docs/design/GREENGUIDE_UIUX_SPEC.md`(2026-07-28 코드 실측).
+**Android 전용** Flutter 앱 (`com.greenguide.app`, iOS 미사용). git 아님. README는 V1(6클래스) 시점으로 낡음 — UI/UX의 as-built 정본은 `docs/design/GREENGUIDE_UIUX_SPEC.md`(2026-07-28 코드 실측).
 
 ## 구조
 

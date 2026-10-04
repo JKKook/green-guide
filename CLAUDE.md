@@ -1,7 +1,7 @@
 # green-guide 공통 규칙 (모든 세션 공통)
 
 이 저장소는 여러 Claude 세션이 **같은 작업 트리**를 동시에 사용한다.
-아래 규칙은 폴더별 세션(waste_app · waste-api · greenguide-classifier · greenguide-preprocessor)과
+아래 규칙은 폴더별 세션(app · api · classifier · preprocessor)과
 상위 구조 세션 모두에 적용된다.
 
 ## 브랜치 전략 — `feature/* → develop → main`
@@ -20,7 +20,7 @@
   # 그 경로 안에서 편집·테스트·커밋
   git -C .worktrees/feature-<scope>-<topic> push -u origin feature/<scope>-<topic>
   ```
-  끝나면 `git push -u origin feature/<scope>-<topic>` 까지만 하고 **상위 구조 세션(waste-ba)에 "PR 요청"을 보낸다** → worktree 제거(`git worktree remove`).
+  끝나면 `git push -u origin feature/<scope>-<topic>` 까지만 하고 **상위 구조 세션에 "PR 요청"을 보낸다** → worktree 제거(`git worktree remove`).
 - **`develop` 병합은 PR 로만, 상위 구조 세션이 수행한다.** 폴더 세션은 `git merge`·`gh pr create/merge` 를 하지 않는다
   (폴더 세션의 gh 활성 계정은 협업자가 아니고, 병합 권한도 상위 구조 세션에만 둔다). 요청 시 검증 결과(테스트·린트)를 함께 적는다.
   상위 구조 세션은 JKKook 계정으로 PR 생성 → 검증 확인 → `gh pr merge --merge`(merge commit) → 공유 트리 `develop` 을 `git pull --ff-only`.
@@ -33,15 +33,15 @@
 ## 커밋 규칙
 - `/commit` 스킬 사용. 메시지는 이 레포 히스토리 스타일을 따른다:
   `type(scope): 한글 제목 — 요약` + 빈 줄 + 불릿 본문 + 트레일러(`Co-Authored-By`, `Claude-Session`).
-- type: `feat` `fix` `refactor` `docs` `test` `chore`. scope 는 폴더명(`waste_app`, `api`, `classifier`, `preprocessor`, `wiki`).
+- type: `feat` `fix` `refactor` `docs` `test` `chore`. scope 는 폴더명(`app`, `api`, `classifier`, `preprocessor`, `wiki`).
 - **자기 scope 밖 파일은 커밋하지 않는다.** `git add -A` 금지 — 경로를 명시해서 add.
 - 커밋하지 말 것: `.env*`, `key.properties`, `*.jks`, 모델 가중치(`*.onnx` 등), staging 데이터, `.venv`, `build/`.
 
 ## 세션 간 경계
 | 세션 | 담당 범위 |
 | --- | --- |
-| waste_app | `apps/mobile/` 내부 |
-| waste-api | `services/inference-api/` 내부. 모노레포 편입 — 자체 git 없음. HF 배포는 `git subtree push --prefix=services/inference-api hf main` (사용자 요청 시) |
+| app | `apps/mobile/` 내부 |
+| api | `services/inference-api/` 내부. 모노레포 편입 — 자체 git 없음. HF 배포는 `git subtree push --prefix=services/inference-api hf main` (사용자 요청 시) |
 | greenguide-classifier | `ml/classifier/` 내부 |
 | greenguide-preprocessor | `ml/preprocessor/` 내부 |
 | 상위 구조(repo) | 루트 파일, `docs/`, `wiki/`, `.github/`, `libs/greenguide-common/`(공통 패키지 — 변경은 사용 세션과 합의) |
@@ -57,7 +57,7 @@
 | 데이터 폴더 | `snake_case` | `ml/data/raw/aihub_71385` |
 | 프로젝트 접두어 | `greenguide` (구 `waste_*` 는 사용 금지) | pip 배포명 `greenguide-common` ↔ import `greenguide_common`, Flutter 패키지 `greenguide` |
 
-- 외부 식별자는 바꾸지 않는다: Android `applicationId`/namespace `com.greenguide.waste_app`, HF Space `waste-api`, HF Hub `waste-models`, Supabase 테이블·버킷명, 환경변수 `WASTE_*`.
+- 외부 식별자는 바꾸지 않는다: Android `applicationId`/namespace `com.greenguide.app`(2026-10-04 확정, 스토어 공개 후 영구), HF Space `waste-api`, HF Hub `waste-models`, Supabase 테이블·버킷명. 환경변수 접두어는 `GREENGUIDE_*`(구 `WASTE_*` 는 2026-10-04 일괄 교체).
 - `services/inference-api/src` 는 아직 `src` 패키지 — `inference_api` 로의 개명은 api 세션이 별도 진행.
 
 ## 검증

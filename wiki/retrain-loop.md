@@ -1,6 +1,6 @@
 # 피드백 재학습 루프 + 안전 게이트
 
-> 소스: `waste-classifier/retrain_hier.py`, `retrain.py`, `diagnose.py`, `docs/plans/DIAGNOSIS_PROCESS.md` (2026-08-13 탐색)
+> 소스: `ml/classifier/retrain_hier.py`, `retrain.py`, `diagnose.py`, `docs/plans/DIAGNOSIS_PROCESS.md` (2026-08-13 탐색)
 
 "더 많은 데이터 = 더 나음"이 아님을 코드로 강제하는 자동 사이클. 정확도를 버전 간 비교 가능한 숫자로 관리하고 나쁜 모델의 승격을 차단한다.
 

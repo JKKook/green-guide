@@ -1,6 +1,6 @@
 # 시맨틱 증거 융합 (OCR·CLIP·CAM)
 
-> 소스: `docs/plans/SEMANTIC_FUSION_PLAN.md`, `waste-api/src/semantic_evidence.py`·`clip_identity.py`, `docs/plans/CAM_MATERIAL_UPGRADE_PLAN.md`, `docs/greenguide_model_methods.html` §5 (2026-08-13 탐색)
+> 소스: `docs/plans/SEMANTIC_FUSION_PLAN.md`, `services/inference-api/src/semantic_evidence.py`·`clip_identity.py`, `docs/plans/CAM_MATERIAL_UPGRADE_PLAN.md`, `docs/greenguide_model_methods.html` §5 (2026-08-13 탐색)
 
 "VLM처럼 판단하기" — CNN의 텍스처 통계 한계를 넘어 글자·정체·재질 증거를 fine 확률에 **log-linear prior**로 융합: `log p_fused = log p + Σ w_e·log prior_e`. 원칙: **증거 없으면 기존과 완전 동일**(별도 override 경로 없음, 게이트 이전 확률에 적용 → 강한 증거 시 자연히 reject 해제).
 

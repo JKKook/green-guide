@@ -7,14 +7,14 @@
 ## 파이프라인 (4 서브프로젝트)
 
 ```
-waste-preprocessor ──▶ waste-classifier ──▶ waste-api ──▶ waste_app
+ml/preprocessor ──▶ ml/classifier ──▶ waste-api ──▶ apps/mobile
  (수집·전처리·manifest)  (학습·ONNX export)   (FastAPI 추론)  (Flutter 앱)
         ▲                                        │
         └──────────── 피드백 재학습 루프 ◀────────┘  (Supabase user_uploads)
 ```
 
-- [waste-preprocessor](waste-preprocessor.md) — Kaggle/AI-Hub/TACO 수집 → 정제 → manifest. 학습은 안 함.
-- [waste-classifier](waste-classifier.md) — 계층 CNN(ResNet50) 학습 + ONNX export + 진단·게이트. git 아님.
+- [ml/preprocessor](waste-preprocessor.md) — Kaggle/AI-Hub/TACO 수집 → 정제 → manifest. 학습은 안 함.
+- [ml/classifier](waste-classifier.md) — 계층 CNN(ResNet50) 학습 + ONNX export + 진단·게이트. git 아님.
 - [waste-api](waste-api.md) — HF Spaces Docker 배포. ONNX Runtime 단일 엔진, 캐스케이드 추론 + VLM 폴백. 유일한 git 레포(remote=HF Spaces).
 - [waste-app](waste-app.md) — Android 전용 Flutter. 온디바이스 ONNX + 클라우드 이원.
 
@@ -31,7 +31,7 @@ waste-preprocessor ──▶ waste-classifier ──▶ waste-api ──▶ wast
 3. **모델 OTA**: `/model/latest` → `model_versions` → HF Hub `ethanDev92/waste-models` 다운로드. 앱 번들 모델 제거로 204→88MB (Play 200MB 한도)
 4. **피드백 루프**: 앱 👍/👎 → `/feedback` → `user_uploads` → [retrain-loop](retrain-loop.md) → 새 ONNX publish → OTA
 5. **지역 규정**: GPS/수동 선택 → `/region-info` → `region_waste_rules` (공공데이터포털)
-6. **디자인 토큰 역류**: 앱 테마 실측 → `waste-api/design/tokens.json` → `GET /design/tokens.json`
+6. **디자인 토큰 역류**: 앱 테마 실측 → `services/inference-api/design/tokens.json` → `GET /design/tokens.json`
 7. **버전 스큐 방어**: `/predict-hier` 404/503 → flat 경로 자동 격하
 
 ## 인프라

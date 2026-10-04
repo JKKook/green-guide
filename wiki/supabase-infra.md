@@ -1,6 +1,6 @@
 # Supabase 인프라 · 무료 쿼터 운영
 
-> 소스: `waste-api/src/{uploads,classes,model_loader}.py`, `waste-api/migrations/`, `waste-api/scripts/`, `docs/greenguide_model_methods.html` §8 (2026-08-13 탐색)
+> 소스: `services/inference-api/src/{uploads,classes,model_loader}.py`, `services/inference-api/migrations/`, `services/inference-api/scripts/`, `docs/greenguide_model_methods.html` §8 (2026-08-13 탐색)
 
 ## 테이블 / 버킷
 

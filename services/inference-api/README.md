@@ -308,7 +308,7 @@ CNN 의 전체 test accuracy 92.35% 와 일치하는 결과. plastic/glass 혼�
 ## 프로젝트 구조
 
 ```
-waste-api/
+services/inference-api/
 ├── .gitignore
 ├── README.md
 ├── pytest.ini

@@ -1,6 +1,6 @@
 # OOD 거부 · open-set 처리
 
-> 소스: `waste-classifier/src/ood.py`, `scripts/build_hier_prototypes.py`, `etc_queue.py`, `docs/plans/DIAGNOSIS_PROCESS.md` §⑤ (2026-08-13 탐색)
+> 소스: `ml/classifier/greenguide_classifier/ood.py`, `scripts/build_hier_prototypes.py`, `etc_queue.py`, `docs/plans/DIAGNOSIS_PROCESS.md` §⑤ (2026-08-13 탐색)
 
 원칙: **"softmax는 최선만 고르고, 임베딩 거리는 닮았는가를 본다"** — 신경망은 OOD 입력에 과신하므로(노이즈→clothes 0.999 사례) softmax 단독 판정 금지.
 
