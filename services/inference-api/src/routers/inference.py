@@ -44,6 +44,9 @@ async def predict_hier(
     quality_brightness: float | None = Form(default=None),
     crop_applied: bool | None = Form(default=None),
     crop_box: str | None = Form(default=None, description='"x,y,w,h"'),
+    ai_training_opt_in: bool | None = Form(
+        default=None,
+        description="촬영 사진 AI 학습 활용 동의(선택 약관) — 학습 데이터셋 필터 기준"),
     want_cam: bool = Form(
         default=False,
         description="true 면 이 결과를 만든 텐서·크롭 그대로의 CAM 을 cam_base64 로 반환"),
@@ -272,6 +275,7 @@ async def predict_hier(
         "tta_rotation": result.get("tta_rotation"),
         "tap_x": tap_x,
         "tap_y": tap_y,
+        "ai_training_opt_in": ai_training_opt_in,
     })
 
     return PredictionHierResponse(**result, upload_id=upload_id)
