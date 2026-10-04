@@ -1,4 +1,4 @@
-package com.greenguide.waste_app
+package com.greenguide.app
 
 import io.flutter.embedding.android.FlutterActivity
 
