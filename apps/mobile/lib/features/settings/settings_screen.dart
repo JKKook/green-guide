@@ -42,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _testSuccess = false;
   bool _hapticsEnabled = true;
   bool _tipsNotification = false;
+  bool _aiTrainingOptIn = false;
   int _reminderCount = 0;
   (String, String)? _region;
   HousingType? _housing;
@@ -60,6 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final url = await _store.getApiUrl();
     final haptics = await _store.isHapticsEnabled();
     final tips = await _store.isTipsNotificationEnabled();
+    final aiOptIn = await _store.isAiTrainingOptIn();
     final region = await _store.getRegion();
     final reminders = await _reminders.load();
     final housing = await _store.getHousingType();
@@ -79,6 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _urlController.text = url;
       _hapticsEnabled = haptics;
       _tipsNotification = tips;
+      _aiTrainingOptIn = aiOptIn;
       _reminderCount = reminders.length;
       _region = region;
       _housing = housing;
@@ -536,6 +539,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   builder: (_) => const TermsListScreen()),
                             );
                           },
+                        ),
+                        Container(height: 1, color: t.border),
+                        SettingsRow(
+                          tokens: t,
+                          icon: Icons.model_training_outlined,
+                          title: 'AI 학습 활용 동의',
+                          subtitle: '선택 · 분석 사진과 피드백을 모델 학습에 활용',
+                          trailing: Switch(
+                            value: _aiTrainingOptIn,
+                            activeTrackColor: brandSeed,
+                            onChanged: (v) async {
+                              Haptics.selection();
+                              await _store.setAiTrainingOptIn(v);
+                              setState(() => _aiTrainingOptIn = v);
+                            },
+                          ),
                         ),
                         Container(height: 1, color: t.border),
                         SettingsRow(

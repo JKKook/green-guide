@@ -472,6 +472,8 @@ class UploadMeta {
   final double? qualityBrightness;
   final bool cropApplied;
   final String? cropBox; // "x,y,w,h" (정수, 원본 픽셀)
+  /// 촬영 사진 AI 학습 활용 동의(선택 약관) — null 이면 전송하지 않는다.
+  final bool? aiTrainingOptIn;
 
   const UploadMeta({
     required this.captureMode,
@@ -480,7 +482,18 @@ class UploadMeta {
     this.qualityBrightness,
     this.cropApplied = false,
     this.cropBox,
+    this.aiTrainingOptIn,
   });
+
+  UploadMeta withAiTrainingOptIn(bool v) => UploadMeta(
+    captureMode: captureMode,
+    orientation: orientation,
+    qualityBlur: qualityBlur,
+    qualityBrightness: qualityBrightness,
+    cropApplied: cropApplied,
+    cropBox: cropBox,
+    aiTrainingOptIn: v,
+  );
 
   Map<String, String> toFields() => {
     'capture_mode': captureMode,
@@ -490,5 +503,6 @@ class UploadMeta {
       'quality_brightness': qualityBrightness!.toStringAsFixed(2),
     if (cropApplied) 'crop_applied': 'true',
     if (cropApplied && cropBox != null) 'crop_box': cropBox!,
+    if (aiTrainingOptIn != null) 'ai_training_opt_in': '$aiTrainingOptIn',
   };
 }
