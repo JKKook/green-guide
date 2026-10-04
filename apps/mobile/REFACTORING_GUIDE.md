@@ -1,4 +1,4 @@
-# waste_app 리팩토링 작업 가이드
+# apps/mobile 리팩토링 작업 가이드
 
 > 초점: **코드 품질 최적화 + 공통단(common layer) 구성**
 > 원칙: 동작 변경 0 · 각 단계가 독립 커밋 · 매 단계 `flutter analyze` + `flutter test` 통과

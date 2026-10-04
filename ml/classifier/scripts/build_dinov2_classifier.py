@@ -294,7 +294,7 @@ def main() -> int:
     onnx_path = OUT_DIR / "dinov2_classifier.onnx"
     export_combined_onnx(head, label_names, onnx_path)
 
-    print(f"\n[main] 다음: cp {onnx_path} ../waste-api/models/")
+    print(f"\n[main] 다음: cp {onnx_path} ../services/inference-api/models/")
     return 0
 
 

@@ -1,6 +1,6 @@
 # 데이터 실험 대장 — 가설 검증·증강 A/B
 
-> 소스: `waste-preprocessor/AIHUB_PAPER_HYPOTHESIS_TEST.md`, `DATA_AUGMENTATION_DESIGN.md`, `DATA_AUGMENTATION_RESULTS.md` (2026-08-13 탐색)
+> 소스: `ml/preprocessor/AIHUB_PAPER_HYPOTHESIS_TEST.md`, `DATA_AUGMENTATION_DESIGN.md`, `DATA_AUGMENTATION_RESULTS.md` (2026-08-13 탐색)
 
 ## AI-Hub paper 노이즈 가설 — **기각** (2026-05-30)
 

@@ -63,7 +63,7 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 각 단계는 `[작업] → verify: [확인 방법]` 형식. 순서는 의존성 순.
 
 ### Phase 0 — Baseline & 도구 (0.5일) ✅ 2026-08-30 완료
-- [x] baseline 커밋 `634025c` — greenguide-classifier/ 디렉터리만(89 파일). monorepo 의 waste_app·waste-api·wiki 는 범위 밖이라 untracked 유지
+- [x] baseline 커밋 `634025c` — greenguide-classifier/ 디렉터리만(89 파일). monorepo 의 apps/mobile·waste-api·wiki 는 범위 밖이라 untracked 유지
 - [x] `pyproject.toml` + `pip install -e .` (`5cfc193`) — `scripts/__init__.py` 추가, ruff 규칙 `E,F,I,B,UP` (E501 은 ignore)
 - [x] `ruff --fix` 안전 수정 97건 적용 (147 → 50건 잔여). 잔여 50건 내역: E702 14 / B905 12 / E402 9(sys.path 해킹 → 2-1 에서 해소) / B007 6 / E741 5 / F841 3 / E701 1
 - [x] pytest 32 passed, **pyright 기준선: 205 errors, 9 warnings** (`pyright src scripts *.py tests`)

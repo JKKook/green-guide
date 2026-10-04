@@ -1,6 +1,6 @@
 # 계층 학습 파이프라인
 
-> 소스: `waste-classifier/src/hier_*.py`, `waste-classifier/HIER_TRAINING_GUIDE.md` (2026-08-13 탐색)
+> 소스: `ml/classifier/greenguide_classifier/hier_*.py`, `ml/classifier/HIER_TRAINING_GUIDE.md` (2026-08-13 탐색)
 
 [hier-taxonomy](hier-taxonomy.md)의 fine 25클래스를 학습하는 현행 파이프라인. 정본 문서는 `HIER_TRAINING_GUIDE.md`(2026-07).
 

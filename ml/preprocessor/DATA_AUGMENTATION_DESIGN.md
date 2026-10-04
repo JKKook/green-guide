@@ -205,7 +205,7 @@ Pillow==10.4.0          # 이미 있음
 numpy==1.26.x           # 이미 있음
 ```
 
-설치: `cd waste-classifier && .venv/bin/pip install albumentations opencv-python`
+설치: `cd ml/classifier && .venv/bin/pip install albumentations opencv-python`
 
 ### 6.2 합성 엔진 구조 (`scripts/synthesize_indoor.py`)
 
@@ -414,7 +414,7 @@ def synthesize_class(engine, target_class, n_samples, obj_pool, bg_pool, hand_po
 | < -2pp | artifact 학습 (역효과) | 합성 비율 낮추고 품질 게이트 강화 |
 
 ### 7.5 측정 자동화
-[realworld_eval.py](../waste-classifier/realworld_eval.py) + diagnose 자동 실행 — Test B 의 continuation 패턴 차용:
+[realworld_eval.py](../ml/classifier/realworld_eval.py) + diagnose 자동 실행 — Test B 의 continuation 패턴 차용:
 - 학습 종료 시 자동 export ONNX
 - 자동 realworld + frozen 측정
 - 결과를 `diagnostics/test_{name}_results.json` 에 저장
@@ -570,5 +570,5 @@ TRAIN_AUGMENT = A.Compose([
 
 ---
 
-*문서 위치: [/Users/whdrnr01/ai/waste-preprocessor/DATA_AUGMENTATION_DESIGN.md](DATA_AUGMENTATION_DESIGN.md)*
+*문서 위치: [/Users/whdrnr01/ai/ml/preprocessor/DATA_AUGMENTATION_DESIGN.md](DATA_AUGMENTATION_DESIGN.md)*
 *관련 문서: [AIHUB_PAPER_HYPOTHESIS_TEST.md](AIHUB_PAPER_HYPOTHESIS_TEST.md), [SMART_CAPTURE_STRATEGY.md](../SMART_CAPTURE_STRATEGY.md), [GREENGUIDE_BLUEPRINT.md](../GREENGUIDE_BLUEPRINT.md)*

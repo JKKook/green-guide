@@ -1,10 +1,10 @@
-# waste-classifier — 학습·ONNX export 레포
+# ml/classifier — 학습·ONNX export 레포
 
-> 소스: `waste-classifier/README.md`, `waste-classifier/HIER_TRAINING_GUIDE.md`, `waste-classifier/lab.md`, `waste-classifier/src/`, `waste-classifier/scripts/` (2026-08-13 탐색)
+> 소스: `ml/classifier/README.md`, `ml/classifier/HIER_TRAINING_GUIDE.md`, `ml/classifier/lab.md`, `ml/classifier/greenguide_classifier/`, `ml/classifier/scripts/` (2026-08-13 탐색)
 
-GreenGuide AI 파이프라인의 학습 전담 서브프로젝트. **폐기물 이미지 분류 모델 학습 + ONNX export**를 담당하며, 서빙은 [waste-api](waste-api.md)(`/predict-hier`), 온디바이스는 [waste_app](waste-app.md)(onnxruntime)이 맡는다. git 저장소 아님 — 버전 이력은 `outputs/logs/diagnosis/*.jsonl`과 백업 폴더가 대신한다.
+GreenGuide AI 파이프라인의 학습 전담 서브프로젝트. **폐기물 이미지 분류 모델 학습 + ONNX export**를 담당하며, 서빙은 [waste-api](waste-api.md)(`/predict-hier`), 온디바이스는 [apps/mobile](waste-app.md)(onnxruntime)이 맡는다. git 저장소 아님 — 버전 이력은 `outputs/logs/diagnosis/*.jsonl`과 백업 폴더가 대신한다.
 
-전체 흐름: `waste-preprocessor(수집·전처리) → waste-classifier(학습·ONNX) → waste-api(추론) → Flutter 앱`. → [architecture-overview](architecture-overview.md)
+전체 흐름: `ml/preprocessor(수집·전처리) → ml/classifier(학습·ONNX) → waste-api(추론) → Flutter 앱`. → [architecture-overview](architecture-overview.md)
 
 ## 문서 3종 — 세대가 다름 (주의)
 

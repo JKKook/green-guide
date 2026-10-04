@@ -1,6 +1,6 @@
 # waste-api — FastAPI 추론 서버
 
-> 소스: `waste-api/src/api.py`, `waste-api/src/*.py`, `waste-api/Dockerfile`, `waste-api/models/`, `waste-api/migrations/` (2026-08-13 탐색)
+> 소스: `services/inference-api/src/api.py`, `services/inference-api/src/*.py`, `services/inference-api/Dockerfile`, `services/inference-api/models/`, `waste-api/migrations/` (2026-08-13 탐색)
 
 FastAPI + ONNX Runtime 기반 폐기물 이미지 분류 추론 서버. 사진 1장 → 한국형 분리배출 재질 분류 + 배출 안내. 4개 서브프로젝트 중 3번째 (→ [architecture-overview](architecture-overview.md)).
 
@@ -10,7 +10,7 @@ FastAPI + ONNX Runtime 기반 폐기물 이미지 분류 추론 서버. 사진 1
 
 - git remote가 곧 HF Spaces: `https://huggingface.co/spaces/ethanDev92/waste-api`. **git push = 자동 재배포.**
 - `Dockerfile`: python:3.11-slim, PORT 7860. ONNX/npz는 git-lfs, `models/*.onnx`는 의도적 커밋(이미지 번들).
-- `prepare_deploy.sh`: waste-classifier 산출물(`cnn_hier/{classifier.onnx, taxonomy.json, ood.npz}`)을 `models/`로 복사.
+- `prepare_deploy.sh`: ml/classifier 산출물(`cnn_hier/{classifier.onnx, taxonomy.json, ood.npz}`)을 `models/`로 복사.
 - 시크릿(`SUPABASE_URL/KEY`, `ANTHROPIC_API_KEY`)은 HF Spaces Secrets 주입.
 - **torch 미설치** — onnxruntime 1.19.2 단일 엔진 (명시적 설계 결정).
 
@@ -48,7 +48,7 @@ FastAPI + ONNX Runtime 기반 폐기물 이미지 분류 추론 서버. 사진 1
 
 ## 디자인 토큰 역류
 
-`design/tokens.json`(W3C Design Tokens draft) — [waste_app](waste-app.md)의 `app_theme.dart` 실측값을 API가 서빙(컴포넌트 24개 스펙 포함). 디자인 도구가 URL로 소비.
+`design/tokens.json`(W3C Design Tokens draft) — [apps/mobile](waste-app.md)의 `app_theme.dart` 실측값을 API가 서빙(컴포넌트 24개 스펙 포함). 디자인 도구가 URL로 소비.
 
 ## 상태 (2026-08-13 조사 시점)
 

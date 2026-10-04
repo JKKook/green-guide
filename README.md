@@ -45,7 +45,7 @@ green-guide/
 ```
 
 네이밍 규칙: 폴더 `kebab-case`, import 패키지·파일 `snake_case`, 접두어 `greenguide`.
-외부 식별자(Android `applicationId` `com.greenguide.waste_app`, HF Space `waste-api`, Supabase 테이블명, 환경변수 `GREENGUIDE_*`)는 그대로 둡니다.
+외부 식별자(HF Space `waste-api`, HF Hub `waste-models`, Supabase 테이블명)는 그대로 둡니다. Android `applicationId` 는 `com.greenguide.app`(2026-10-04 확정, 스토어 공개 후 영구), 환경변수 접두어는 `GREENGUIDE_*` 입니다.
 학습 데이터·모델 가중치·`.env`·서명 키는 저장소에 포함하지 않습니다 (`.gitignore`).
 
 <details>
@@ -102,7 +102,7 @@ git worktree add .worktrees/feature-app-x -b feature/app-x develop
 # 편집·테스트·커밋은 그 경로에서, 끝나면 develop 병합 후 git worktree remove
 ```
 
-커밋은 `type(scope): 한글 제목 — 요약` 형식(`feat` `fix` `refactor` `docs` `test` `chore`, scope = `waste_app` `api` `classifier` `preprocessor` `repo` `wiki`). 자세한 규칙은 `CLAUDE.md`.
+커밋은 `type(scope): 한글 제목 — 요약` 형식(`feat` `fix` `refactor` `docs` `test` `chore`, scope = `app` `api` `classifier` `preprocessor` `repo` `wiki`). 자세한 규칙은 `CLAUDE.md`.
 
 ## 배포
 

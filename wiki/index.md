@@ -7,8 +7,8 @@
 - [planning-docs](planning-docs.md) — 루트 계획 문서 8종의 세대·역할·모순 5건 정리
 
 ## 서브프로젝트
-- [waste-preprocessor](waste-preprocessor.md) — 수집·정제·manifest. raw-direct 모드, fine-staging 분리 이유
-- [waste-classifier](waste-classifier.md) — 학습·ONNX export 레포. 문서 3종 세대, 스크립트 지도, 클래스 추가 절차
+- [ml/preprocessor](waste-preprocessor.md) — 수집·정제·manifest. raw-direct 모드, fine-staging 분리 이유
+- [ml/classifier](waste-classifier.md) — 학습·ONNX export 레포. 문서 3종 세대, 스크립트 지도, 클래스 추가 절차
 - [waste-api](waste-api.md) — FastAPI 추론 서버(HF Spaces). 엔드포인트 전량, /predict-hier 캐스케이드, VLM 폴백, 배출 스트림
 - [waste-app](waste-app.md) — Flutter 앱(Android). setState 단일, OTA, 추론 라우팅, Trust UI
 

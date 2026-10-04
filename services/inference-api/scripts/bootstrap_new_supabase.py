@@ -4,7 +4,7 @@
 선행 조건:
   1) 사용자가 새 프로젝트 생성 + SQL Editor 에서
      migrations/_bootstrap_new_project.sql 실행 (스키마+시드)
-  2) waste-api/.env 의 SUPABASE_URL / SUPABASE_KEY 를 새 프로젝트 값으로 교체
+  2) services/inference-api/.env 의 SUPABASE_URL / SUPABASE_KEY 를 새 프로젝트 값으로 교체
 
 이 스크립트가 하는 일:
   [1] 버킷 생성: user-uploads(공개), models(공개), raw-images(비공개)

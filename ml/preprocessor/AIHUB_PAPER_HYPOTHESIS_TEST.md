@@ -198,13 +198,13 @@ AI Hub paper 데이터(8353장, 시각 검토 결과 라벨 정합성 ~40%)가 �
 ## 7. 변경 사항 / 아티팩트
 
 ### 백업 / 보관
-- `waste-classifier/outputs/backups/test_A_baseline/classifier.onnx` — Test A 원본 모델 (96.42% 보존)
-- `waste-classifier/outputs/backups/test_B/classifier.onnx` — Test B 모델 (참고용)
-- `waste-preprocessor/data/processed/manifest_test_A_baseline.json` — 원본 manifest (69,368 items)
-- `waste-classifier/data/splits/splits.json.bak_test_A` — 원본 splits
-- `waste-classifier/outputs/logs/test_B_train.log` — Test B 학습 로그
-- `waste-classifier/outputs/logs/test_B_continuation.log` — 측정 자동화 로그
-- `waste-classifier/outputs/logs/diagnosis/test_B.json` — Test B frozen 진단 결과
+- `ml/classifier/outputs/backups/test_A_baseline/classifier.onnx` — Test A 원본 모델 (96.42% 보존)
+- `ml/classifier/outputs/backups/test_B/classifier.onnx` — Test B 모델 (참고용)
+- `ml/preprocessor/data/processed/manifest_test_A_baseline.json` — 원본 manifest (69,368 items)
+- `ml/classifier/data/splits/splits.json.bak_test_A` — 원본 splits
+- `ml/classifier/outputs/logs/test_B_train.log` — Test B 학습 로그
+- `ml/classifier/outputs/logs/test_B_continuation.log` — 측정 자동화 로그
+- `ml/classifier/outputs/logs/diagnosis/test_B.json` — Test B frozen 진단 결과
 
 ### 복원 작업
 - 활성 manifest, 모델 ONNX, splits 모두 Test A baseline 으로 복원
@@ -212,5 +212,5 @@ AI Hub paper 데이터(8353장, 시각 검토 결과 라벨 정합성 ~40%)가 �
 
 ---
 
-*문서 위치: [/Users/whdrnr01/ai/waste-preprocessor/AIHUB_PAPER_HYPOTHESIS_TEST.md](AIHUB_PAPER_HYPOTHESIS_TEST.md)*
+*문서 위치: [/Users/whdrnr01/ai/ml/preprocessor/AIHUB_PAPER_HYPOTHESIS_TEST.md](AIHUB_PAPER_HYPOTHESIS_TEST.md)*
 *관련 문서: [GREENGUIDE_BLUEPRINT.md](../GREENGUIDE_BLUEPRINT.md), [SMART_CAPTURE_STRATEGY.md](../SMART_CAPTURE_STRATEGY.md)*

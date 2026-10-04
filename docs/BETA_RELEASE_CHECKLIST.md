@@ -3,7 +3,7 @@
 전체 점검(UI/UX · 라이선스 · 기능/릴리즈 · 백엔드) 결과와 조치 상태.
 검증 기준: `flutter analyze` 통과 · `flutter test` 9/9 통과 · `flutter build apk --release` 성공.
 
-## ✅ 이번에 적용한 수정 (waste_app)
+## ✅ 이번에 적용한 수정 (apps/mobile)
 
 | 영역 | 내용 | 파일 |
 | --- | --- | --- |
