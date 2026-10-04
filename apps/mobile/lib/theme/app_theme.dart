@@ -102,9 +102,12 @@ ColorScheme _buildScheme(Brightness brightness) {
 
 TextTheme _textTheme(Brightness brightness) {
   // 라이트는 거의 순수 검정, 다크는 거의 순수 흰색으로 강한 대비.
-  final base = brightness == Brightness.light
-      ? Typography.material2021().black
-      : Typography.material2021().white;
+  // Typography 기본값은 fontFamily 'Roboto' 가 박혀 있어 ThemeData(fontFamily:) 로는
+  // 덮이지 않는다 — 여기서 바꿔야 Pretendard 가 실제로 적용된다(기기 시스템 글꼴 방지).
+  final base = (brightness == Brightness.light
+          ? Typography.material2021().black
+          : Typography.material2021().white)
+      .apply(fontFamily: kBodyFontFamily);
 
   final emphasis = brightness == Brightness.light
       ? const Color(0xFF0F1419)  // 거의 검정 (Twitter-style 어두운 잉크)

@@ -6,6 +6,11 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/design_tokens.dart';
 
+/// 한글 어절 단위 줄바꿈 — Flutter 는 한글을 글자 단위로 끊으므로("사시나/요?")
+/// 어절 안의 글자 사이에 단어 결합자(U+2060)를 넣어 공백에서만 줄이 바뀌게 한다.
+String keepAll(String text) =>
+    text.split(' ').map((w) => w.split('').join('\u2060')).join(' ');
+
 /// 주요 CTA — 52px · radius 16 · accent-700.
 class OnboardingButton extends StatelessWidget {
   final String label;
@@ -23,24 +28,30 @@ class OnboardingButton extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(kRadiusMedium),
         onTap: onTap,
-        child: SizedBox(
-          height: 52,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 18, color: enabled ? kNeutral100 : t.muted),
-                const SizedBox(width: 9),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: enabled ? kNeutral100 : t.muted,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 52),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 18, color: enabled ? kNeutral100 : t.muted),
+                  const SizedBox(width: 9),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: enabled ? kNeutral100 : t.muted,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

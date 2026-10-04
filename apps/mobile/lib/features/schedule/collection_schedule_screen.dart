@@ -154,37 +154,44 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    runSpacing: 6,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: kAccent700,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '오늘 · ${kDayNames[todayIdx]}요일',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: kNeutral100,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: kAccent700,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '오늘 · ${kDayNames[todayIdx]}요일',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: kNeutral100,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (todayPickup != PickupKind.none) ...[
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                '$kPickupTimeText 배출',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontSize: 11.5, color: t.accentDeep),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      if (todayPickup != PickupKind.none)
-                        Expanded(
-                          child: Text(
-                            '$kPickupTimeText 배출',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style:
-                                TextStyle(fontSize: 11.5, color: t.accentDeep),
-                          ),
-                        )
-                      else
-                        const Spacer(),
                       InkWell(
                         borderRadius: BorderRadius.circular(999),
                         onTap: _configureTodayReminder,
@@ -325,28 +332,33 @@ class _CollectionScheduleScreenState extends State<CollectionScheduleScreen> {
             // 범례
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: kSpaceXS),
-              child: Row(
+              child: Wrap(
+                spacing: 14,
+                runSpacing: 4,
                 children: [
                   for (final (label, color) in [
                     ('플라스틱·비닐', brandSeed),
                     ('종이·박스', kAccent2400),
                     ('일반쓰레기', t.faint),
-                  ]) ...[
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: color,
-                      ),
+                  ])
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          label,
+                          style: TextStyle(fontSize: 11, color: t.muted2),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      label,
-                      style: TextStyle(fontSize: 11, color: t.muted2),
-                    ),
-                    const SizedBox(width: 14),
-                  ],
                 ],
               ),
             ),

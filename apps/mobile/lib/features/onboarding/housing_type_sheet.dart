@@ -19,7 +19,11 @@ Future<HousingType?> showHousingTypeSheet(
     context: context,
     isDismissible: stepLabel == null,
     enableDrag: stepLabel == null,
-    builder: (_) => _HousingTypeSheet(current: current, stepLabel: stepLabel),
+    // 큰 글꼴·낮은 화면에서 내용이 길면 시트가 화면 높이까지 자라고, 그래도 넘치면 내부 스크롤.
+    isScrollControlled: true,
+    builder: (_) => SingleChildScrollView(
+      child: _HousingTypeSheet(current: current, stepLabel: stepLabel),
+    ),
   );
 }
 

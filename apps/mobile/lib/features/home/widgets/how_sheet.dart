@@ -22,7 +22,7 @@ class HowSheet extends StatelessWidget {
     ];
 
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(kSpaceXL, 0, kSpaceXL, kSpaceXL),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -103,25 +103,30 @@ class HowSheet extends StatelessWidget {
                     size: 15,
                     color: t.iconMuted),
                 const SizedBox(width: 8),
-                DsCard(
-                  tinted: true,
-                  radius: 999,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.cloud_sync_outlined,
-                          size: 14, color: t.accentChipText),
-                      const SizedBox(width: 6),
-                      Text(
-                        '확신이 낮을 때만 · 클라우드 2차 재분류',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: t.accentChipText,
+                Flexible(
+                  child: DsCard(
+                    tinted: true,
+                    radius: 999,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.cloud_sync_outlined,
+                            size: 14, color: t.accentChipText),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            '확신이 낮을 때만 · 클라우드 2차 재분류',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: t.accentChipText,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],

@@ -497,8 +497,9 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            // 필터 칩
-            Row(
+            // 필터 칩 — 좁은 폭·큰 글꼴이면 다음 줄로 흐른다
+            Wrap(
+              runSpacing: 6,
               children: [
                 for (final f in _filters)
                   Padding(
