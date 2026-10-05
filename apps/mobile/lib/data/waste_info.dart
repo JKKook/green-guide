@@ -194,7 +194,32 @@ class WasteClassRegistry {
     _byKey = merged;
   }
 
-  static WasteInfo? lookup(String key) => _map[key];
+  static WasteInfo? lookup(String key) {
+    final direct = _map[key];
+    if (direct != null) return direct;
+    // 서버 레지스트리에 없는 세부품목(/labels 미로드·비활성·영역분석 fine 등) —
+    // 정적 taxonomy 미러로 부모 대분류에서 한글화해 합성. 영문 slug 노출 방지
+    // (2026-10-05 에뮬레이터 QA: 영역 라벨 'paper_other' 그대로 노출).
+    final parentKey = kFineToCoarse[key];
+    if (parentKey == null) return null;
+    final parent = _map[parentKey];
+    if (parent == null) return null;
+    return _synthesizeFine(
+      WasteInfo(
+        classKey: key,
+        displayName: key,
+        icon: parent.icon,
+        color: parent.color,
+        summary: '',
+        howTo: const [],
+        caution: const [],
+        bin: '',
+        level: 2,
+        parentSlug: parentKey,
+      ),
+      _map,
+    );
+  }
 
   static bool get isLoaded => _classes != null;
 }

@@ -92,7 +92,8 @@ class _RangeSheetState extends State<RangeSheet> {
         (_start != null && d == _start) || (_end != null && d == _end);
 
     return SafeArea(
-      child: Padding(
+      // 큰 글꼴·낮은 화면에서 달력+프리셋이 시트 높이를 넘치면 내부 스크롤
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -215,7 +216,8 @@ class _RangeSheetState extends State<RangeSheet> {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              runSpacing: 6, // 좁은 폭·큰 글꼴이면 프리셋 칩이 다음 줄로
               children: [
                 for (final p in const ['오늘', '최근 7일', '최근 30일', '이번 달'])
                   Padding(
