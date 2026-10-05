@@ -233,6 +233,9 @@ class EvidenceItem(BaseModel):
     matched_text: str = Field(description="OCR 이 읽은 원문")
     mapped_class: str = Field(description="증거가 가리키는 클래스 slug")
     score: float = Field(description="OCR 인식 확신도")
+    primary: bool = Field(
+        default=False,
+        description="True 면 이 분리배출 표시가 최종 판정을 결정함 (스마트촬영 표시 최우선)")
 
 
 class TaxonomyResponse(BaseModel):

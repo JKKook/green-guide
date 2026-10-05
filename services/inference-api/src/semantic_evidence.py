@@ -37,26 +37,33 @@ _BOOST_IDENTITY = 2.5
 
 # 한글 패턴은 부분문자열 매칭(공백 제거 후), 라틴 패턴은 단어 경계 정규식.
 _LEXICON: list[tuple[str, str, float]] = [
-    # ── A급: 분리배출 표시/재질어 ──
+    # ── A급: 분리배출 표시/재질어 (자원재활용법 분리배출 표시 — 2021 개정 포함) ──
     ("무색페트", "pet", _BOOST_MARK),
     ("페트", "pet", _BOOST_MARK),
     ("hdpe", "plastic_other", _BOOST_MARK),
     ("ldpe", "vinyl_clean", _BOOST_MARK),      # LDPE 마크는 대부분 비닐 포장
+    ("pvc", "plastic_other", _BOOST_MARK),
     ("pp", "plastic_other", _BOOST_MARK),
     ("ps", "plastic_other", _BOOST_MARK),
+    ("other", "plastic_other", _BOOST_MARK),   # 복합재질 플라스틱 (OTHER 표시)
+    ("복합재질", "plastic_other", _BOOST_MARK),
     ("pet", "pet", _BOOST_MARK),
     ("플라스틱", "plastic", _BOOST_MARK),
     ("비닐류", "vinyl", _BOOST_MARK),
     ("비닐", "vinyl", _BOOST_MARK),
     ("캔류", "metal", _BOOST_MARK),
     ("알루미늄", "metal", _BOOST_MARK),
+    ("알미늄", "metal", _BOOST_MARK),           # 표시 표기 '알미늄'
     ("철", "metal", _BOOST_MARK * 0.5),         # 1글자급 오탐 여지 — 약화
     ("유리", "glass", _BOOST_MARK),
     ("종이팩", "carton", _BOOST_MARK),
+    ("일반팩", "carton", _BOOST_MARK),
     ("멸균팩", "carton", _BOOST_MARK),
     ("종이", "paper", _BOOST_MARK * 0.7),       # '종이팩' 보다 먼저 매칭되지 않게 아래 배치 유지
     ("스티로폼", "styrofoam", _BOOST_MARK),
     ("발포", "styrofoam", _BOOST_MARK),
+    ("도포", "trash_other", _BOOST_MARK),       # 2021 개정 '도포·첩합' 표시 = 재활용 어려움 → 종량제
+    ("첩합", "trash_other", _BOOST_MARK),
     ("일반쓰레기", "trash", _BOOST_MARK),
     # ── B급: 정체어 ──
     # 의약/건강기능식품 용기 → 플라스틱 통
@@ -108,6 +115,10 @@ _LATIN_RE = {
     tok: re.compile(rf"(?<![a-z0-9]){re.escape(tok)}(?![a-z0-9])")
     for tok, _, _ in _LEXICON if tok.isascii()
 }
+
+# 부속 표기 — '캡:PP' '라벨:PP' '뚜껑:HDPE' 처럼 몸체가 아닌 부속의 재질.
+# 증거로는 쓰되 최우선 판정(override) 후보에서는 뺀다 (몸체 표기가 우선).
+_ATTACHMENT_RE = re.compile(r"(캡|라벨|뚜껑|마개|cap|label)\s*[:：]?")
 
 
 class SemanticEvidence:
@@ -186,16 +197,41 @@ def match_evidence(texts: list[dict[str, Any]]) -> list[dict[str, Any]]:
             if key in seen:
                 continue
             seen.add(key)
+            is_mark = boost >= _BOOST_MARK * 0.5
             found.append({
-                "type": "mark" if boost >= _BOOST_MARK * 0.5 else "text",
+                "type": "mark" if is_mark else "text",
                 "token": tok,
                 "matched_text": t["text"],
                 "mapped_class": target,
                 "boost": boost,
                 "score": t["score"],
                 "bbox_norm": t["bbox_norm"],
+                "attachment": bool(is_mark and _ATTACHMENT_RE.search(norm)),
+                "primary": False,
             })
     return found
+
+
+def mark_override(evidence: list[dict[str, Any]],
+                  min_score: float | None = None) -> dict[str, Any] | None:
+    """분리배출 표시 최우선 판정 — 몸체 표시 중 OCR 확신이 가장 높은 한 건.
+
+    스마트촬영에서 표시가 읽히면 모델 결과를 이 재질로 교체한다(법정 표시 =
+    사실상 정답지, 2026-10-05 사용자 결정). 부속 표기(캡·라벨)만 있으면 교체하지
+    않는다. 선택된 증거는 primary=True 로 표시돼 앱 칩에 1순위로 노출된다.
+    """
+    thr = config.MARK_OVERRIDE_MIN_SCORE if min_score is None else min_score
+    best = None
+    for ev in evidence:
+        if ev.get("type") != "mark" or ev.get("attachment"):
+            continue
+        if float(ev.get("score", 0)) < thr:
+            continue
+        if best is None or float(ev["score"]) > float(best["score"]):
+            best = ev
+    if best is not None:
+        best["primary"] = True
+    return best
 
 
 def evidence_prior(

@@ -31,6 +31,32 @@ log = get_logger(__name__)
 router = APIRouter()
 
 
+def apply_mark_override(result: dict, mark: dict, fine_to_coarse: dict[str, str]) -> dict:
+    """분리배출 표시(mark)로 분류 결과를 교체. 대상이 fine 이면 fine 표시, coarse 면 대분류 표시.
+
+    모델 결과는 fine_top5·coarse_probabilities 에 남겨 두고 표시 등급·클래스·확신만 바꾼다.
+    확신도는 OCR 확신과 기존 확신 중 큰 값 (표시가 읽힌 이상 낮게 보일 이유가 없음).
+    """
+    target = mark["mapped_class"]
+    score = float(mark["score"])
+    out = dict(result)
+    if target in fine_to_coarse:            # fine slug
+        coarse = fine_to_coarse[target]
+        out.update(display_level="fine", display_class=target, fine_class=target,
+                   fine_confidence=max(score, float(result.get("fine_confidence") or 0.0)))
+    else:                                   # coarse slug
+        coarse = target
+        out.update(display_level="coarse", display_class=target, fine_class=None,
+                   fine_confidence=0.0)
+    out["coarse_class"] = coarse
+    out["coarse_confidence"] = max(score, float(result.get("coarse_confidence") or 0.0))
+    probs = dict(result.get("coarse_probabilities") or {})
+    probs[coarse] = max(float(probs.get(coarse, 0.0)), out["coarse_confidence"])
+    out["coarse_probabilities"] = probs
+    out["model_arch"] = f"{result.get('model_arch', '')} | mark:{mark['token']}"
+    return out
+
+
 @router.post("/predict-hier", response_model=PredictionHierResponse, tags=["inference"])
 async def predict_hier(
     image: UploadFile = File(..., description="분류할 폐기물 이미지"),
@@ -124,6 +150,7 @@ async def predict_hier(
     from src.semantic_evidence import (  # noqa: PLC0415
         evidence_prior,
         get_evidence_engine,
+        mark_override,
         match_evidence,
     )
     evidence: list[dict] = []
@@ -134,7 +161,9 @@ async def predict_hier(
             return a
         return b if a is None else a * b
 
-    need_ocr = (tap_region is not None) or (
+    # 스마트촬영은 분리배출 표시 최우선 — 확신도와 무관하게 항상 OCR
+    mark_priority = config.MARK_PRIORITY_SMART and capture_mode == "smart"
+    need_ocr = mark_priority or (tap_region is not None) or (
         result["fine_confidence"] < config.OCR_SKIP_CONFIDENCE)
     if need_ocr:
         try:
@@ -169,6 +198,12 @@ async def predict_hier(
             result["inference_ms"] + refined["inference_ms"], 2)
         result = refined
 
+    # ── 분리배출 표시 최우선 판정 (스마트촬영) — 몸체 표시가 읽히면 모델 결과 교체 ──
+    mark = mark_override(evidence) if mark_priority else None
+    if mark is not None:
+        result = apply_mark_override(result, mark, clf.taxonomy["fine_to_coarse"])
+        log.info(f"분리배출 표시 최우선 판정: {mark['token']} → {result['display_class']}")
+
     # ── CAM (앱 "왜 이렇게 분류했어?") — 결과 카드를 만든 것과 같은 텐서·prior·
     # 크롭으로 계산해 판단 근거가 표시 결과와 어긋나지 않게 한다. 실패는 fail-open.
     if want_cam:
@@ -184,11 +219,12 @@ async def predict_hier(
     # 증거-불일치 중재: 강한 CLIP 정체 증거(≥0.6)가 CNN 과 다른 대분류를
     # 가리키면 확신도와 무관하게 중재 — 과확신 오답(confident-wrong)이 증거
     # 칩과 모순된 채 그대로 노출되던 이격(실사용: 음식물 사진→의류 85.8%) 처방.
-    evidence_conflict = evidence_conflicts(
+    evidence_conflict = mark is None and evidence_conflicts(
         evidence, result["coarse_class"], clf.taxonomy["fine_to_coarse"])
     if evidence_conflict:
         log.info(f"증거-불일치 중재 발동: CNN={result['coarse_class']}")
-    if (result["display_level"] == "reject"
+    # 표시로 판정된 결과는 VLM 중재 대상에서 제외 (법정 표시가 최우선)
+    if mark is None and (result["display_level"] == "reject"
             or result["coarse_confidence"] < 0.55 or evidence_conflict):
         try:
             from src.vlm_fallback import get_vlm_fallback  # noqa: PLC0415
@@ -248,8 +284,9 @@ async def predict_hier(
             log.warning(f"vlm fallback failed: {exc}")
     if evidence:
         result["evidence"] = [
-            {k: ev[k] for k in ("type", "token", "matched_text",
-                                "mapped_class", "score")}
+            {**{k: ev[k] for k in ("type", "token", "matched_text",
+                                   "mapped_class", "score")},
+             "primary": bool(ev.get("primary", False))}
             for ev in evidence
         ]
 

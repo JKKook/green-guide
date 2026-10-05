@@ -135,6 +135,9 @@ CLIP_PRIOR_WEIGHT: float = float(os.getenv("GREENGUIDE_API_CLIP_W", "0.5"))
 CLIP_SCENE_WEIGHT: float = float(os.getenv("GREENGUIDE_API_CLIP_SCENE_W", "0.2"))
 OCR_ENABLED: bool = os.getenv("GREENGUIDE_API_OCR", "1") != "0"
 OCR_SKIP_CONFIDENCE: float = float(os.getenv("GREENGUIDE_API_OCR_SKIP_CONF", "0.75"))
+# 분리배출 표시 최우선 판정 (스마트촬영): 항상 OCR + 몸체 표시가 읽히면 결과 교체
+MARK_PRIORITY_SMART: bool = os.getenv("GREENGUIDE_API_MARK_PRIORITY", "1") != "0"
+MARK_OVERRIDE_MIN_SCORE: float = float(os.getenv("GREENGUIDE_API_MARK_MIN_SCORE", "0.6"))
 
 # ── VLM 폴백 ──
 VLM_MODEL: str = os.getenv("VLM_MODEL", "claude-haiku-4-5-20251001")
