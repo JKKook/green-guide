@@ -109,12 +109,15 @@ class EvidenceItem {
   final String token; // 표시용 (예: 무색페트, 키보드)
   final String mappedClass;
   final double score;
+  /// 분리배출 표시가 최종 판정을 결정함 (스마트촬영 표시 최우선) — 칩 1순위·강조.
+  final bool primary;
 
   const EvidenceItem({
     required this.type,
     required this.token,
     required this.mappedClass,
     required this.score,
+    this.primary = false,
   });
 
   factory EvidenceItem.fromJson(Map<String, dynamic> json) => EvidenceItem(
@@ -122,6 +125,7 @@ class EvidenceItem {
     token: json['token'] as String,
     mappedClass: json['mapped_class'] as String,
     score: (json['score'] as num).toDouble(),
+    primary: json['primary'] as bool? ?? false,
   );
 }
 
