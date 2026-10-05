@@ -8,8 +8,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:greenguide/api/models.dart';
 import 'package:greenguide/data/legal_terms.dart';
+import 'package:greenguide/features/capture/capture_entry_sheet.dart';
 import 'package:greenguide/features/history/history_screen.dart';
+import 'package:greenguide/features/history/widgets/range_sheet.dart';
 import 'package:greenguide/features/home/home_screen.dart';
 import 'package:greenguide/features/home/widgets/how_sheet.dart';
 import 'package:greenguide/features/onboarding/housing_type_sheet.dart';
@@ -18,8 +21,11 @@ import 'package:greenguide/features/onboarding/steps/apartment_finish_step.dart'
 import 'package:greenguide/features/onboarding/steps/pickup_setup_step.dart';
 import 'package:greenguide/features/onboarding/steps/region_step.dart';
 import 'package:greenguide/features/result/result_modal.dart';
+import 'package:greenguide/features/result/widgets/feedback_sheet.dart';
 import 'package:greenguide/features/schedule/collection_reminders_screen.dart';
 import 'package:greenguide/features/schedule/collection_schedule_screen.dart';
+import 'package:greenguide/features/schedule/pickup_weekdays_sheet.dart';
+import 'package:greenguide/features/schedule/reminder_sheet.dart';
 import 'package:greenguide/features/search/unified_search_screen.dart';
 import 'package:greenguide/features/settings/settings_screen.dart';
 import 'package:greenguide/features/settings/terms_screen.dart';
@@ -27,6 +33,7 @@ import 'package:greenguide/features/shell/main_shell.dart';
 import 'package:greenguide/theme/app_theme.dart';
 import 'package:image/image.dart' as img;
 
+import '../helpers/result_fakes.dart';
 import '../helpers/test_env.dart';
 
 /// 화면 폭·높이(dp) × 글꼴 배율. 폭 320(iPhone SE 1세대·소형 안드로이드) 부터
@@ -110,6 +117,9 @@ void main() {
         'region_prompt_shown': true,
         'region_sido': '서울특별시',
         'region_sigungu': '강남구',
+        'housing_type': 'house',
+        'pickup_weekdays': '2,5',
+        'collection_alarm_opt_in': true,
       },
     );
     await _loadFonts();
@@ -193,6 +203,77 @@ void main() {
       after: null,
     ),
     (
+      name: '결과 모달(스마트촬영·표시 판정)',
+      home: (_) => _opener((c) {
+        final image = File('${dir.path}/shot2.png')
+          ..writeAsBytesSync(img.encodePng(img.Image(width: 64, height: 48)));
+        showResultModal(
+          c,
+          image,
+          isSmartCapture: true,
+          prediction: FakePredictionService(markPriorityJson()),
+          api: () async => FakeApi(),
+        );
+      }),
+      after: (tester) async {
+        await _tapOpen(tester);
+        await settleIo(tester, const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 2));
+      },
+    ),
+    (
+      name: '피드백 시트',
+      home: (_) => _opener(
+        (c) => showModalBottomSheet<void>(
+          context: c,
+          isScrollControlled: true,
+          builder: (_) => FeedbackSheet(
+            prediction: Prediction.fromHierJson(markPriorityJson()),
+          ),
+        ),
+      ),
+      after: _tapOpen,
+    ),
+    (
+      name: '촬영 진입 시트',
+      home: (_) => _opener(showCaptureEntrySheet),
+      after: _tapOpen,
+    ),
+    (
+      name: '기록 기간 시트',
+      home: (_) => _opener(
+        (c) => showModalBottomSheet<void>(
+          context: c,
+          isScrollControlled: true,
+          builder: (_) => const RangeSheet(),
+        ),
+      ),
+      after: _tapOpen,
+    ),
+    (
+      name: '알림 시트',
+      home: (_) => _opener(
+        (c) => showReminderSheet(c, weekday: 2, allowWeekdayPick: true),
+      ),
+      after: _tapOpen,
+    ),
+    (
+      name: '수거 요일 시트',
+      home: (_) => _opener((c) => showPickupWeekdaysSheet(c, current: [2, 5])),
+      after: _tapOpen,
+    ),
+    (
+      name: '앱 정보 다이얼로그',
+      home: (_) => const SettingsScreen(),
+      after: (tester) async {
+        await tester.scrollUntilVisible(find.text('앱 정보'), 200,
+            scrollable: find.byType(Scrollable).first);
+        await tester.tap(find.text('앱 정보'));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+      },
+    ),
+    (
       name: '결과 모달(오류)',
       home: (_) => _opener((c) {
         final image = File('${dir.path}/shot.png')
@@ -210,7 +291,11 @@ void main() {
   for (final s in scenarios) {
     testWidgets('${s.name} — overflow 없음', (tester) async {
       final overflows = <String>[];
-      for (final (w, h, scale) in _configs) {
+      final themes = [('light', buildLightTheme()), ('dark', buildDarkTheme())];
+      for (final ((w, h, scale), (mode, theme)) in [
+        for (final c in _configs)
+          for (final t in themes) (c, t),
+      ]) {
         tester.view.physicalSize = Size(w, h);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.reset);
@@ -221,7 +306,7 @@ void main() {
           if (text.contains('overflowed')) {
             final loc = _locationOf(details);
             overflows.add(
-              '${w.toInt()}x${h.toInt()}@$scale ${details.exceptionAsString()} ← $loc',
+              '${w.toInt()}x${h.toInt()}@$scale/$mode ${details.exceptionAsString()} ← $loc',
             );
           } else {
             prev?.call(details);
@@ -230,7 +315,7 @@ void main() {
         try {
           await tester.pumpWidget(
             MaterialApp(
-              theme: buildLightTheme(),
+              theme: theme,
               locale: const Locale('ko'),
               builder: (context, child) => MediaQuery(
                 data: MediaQuery.of(context).copyWith(

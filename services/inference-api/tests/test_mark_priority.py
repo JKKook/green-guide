@@ -55,6 +55,42 @@ def test_new_2021_marks() -> None:
     assert match_evidence([_t("일반팩")])[0]["mapped_class"] == "carton"
 
 
+def test_ambiguous_tokens_need_mark_context() -> None:
+    # 일반 문장 — 매칭 자체를 하지 않는다 (교체 판정 오탐 방지)
+    def marks(text: str) -> list[dict]:
+        return [e for e in match_evidence([_t(text)]) if e["type"] == "mark"]
+    assert marks("얇게 도포하세요") == []
+    assert marks("발포정 비타민") == []              # '비타민' 정체어(text)만 남는다
+    assert marks("and other items") == []
+    # 표시 줄 모양 — 매칭
+    assert match_evidence([_t("발포스티렌")])[0]["mapped_class"] == "styrofoam"
+    both = {(e["token"], e["attachment"]) for e in marks("OTHER 캡:PP")}
+    assert ("other", False) in both and ("pp", True) in both
+
+
+def test_weak_token_never_overrides() -> None:
+    ev = match_evidence([_t("철분 함유", 0.95)])      # '철' 은 약화 토큰 → 보조 증거만
+    assert ev and ev[0]["mapped_class"] == "metal"
+    assert mark_override(ev) is None
+
+
+def test_body_and_attachment_on_one_line() -> None:
+    ev = match_evidence([_t("몸체:PET 라벨:PP 뚜껑:HDPE")])
+    by = {(e["token"], e["attachment"]) for e in ev if e["type"] == "mark"}
+    assert ("pet", False) in by and ("pp", True) in by and ("hdpe", True) in by
+    assert mark_override(ev)["token"] == "pet"
+
+
+def test_attachment_line_before_body_line_still_overrides() -> None:
+    ev = match_evidence([_t("뚜껑:PP", 0.9), _t("PP", 0.8)])
+    assert mark_override(ev)["token"] == "pp" and mark_override(ev)["attachment"] is False
+
+
+def test_longer_token_wins_same_line() -> None:
+    ev = match_evidence([_t("종이팩")])
+    assert mark_override(ev)["mapped_class"] == "carton"
+
+
 # ── 결과 교체 ──────────────────────────────────────────────────────────────
 
 BASE = {"display_level": "fine", "display_class": "metal", "coarse_class": "metal",
@@ -63,20 +99,30 @@ BASE = {"display_level": "fine", "display_class": "metal", "coarse_class": "meta
         "fine_top5": [], "model_arch": "test", "inference_ms": 1.0}
 
 
-def test_apply_override_fine_target() -> None:
+def test_apply_override_fine_target_other_class_uses_ocr_score() -> None:
     mark = {"mapped_class": "pet", "score": 0.8, "token": "pet"}
     out = apply_mark_override(dict(BASE), mark, FINE_TO_COARSE)
     assert (out["display_level"], out["display_class"], out["coarse_class"]) == ("fine", "pet", "plastic")
-    assert out["fine_confidence"] == pytest.approx(0.9)        # max(OCR 0.8, 기존 0.9)
-    assert out["coarse_probabilities"]["plastic"] == pytest.approx(0.9)
+    assert out["fine_confidence"] == pytest.approx(0.8)        # metal 0.9 를 승계하지 않음
+    assert out["coarse_confidence"] == pytest.approx(0.8)
+    assert out["coarse_probabilities"]["plastic"] == pytest.approx(0.8)
+    assert sum(out["coarse_probabilities"].values()) == pytest.approx(1.0)
     assert "mark:pet" in out["model_arch"]
+
+
+def test_apply_override_same_class_keeps_higher_confidence() -> None:
+    mark = {"mapped_class": "metal", "score": 0.7, "token": "캔류"}
+    out = apply_mark_override(dict(BASE), mark, FINE_TO_COARSE)
+    assert out["coarse_confidence"] == pytest.approx(0.9)
+    assert sum(out["coarse_probabilities"].values()) == pytest.approx(1.0)
 
 
 def test_apply_override_coarse_target() -> None:
     mark = {"mapped_class": "glass", "score": 0.7, "token": "유리"}
     out = apply_mark_override(dict(BASE), mark, FINE_TO_COARSE)
     assert (out["display_level"], out["display_class"], out["fine_class"]) == ("coarse", "glass", None)
-    assert out["coarse_confidence"] == pytest.approx(0.9)
+    assert out["coarse_confidence"] == pytest.approx(0.7)
+    assert out["coarse_probabilities"]["glass"] == pytest.approx(0.7)
 
 
 # ── 라우터 배선: smart 는 항상 OCR + 교체, gallery 는 기존 가드 ───────────────

@@ -40,18 +40,29 @@ def apply_mark_override(result: dict, mark: dict, fine_to_coarse: dict[str, str]
     target = mark["mapped_class"]
     score = float(mark["score"])
     out = dict(result)
+    # 기존 확신도는 '같은 클래스'일 때만 물려받는다 — 다른 클래스의 확신을 승계하면
+    # 모델 plastic 0.95 + 표시 '알루미늄' 0.65 가 metal 95% 로 보이는 불일치가 생김.
     if target in fine_to_coarse:            # fine slug
         coarse = fine_to_coarse[target]
+        same_fine = result.get("fine_class") == target
         out.update(display_level="fine", display_class=target, fine_class=target,
-                   fine_confidence=max(score, float(result.get("fine_confidence") or 0.0)))
+                   fine_confidence=max(score, float(result.get("fine_confidence") or 0.0))
+                   if same_fine else score)
     else:                                   # coarse slug
         coarse = target
         out.update(display_level="coarse", display_class=target, fine_class=None,
                    fine_confidence=0.0)
+    same_coarse = result.get("coarse_class") == coarse
+    conf = max(score, float(result.get("coarse_confidence") or 0.0)) if same_coarse else score
     out["coarse_class"] = coarse
-    out["coarse_confidence"] = max(score, float(result.get("coarse_confidence") or 0.0))
-    probs = dict(result.get("coarse_probabilities") or {})
-    probs[coarse] = max(float(probs.get(coarse, 0.0)), out["coarse_confidence"])
+    out["coarse_confidence"] = conf
+    # 대분류 확률은 교체 클래스를 conf 로 두고 나머지를 (1-conf) 로 재정규화 — 합 1 유지
+    probs = {k: float(v) for k, v in (result.get("coarse_probabilities") or {}).items()}
+    rest = sum(v for k, v in probs.items() if k != coarse)
+    for k in list(probs):
+        if k != coarse:
+            probs[k] = probs[k] * (1.0 - conf) / rest if rest > 0 else 0.0
+    probs[coarse] = conf
     out["coarse_probabilities"] = probs
     out["model_arch"] = f"{result.get('model_arch', '')} | mark:{mark['token']}"
     return out

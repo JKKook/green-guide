@@ -59,7 +59,7 @@ _LEXICON: list[tuple[str, str, float]] = [
     ("종이팩", "carton", _BOOST_MARK),
     ("일반팩", "carton", _BOOST_MARK),
     ("멸균팩", "carton", _BOOST_MARK),
-    ("종이", "paper", _BOOST_MARK * 0.7),       # '종이팩' 보다 먼저 매칭되지 않게 아래 배치 유지
+    ("종이", "paper", _BOOST_MARK),             # '종이팩' 뒤에 배치 — 같은 줄이면 긴 토큰이 우선
     ("스티로폼", "styrofoam", _BOOST_MARK),
     ("발포", "styrofoam", _BOOST_MARK),
     ("도포", "trash_other", _BOOST_MARK),       # 2021 개정 '도포·첩합' 표시 = 재활용 어려움 → 종량제
@@ -117,8 +117,26 @@ _LATIN_RE = {
 }
 
 # 부속 표기 — '캡:PP' '라벨:PP' '뚜껑:HDPE' 처럼 몸체가 아닌 부속의 재질.
+# 토큰 바로 앞에 부속어가 붙은 경우만 (같은 줄의 '몸체:PET 라벨:PP' 에서 PET 는 몸체).
 # 증거로는 쓰되 최우선 판정(override) 후보에서는 뺀다 (몸체 표기가 우선).
-_ATTACHMENT_RE = re.compile(r"(캡|라벨|뚜껑|마개|cap|label)\s*[:：]?")
+_ATTACHMENT_PREFIX_RE = re.compile(r"(캡|라벨|뚜껑|마개|cap|label)[:：]?$")
+
+# 일반 문장에서도 흔히 나오는 토큰은 '표시 줄' 모양일 때만 매칭 (교체 판정 오탐 방지):
+# OTHER 는 짧은 줄(OTHER / OTHER캡:PP), 도포·첩합은 둘이 함께, 발포는 '발포스티렌' 계열만.
+def _strict_ok(tok: str, norm: str) -> bool:
+    if tok == "other":
+        return len(norm) <= 12
+    if tok in ("도포", "첩합"):
+        return ("도포" in norm and "첩합" in norm) or norm in ("도포", "첩합")
+    if tok == "발포":
+        return norm in ("발포", "발포스티렌", "발포폴리스티렌") or norm.startswith("발포스티")
+    return True
+
+
+def _token_positions(tok: str, norm: str) -> list[int]:
+    if tok.isascii():
+        return [m.start() for m in _LATIN_RE[tok].finditer(norm)]
+    return [i for i in range(len(norm)) if norm.startswith(tok, i)]
 
 
 class SemanticEvidence:
@@ -188,16 +206,17 @@ def match_evidence(texts: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if len(norm) < 2:
             continue
         for tok, target, boost in _LEXICON:
-            if tok.isascii():
-                if not _LATIN_RE[tok].search(norm):
-                    continue
-            elif tok not in norm:
+            positions = _token_positions(tok, norm)
+            if not positions or not _strict_ok(tok, norm):
                 continue
-            key = (tok, target)
+            is_mark = boost >= _BOOST_MARK * 0.5
+            # 몸체 표기가 하나라도 있으면 몸체, 전부 부속어 뒤면 부속
+            attachment = is_mark and all(
+                _ATTACHMENT_PREFIX_RE.search(norm[:p]) for p in positions)
+            key = (tok, target, attachment)
             if key in seen:
                 continue
             seen.add(key)
-            is_mark = boost >= _BOOST_MARK * 0.5
             found.append({
                 "type": "mark" if is_mark else "text",
                 "token": tok,
@@ -206,7 +225,7 @@ def match_evidence(texts: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "boost": boost,
                 "score": t["score"],
                 "bbox_norm": t["bbox_norm"],
-                "attachment": bool(is_mark and _ATTACHMENT_RE.search(norm)),
+                "attachment": attachment,
                 "primary": False,
             })
     return found
@@ -225,9 +244,13 @@ def mark_override(evidence: list[dict[str, Any]],
     for ev in evidence:
         if ev.get("type") != "mark" or ev.get("attachment"):
             continue
+        if float(ev.get("boost", 0)) < _BOOST_MARK:
+            continue   # 약화된 토큰('철' 등 오탐 여지)은 보조 증거로만
         if float(ev.get("score", 0)) < thr:
             continue
-        if best is None or float(ev["score"]) > float(best["score"]):
+        # 같은 줄에서 '종이팩'과 '종이'가 함께 잡히면 긴 토큰(구체적 표시)이 우선
+        rank = (float(ev["score"]), len(ev["token"]))
+        if best is None or rank > (float(best["score"]), len(best["token"])):
             best = ev
     if best is not None:
         best["primary"] = True
