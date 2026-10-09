@@ -277,7 +277,7 @@ def main() -> int:
                             label_names=np.array(label_names))
         print(f"[main] ✓ embeddings saved: {emb_path}")
 
-    print(f"[main] label distribution: {Counter(label_names[l] for l in labels[:1000])} (sample)")
+    print(f"[main] label distribution: {Counter(label_names[i] for i in labels[:1000])} (sample)")
 
     # 2. Linear head 학습
     head_path = OUT_DIR / "linear_head.pt"
@@ -294,7 +294,7 @@ def main() -> int:
     onnx_path = OUT_DIR / "dinov2_classifier.onnx"
     export_combined_onnx(head, label_names, onnx_path)
 
-    print(f"\n[main] 다음: cp {onnx_path} ../waste-api/models/")
+    print(f"\n[main] 다음: cp {onnx_path} ../services/inference-api/models/")
     return 0
 
 

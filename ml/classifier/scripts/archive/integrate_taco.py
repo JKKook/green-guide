@@ -188,7 +188,6 @@ def main() -> int:
     unmapped = set(cats_by_id.values()) - mapped_names
     if unmapped:
         print(f"  ⚠ 매핑 정의 안 됨 ({len(unmapped)}개): {sorted(unmapped)}")
-    none_mapped = [k for k, v in TACO_MAPPING.items() if v is None]
     print(f"  매핑 분포: {Counter(v for v in TACO_MAPPING.values() if v)}")
 
     # 클래스별 카운터 + 로그

@@ -16,7 +16,8 @@ class GlassButton extends StatelessWidget {
 
   /// 아이콘만 있는 버튼이라 스크린리더용 이름이 필요하다.
   final String semanticLabel;
-  const GlassButton({super.key, 
+  const GlassButton({
+    super.key,
     required this.size,
     this.radius,
     this.outlined = false,
@@ -35,28 +36,27 @@ class GlassButton extends StatelessWidget {
       button: true,
       label: semanticLabel,
       child: Material(
-      color: Colors.white.withValues(alpha: active ? 0.22 : 0.10),
-      borderRadius: shape,
-      child: InkWell(
+        color: Colors.white.withValues(alpha: active ? 0.22 : 0.10),
         borderRadius: shape,
-        onTap: onTap,
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            borderRadius: shape,
-            border: outlined
-                ? Border.all(color: Colors.white.withValues(alpha: 0.18))
-                : null,
+        child: InkWell(
+          borderRadius: shape,
+          onTap: onTap,
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              borderRadius: shape,
+              border: outlined
+                  ? Border.all(color: Colors.white.withValues(alpha: 0.18))
+                  : null,
+            ),
+            child: Center(child: child),
           ),
-          child: Center(child: child),
         ),
-      ),
       ),
     );
   }
 }
-
 
 /// 뷰파인더 코너 브래킷 — 34px · 2.5px · 흰색 85%.
 class CaptureCorner extends StatelessWidget {
@@ -66,8 +66,10 @@ class CaptureCorner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final side =
-        BorderSide(color: Colors.white.withValues(alpha: 0.85), width: 2.5);
+    final side = BorderSide(
+      color: Colors.white.withValues(alpha: 0.85),
+      width: 2.5,
+    );
     const r = Radius.circular(10);
     return Container(
       width: 34,
@@ -90,12 +92,12 @@ class CaptureCorner extends StatelessWidget {
   }
 }
 
-
 class CameraErrorOverlay extends StatelessWidget {
   final String message;
   final bool isPermission;
   final VoidCallback onRetry;
-  const CameraErrorOverlay({super.key, 
+  const CameraErrorOverlay({
+    super.key,
     required this.message,
     required this.isPermission,
     required this.onRetry,

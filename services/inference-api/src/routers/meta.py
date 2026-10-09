@@ -48,7 +48,7 @@ def health() -> HealthResponse:
 def design_tokens() -> dict:
     """디자인 토큰 (W3C Design Tokens draft) — 앱 실측값.
 
-    출처: waste_app app_theme.dart · confidence.dart · waste_info.dart.
+    출처: apps/mobile app_theme.dart · confidence.dart · waste_info.dart.
     디자인 도구(Figma Tokens/style-dictionary)·시안 문서가 URL 로 소비.
     """
     import json  # noqa: PLC0415

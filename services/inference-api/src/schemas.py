@@ -121,6 +121,10 @@ class MaterialRegion(BaseModel):
     bbox_norm: list[float] = Field(..., description="[x0,y0,x1,y1] 0~1 (라벨 위치용)")
     avg_conf: float
     cell_count: int
+    color_hex: str | None = Field(
+        default=None,
+        description="빗금 오버레이에 쓴 색 (#RRGGBB) — 앱 배지·목록이 같은 색을 쓰도록",
+    )
 
 
 class PredictionWithRegionsResponse(PredictionResponse):
@@ -184,6 +188,9 @@ class PredictionHierResponse(BaseModel):
     model_arch: str
     inference_ms: float
     upload_id: str | None = Field(default=None, description="user_uploads 기록 id")
+    cam_base64: str | None = Field(
+        default=None,
+        description="want_cam=true 요청 시 — 이 결과를 만든 크롭 위 CAM overlay PNG (data URI)")
     ood_distance: float | None = Field(
         default=None,
         description="최근접 prototype 임베딩 cosine 거리 (낮을수록 in-distribution)")
@@ -226,6 +233,9 @@ class EvidenceItem(BaseModel):
     matched_text: str = Field(description="OCR 이 읽은 원문")
     mapped_class: str = Field(description="증거가 가리키는 클래스 slug")
     score: float = Field(description="OCR 인식 확신도")
+    primary: bool = Field(
+        default=False,
+        description="True 면 이 분리배출 표시가 최종 판정을 결정함 (스마트촬영 표시 최우선)")
 
 
 class TaxonomyResponse(BaseModel):

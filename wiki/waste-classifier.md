@@ -1,10 +1,10 @@
-# waste-classifier — 학습·ONNX export 레포
+# ml/classifier — 학습·ONNX export 레포
 
-> 소스: `waste-classifier/README.md`, `waste-classifier/HIER_TRAINING_GUIDE.md`, `waste-classifier/lab.md`, `waste-classifier/src/`, `waste-classifier/scripts/` (2026-08-13 탐색)
+> 소스: `ml/classifier/README.md`, `ml/classifier/HIER_TRAINING_GUIDE.md`, `ml/classifier/lab.md`, `ml/classifier/greenguide_classifier/`, `ml/classifier/scripts/` (2026-08-13 탐색)
 
-GreenGuide AI 파이프라인의 학습 전담 서브프로젝트. **폐기물 이미지 분류 모델 학습 + ONNX export**를 담당하며, 서빙은 [waste-api](waste-api.md)(`/predict-hier`), 온디바이스는 [waste_app](waste-app.md)(onnxruntime)이 맡는다. git 저장소 아님 — 버전 이력은 `outputs/logs/diagnosis/*.jsonl`과 백업 폴더가 대신한다.
+GreenGuide AI 파이프라인의 학습 전담 서브프로젝트. **폐기물 이미지 분류 모델 학습 + ONNX export**를 담당하며, 서빙은 [waste-api](waste-api.md)(`/predict-hier`), 온디바이스는 [apps/mobile](waste-app.md)(onnxruntime)이 맡는다. git 저장소 아님 — 버전 이력은 `outputs/logs/diagnosis/*.jsonl`과 백업 폴더가 대신한다.
 
-전체 흐름: `waste-preprocessor(수집·전처리) → waste-classifier(학습·ONNX) → waste-api(추론) → Flutter 앱`. → [architecture-overview](architecture-overview.md)
+전체 흐름: `ml/preprocessor(수집·전처리) → ml/classifier(학습·ONNX) → waste-api(추론) → Flutter 앱`. → [architecture-overview](architecture-overview.md)
 
 ## 문서 3종 — 세대가 다름 (주의)
 
@@ -16,7 +16,7 @@ GreenGuide AI 파이프라인의 학습 전담 서브프로젝트. **폐기물 �
 
 ## 모델 아키텍처
 
-- **현행**: `src/model.py::build_hier_model()` — resnet18 / convnext_tiny / resnet50 선택(env `WASTE_HIER_BACKBONE`). **배포 아티팩트는 resnet50** (ONNX 94MB). 출력은 **fine 25클래스 단일 head**, 대분류는 확률 롤업 `P(coarse) = Σ P(fine children)`.
+- **현행**: `src/model.py::build_hier_model()` — resnet18 / convnext_tiny / resnet50 선택(env `GREENGUIDE_HIER_BACKBONE`). **배포 아티팩트는 resnet50** (ONNX 94MB). 출력은 **fine 25클래스 단일 head**, 대분류는 확률 롤업 `P(coarse) = Σ P(fine children)`.
 - CAM export 래퍼: `(logits, cam, embedding)` 3-output. CAM은 `fc.weight`를 1×1 conv로 적용(INT8 양자화 호환), embedding은 GAP 512d(OOD reject용 → [ood-openset](ood-openset.md)).
 - 레거시 flat: MLP(39.84% — baseline 유물) / ResNet18 CNN(92.35%) / cnn_edge(Sobel 앙상블 실험). ConvNeXt는 MPS에서 ~40배 느려 실사용 제외.
 - 실험 백본: DINOv2 head, CLIP concepts(→ [semantic-fusion](semantic-fusion.md)), Stage1 binary(6MB, 캐스케이드 전단).

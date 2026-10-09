@@ -17,7 +17,7 @@ from greenguide_classifier import config
 
 GOLDEN_PATH = Path(__file__).parent / "fixtures" / "golden_logits.json"
 # worktree 등 outputs/ 가 없는 체크아웃에서는 env 로 모델 위치를 지정
-MODELS_DIR = Path(os.getenv("WASTE_GOLDEN_MODELS_DIR", config.MODELS_DIR))
+MODELS_DIR = Path(os.getenv("GREENGUIDE_GOLDEN_MODELS_DIR", config.MODELS_DIR))
 MODELS = {
     "cnn": MODELS_DIR / "cnn" / "classifier.onnx",
     "cnn_hier": MODELS_DIR / "cnn_hier" / "classifier.onnx",

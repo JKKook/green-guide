@@ -31,11 +31,62 @@ log = get_logger(__name__)
 router = APIRouter()
 
 
+def apply_mark_override(result: dict, mark: dict, fine_to_coarse: dict[str, str]) -> dict:
+    """분리배출 표시(mark)로 분류 결과를 교체. 대상이 fine 이면 fine 표시, coarse 면 대분류 표시.
+
+    모델 결과는 fine_top5·coarse_probabilities 에 남겨 두고 표시 등급·클래스·확신만 바꾼다.
+    확신도는 OCR 확신과 기존 확신 중 큰 값 (표시가 읽힌 이상 낮게 보일 이유가 없음).
+    """
+    target = mark["mapped_class"]
+    score = float(mark["score"])
+    out = dict(result)
+    # 기존 확신도는 '같은 클래스'일 때만 물려받는다 — 다른 클래스의 확신을 승계하면
+    # 모델 plastic 0.95 + 표시 '알루미늄' 0.65 가 metal 95% 로 보이는 불일치가 생김.
+    if target in fine_to_coarse:            # fine slug
+        coarse = fine_to_coarse[target]
+        same_fine = result.get("fine_class") == target
+        out.update(display_level="fine", display_class=target, fine_class=target,
+                   fine_confidence=max(score, float(result.get("fine_confidence") or 0.0))
+                   if same_fine else score)
+    else:                                   # coarse slug
+        coarse = target
+        out.update(display_level="coarse", display_class=target, fine_class=None,
+                   fine_confidence=0.0)
+    same_coarse = result.get("coarse_class") == coarse
+    conf = max(score, float(result.get("coarse_confidence") or 0.0)) if same_coarse else score
+    out["coarse_class"] = coarse
+    out["coarse_confidence"] = conf
+    # 대분류 확률은 교체 클래스를 conf 로 두고 나머지를 (1-conf) 로 재정규화 — 합 1 유지
+    probs = {k: float(v) for k, v in (result.get("coarse_probabilities") or {}).items()}
+    rest = sum(v for k, v in probs.items() if k != coarse)
+    for k in list(probs):
+        if k != coarse:
+            probs[k] = probs[k] * (1.0 - conf) / rest if rest > 0 else 0.0
+    probs[coarse] = conf
+    out["coarse_probabilities"] = probs
+    out["model_arch"] = f"{result.get('model_arch', '')} | mark:{mark['token']}"
+    return out
+
+
 @router.post("/predict-hier", response_model=PredictionHierResponse, tags=["inference"])
 async def predict_hier(
     image: UploadFile = File(..., description="분류할 폐기물 이미지"),
     tap_x: float | None = Form(default=None, ge=0.0, le=1.0),
     tap_y: float | None = Form(default=None, ge=0.0, le=1.0),
+    # ── 촬영 메타 (전부 선택, 필드명은 앱과 계약 — 변경 금지) ──────────────
+    orientation: int | None = Form(default=None, ge=1, le=8,
+                                   description="앱이 읽은 EXIF Orientation (1/3/6/8)"),
+    capture_mode: str | None = Form(default=None, pattern="^(smart|gallery)$"),
+    quality_blur: float | None = Form(default=None),
+    quality_brightness: float | None = Form(default=None),
+    crop_applied: bool | None = Form(default=None),
+    crop_box: str | None = Form(default=None, description='"x,y,w,h"'),
+    ai_training_opt_in: bool | None = Form(
+        default=None,
+        description="촬영 사진 AI 학습 활용 동의(선택 약관) — 학습 데이터셋 필터 기준"),
+    want_cam: bool = Form(
+        default=False,
+        description="true 면 이 결과를 만든 텐서·크롭 그대로의 CAM 을 cam_base64 로 반환"),
 ) -> PredictionHierResponse:
     """계층 분류 — 대분류(항상) + 세부(신뢰도 게이트 통과 시).
 
@@ -95,8 +146,11 @@ async def predict_hier(
     # ── 1차 패스: EXIF 태그 기반 축소 TTA (트랙 B2 — 3×→평균 1.7×) ──────────
     # 게이트를 통과했다 = stage1 이 '폐기물'로 판정 (또는 fail-open)
     # → 분류기의 non_object 는 모순된 답이므로 마스킹 (실측 +5.9pp)
+    # 앱이 orientation 을 보내면 서버 EXIF 판독보다 신뢰 (갤러리 재인코딩 등으로
+    # EXIF 가 소실된 사진에서도 TTA 후보를 2개로 축소).
+    tta_tag = orientation if orientation is not None else exif_tag
     result, best_tensor = predict_rotations(
-        clf, cropped_raw, degs_for_orientation(exif_tag),
+        clf, cropped_raw, degs_for_orientation(tta_tag),
         mask_non_object=True, ood_relax=tap_x is not None)
 
     # ── 시맨틱 증거 융합 (SEMANTIC_FUSION_PLAN §3 + 청사진 v2 트랙 B1) ──────
@@ -107,6 +161,7 @@ async def predict_hier(
     from src.semantic_evidence import (  # noqa: PLC0415
         evidence_prior,
         get_evidence_engine,
+        mark_override,
         match_evidence,
     )
     evidence: list[dict] = []
@@ -117,7 +172,9 @@ async def predict_hier(
             return a
         return b if a is None else a * b
 
-    need_ocr = (tap_region is not None) or (
+    # 스마트촬영은 분리배출 표시 최우선 — 확신도와 무관하게 항상 OCR
+    mark_priority = config.MARK_PRIORITY_SMART and capture_mode == "smart"
+    need_ocr = mark_priority or (tap_region is not None) or (
         result["fine_confidence"] < config.OCR_SKIP_CONFIDENCE)
     if need_ocr:
         try:
@@ -152,16 +209,33 @@ async def predict_hier(
             result["inference_ms"] + refined["inference_ms"], 2)
         result = refined
 
+    # ── 분리배출 표시 최우선 판정 (스마트촬영) — 몸체 표시가 읽히면 모델 결과 교체 ──
+    mark = mark_override(evidence) if mark_priority else None
+    if mark is not None:
+        result = apply_mark_override(result, mark, clf.taxonomy["fine_to_coarse"])
+        log.info(f"분리배출 표시 최우선 판정: {mark['token']} → {result['display_class']}")
+
+    # ── CAM (앱 "왜 이렇게 분류했어?") — 결과 카드를 만든 것과 같은 텐서·prior·
+    # 크롭으로 계산해 판단 근거가 표시 결과와 어긋나지 않게 한다. 실패는 fail-open.
+    if want_cam:
+        try:
+            cam_res = clf.predict(best_tensor, want_cam=True, mask_non_object=True,
+                                  fine_prior=prior, ood_relax=tap_x is not None)
+            result["cam_base64"] = render_overlay_png_base64(cropped_raw, cam_res["cam"])
+        except Exception as exc:  # noqa: BLE001
+            log.warning(f"hier CAM 생성 실패 (근거 없이 진행): {exc}")
+
     # ── VLM 폴백 (트랙 A2) — 융합 후에도 저확신이면 Claude 에 최종 판정 위임 ──
     # 키 미설정/한도초과/실패 시 자동 무시 (fail-open). 결과는 evidence 로 표면화.
     # 증거-불일치 중재: 강한 CLIP 정체 증거(≥0.6)가 CNN 과 다른 대분류를
     # 가리키면 확신도와 무관하게 중재 — 과확신 오답(confident-wrong)이 증거
     # 칩과 모순된 채 그대로 노출되던 이격(실사용: 음식물 사진→의류 85.8%) 처방.
-    evidence_conflict = evidence_conflicts(
+    evidence_conflict = mark is None and evidence_conflicts(
         evidence, result["coarse_class"], clf.taxonomy["fine_to_coarse"])
     if evidence_conflict:
         log.info(f"증거-불일치 중재 발동: CNN={result['coarse_class']}")
-    if (result["display_level"] == "reject"
+    # 표시로 판정된 결과는 VLM 중재 대상에서 제외 (법정 표시가 최우선)
+    if mark is None and (result["display_level"] == "reject"
             or result["coarse_confidence"] < 0.55 or evidence_conflict):
         try:
             from src.vlm_fallback import get_vlm_fallback  # noqa: PLC0415
@@ -221,8 +295,9 @@ async def predict_hier(
             log.warning(f"vlm fallback failed: {exc}")
     if evidence:
         result["evidence"] = [
-            {k: ev[k] for k in ("type", "token", "matched_text",
-                                "mapped_class", "score")}
+            {**{k: ev[k] for k in ("type", "token", "matched_text",
+                                   "mapped_class", "score")},
+             "primary": bool(ev.get("primary", False))}
             for ev in evidence
         ]
 
@@ -237,6 +312,18 @@ async def predict_hier(
         "all_probabilities": result["coarse_probabilities"],
         "model_arch": result["model_arch"],
         "inference_ms": result["inference_ms"],
+    }, meta={
+        "orientation": orientation,
+        "capture_mode": capture_mode,
+        "quality_blur": quality_blur,
+        "quality_brightness": quality_brightness,
+        "crop_applied": crop_applied,
+        "crop_box": crop_box,
+        "exif_orientation": exif_tag,
+        "tta_rotation": result.get("tta_rotation"),
+        "tap_x": tap_x,
+        "tap_y": tap_y,
+        "ai_training_opt_in": ai_training_opt_in,
     })
 
     return PredictionHierResponse(**result, upload_id=upload_id)

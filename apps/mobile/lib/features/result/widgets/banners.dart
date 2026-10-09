@@ -220,18 +220,21 @@ class UncertainBanner extends StatelessWidget {
 ///  - 일반: 모델이 어느 클래스에도 확신 못 할 때 → "기타/분류 불가" + 모델 추측 참고.
 ///  - 다중재질(isMultiMaterial=true): 여러 재질이 섞여 단일 분류가 어려운 경우
 ///    → "여러 재질이 섞여 있어요" + CAM 버튼. 등록(etc)로 단정하지 않고
-///    아래 재질별 안내(MultiMaterialCard)로 안내함. (image 제공 시 CAM 표시)
+///    아래 재질별 안내(MultiMaterialCard)로 안내함.
+///  image 를 주면 어느 변형이든 CAM "왜 이렇게 분류했어?" 버튼을 표시한다.
 class RejectCard extends StatelessWidget {
   final Prediction prediction;
   final bool isMultiMaterial;
   final bool isMultiObject;
   final File? image;
+  final Offset? tapNorm; // CAM 요청에 같은 탭 크롭을 쓰기 위한 좌표
   const RejectCard({
     super.key,
     required this.prediction,
     this.isMultiMaterial = false,
     this.isMultiObject = false,
     this.image,
+    this.tapNorm,
   });
 
   @override
@@ -343,14 +346,16 @@ class RejectCard extends StatelessWidget {
               ),
             ),
           ],
-          // CAM "왜 이렇게 분류했어?" — 멀티 케이스에서 image 가 주어지면 표시.
-          if (isMultiMaterial && image != null) ...[
+          // CAM "왜 이렇게 분류했어?" — image 가 주어지면 모든 reject 변형에서 표시
+          // (분류 못 한 이유를 보여주는 게 이 화면에서 가장 유용).
+          if (image != null) ...[
             const SizedBox(height: kSpaceM),
             ExplainButton(
               image: image!,
               accent: accent,
               info: etc,
               prediction: prediction,
+              tapNorm: tapNorm,
             ),
           ],
         ],

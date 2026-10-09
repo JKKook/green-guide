@@ -11,16 +11,16 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-WASTE_ROOT: Path = Path(__file__).resolve().parents[3]  # libs/greenguide-common/greenguide_common/ → 레포 루트
+GREENGUIDE_ROOT: Path = Path(__file__).resolve().parents[3]  # libs/greenguide-common/greenguide_common/ → 레포 루트
 
 
 def _root(env_name: str, default_dirname: str) -> Path:
-    return Path(os.getenv(env_name, WASTE_ROOT / default_dirname)).resolve()
+    return Path(os.getenv(env_name, GREENGUIDE_ROOT / default_dirname)).resolve()
 
 
-PREPROCESSOR_ROOT: Path = _root("WASTE_PREPROCESSOR_ROOT", "ml/preprocessor")
-CLASSIFIER_ROOT: Path = _root("WASTE_CLASSIFIER_ROOT", "ml/classifier")
-API_ROOT: Path = _root("WASTE_API_ROOT", "services/inference-api")
+PREPROCESSOR_ROOT: Path = _root("GREENGUIDE_PREPROCESSOR_ROOT", "ml/preprocessor")
+CLASSIFIER_ROOT: Path = _root("GREENGUIDE_CLASSIFIER_ROOT", "ml/classifier")
+API_ROOT: Path = _root("GREENGUIDE_API_ROOT", "services/inference-api")
 
 
 def load_env() -> None:
@@ -33,6 +33,7 @@ load_env()
 
 # ── Supabase ────────────────────────────────────────────────────────────────
 SUPABASE_TABLE_ITEMS: str = os.getenv("SUPABASE_TABLE", "items")
+SUPABASE_TABLE_USER_UPLOADS: str = os.getenv("SUPABASE_TABLE_USER_UPLOADS", "user_uploads")
 BUCKET_RAW_IMAGES: str = os.getenv("SUPABASE_BUCKET", "raw-images")
 BUCKET_USER_UPLOADS: str = "user-uploads"
 BUCKET_MODELS: str = "models"

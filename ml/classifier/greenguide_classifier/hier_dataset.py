@@ -148,7 +148,7 @@ def build_hier_splits(items: list[dict[str, Any]]) -> dict[str, list[int]]:
     frozen_all = legacy_frozen | hier_frozen
     # frozen 멤버를 포함한 그룹 전체 → test 강제 (train 누수 차단)
     group_forced_test: set[int] = set()
-    for g, members in group_members.items():
+    for _g, members in group_members.items():
         if any(items[i]["source_path"] in frozen_all for i in members):
             group_forced_test.update(members)
 
@@ -217,7 +217,7 @@ def build_hier_splits(items: list[dict[str, Any]]) -> dict[str, list[int]]:
     train_idx: list[int] = []
     val_idx: list[int] = []
     val_frac = SPLIT_RATIOS["val"] / (SPLIT_RATIOS["train"] + SPLIT_RATIOS["val"])
-    for key, pool in pool_by_class.items():
+    for _key, pool in pool_by_class.items():
         units = _group_units(pool)
         rng.shuffle(units)
         n_val_target = int(len(pool) * val_frac) if len(pool) >= 4 else 0
@@ -282,11 +282,14 @@ def load_or_build_hier_splits(items: list[dict[str, Any]]) -> dict[str, list[int
     return build_hier_splits(items)
 
 
-# 90° 단위 회전 증강 (v7) — AI-Hub 크롭은 센서 방향(EXIF 미적용)이라 모델이
+# 90° 단위 회전 증강 (v7) — AI-Hub 크롭은 센서 방향 픽셀에 EXIF 태그도 없어
+# (2026-09-09 실측: manifest 70,524장 중 Orientation≠1 은 35장뿐) 모델이
 # '눕힌' 객체 분포를 학습했고, 서빙(EXIF 세움) 입력이 분포 밖이 되는 문제의
 # 근본 해결 (실측: 세움 26 vs 눕힘 36/51 → 서빙은 회전 TTA 로 임시 흡수 중.
 # 방향 불변 모델이 되면 TTA 제거 가능 — 추론 1/3). SEMANTIC_FUSION_PLAN 참고.
-ROT90_AUG = os.getenv("WASTE_HIER_ROT90_AUG", "0") == "1"
+# 로더(_load_rgb_chw01)는 이제 EXIF 방향 보정을 적용해 서빙 전처리와 정렬됨 —
+# 태그가 있는 소수(위 35장)만 세워지고, 태그 없는 크롭은 이 증강이 계속 담당.
+ROT90_AUG = os.getenv("GREENGUIDE_HIER_ROT90_AUG", "0") == "1"
 
 
 class HierImageDataset(Dataset):
@@ -294,7 +297,7 @@ class HierImageDataset(Dataset):
 
     sup_kind_flag: 1=fine, 0=coarse — collate 후 loss 에서 마스크로 사용.
     변환(리사이즈/정규화/증강)은 기존 WasteImageDataset 과 동일
-    (+ WASTE_HIER_ROT90_AUG=1 이면 90° 단위 회전 무작위 적용).
+    (+ GREENGUIDE_HIER_ROT90_AUG=1 이면 90° 단위 회전 무작위 적용).
     """
 
     def __init__(self, items: list[dict[str, Any]], augment: bool = False) -> None:

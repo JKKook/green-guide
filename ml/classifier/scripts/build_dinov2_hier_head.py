@@ -79,7 +79,7 @@ def _subsample(items, splits, split_name, rng):
         if it["sup_kind"] == "fine":
             by_c[it["sup_idx"]].append(it)
     out = []
-    for c, pool in by_c.items():
+    for _c, pool in by_c.items():
         rng.shuffle(pool)
         out.extend(pool[:PER_CLASS_CAP])
     return out
@@ -116,7 +116,7 @@ def extract(split_items, tag: str, model, device) -> tuple[np.ndarray, np.ndarra
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-extract", action="store_true")
-    args = ap.parse_args()
+    ap.parse_args()
 
     import random
     rng = random.Random(SEED)
@@ -160,7 +160,9 @@ def main() -> None:
         for i in range(0, len(Xt), 512):
             idx = perm[i:i + 512]
             loss = crit(head(Xt[idx]), Yt[idx])
-            opt.zero_grad(); loss.backward(); opt.step()
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
         head.eval()
         with torch.no_grad():
             acc = (head(Xv).argmax(1) == Yv).float().mean().item()

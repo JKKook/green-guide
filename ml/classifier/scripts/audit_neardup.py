@@ -48,8 +48,10 @@ def main() -> None:
     print("\n=== fine-staging 클래스 내 '동일 pHash' 중복 (거리 0) ===")
     total_files = total_dups = 0
     for slug, cnt in sorted(by_class_exact.items()):
-        n = sum(cnt.values()); dups = n - len(cnt)
-        total_files += n; total_dups += dups
+        n = sum(cnt.values())
+        dups = n - len(cnt)
+        total_files += n
+        total_dups += dups
         if dups:
             print(f"  {slug:18} {n:>7,}장 중 중복 {dups:>6,} ({dups/n:.1%})")
     print(f"  {'합계':18} {total_files:>7,}장 중 중복 {total_dups:>6,} ({total_dups/max(total_files,1):.1%})")
@@ -70,7 +72,8 @@ def main() -> None:
             for a in range(len(bucket)):
                 for c in range(a + 1, len(bucket)):
                     i, j = bucket[a], bucket[c]
-                    if (i, j) in seen: continue
+                    if (i, j) in seen:
+                        continue
                     seen.add((i, j))
                     d = hashes[i] - hashes[j]
                     if d <= 4:

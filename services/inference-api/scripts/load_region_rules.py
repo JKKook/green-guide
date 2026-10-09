@@ -4,7 +4,7 @@
 원천: 행정안전부_생활쓰레기배출정보 조회서비스 (data.go.kr/data/15155080/openapi.do)
 - REST, JSON, 일간 갱신, 시도·시군구 검색. 무료지만 **활용신청으로 서비스키 필요**.
 - 키 준비: data.go.kr 회원 → 해당 API '활용신청'(자동승인) → 일반 인증키(Decoding)
-  를 waste-api/.env 에 DATA_GO_KR_KEY=... 로 저장.
+  를 services/inference-api/.env 에 DATA_GO_KR_KEY=... 로 저장.
 
 실행: .venv/bin/python scripts/load_region_rules.py [--sido 서울특별시]
       (인자 없으면 전국 전체 페이지네이션 적재 — upsert)

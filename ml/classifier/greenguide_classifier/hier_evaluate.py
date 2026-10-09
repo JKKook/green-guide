@@ -46,7 +46,7 @@ def _guidance_safe_f1(fine_true: list[int], fine_pred: list[int], slug: str) -> 
     """안내-동일 혼동을 정답으로 취급한 f1 (특정 slug 기준)."""
     idx = FINE_LABELS.index(slug)
     tp = fp = fn = 0
-    for t, p in zip(fine_true, fine_pred):
+    for t, p in zip(fine_true, fine_pred, strict=False):
         t_ok = t == idx
         # 예측/정답이 slug 와 '안내상 동일' 하면 매치로 간주
         p_match = same_guidance(FINE_LABELS[p], slug)
@@ -103,7 +103,7 @@ def evaluate_hier() -> dict:
     # ── 대분류 정확도 (전체) ─────────────────────────────────────────────
     true_coarse = [
         FINE_IDX_TO_COARSE_IDX[s] if f else s
-        for f, s in zip(all_is_fine, all_sup)
+        for f, s in zip(all_is_fine, all_sup, strict=False)
     ]
     coarse_report = classification_report(
         true_coarse, all_pred_coarse,
@@ -113,8 +113,8 @@ def evaluate_hier() -> dict:
     coarse_acc = coarse_report["accuracy"]
 
     # ── 세부 (fine-감독 아이템만) ────────────────────────────────────────
-    fine_true = [s for f, s in zip(all_is_fine, all_sup) if f]
-    fine_pred = [p for f, p in zip(all_is_fine, all_pred_fine) if f]
+    fine_true = [s for f, s in zip(all_is_fine, all_sup, strict=False) if f]
+    fine_pred = [p for f, p in zip(all_is_fine, all_pred_fine, strict=False) if f]
     fine_report = classification_report(
         fine_true, fine_pred,
         labels=list(range(len(FINE_LABELS))),

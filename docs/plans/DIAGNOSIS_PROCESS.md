@@ -4,7 +4,7 @@
 정확도를 "느낌"이 아니라 **버전 간 비교 가능한 숫자**로 관리하고, 나쁜 모델이
 프로덕션에 올라가는 걸 막고, 분류 불가(etc) 데이터를 자동으로 정리한다.
 
-> 위치: `waste-classifier/` (학습 레포)
+> 위치: `ml/classifier/` (학습 레포)
 > 관련 문서: [ADDING_A_NEW_CLASS.md](ADDING_A_NEW_CLASS.md)
 
 ---
@@ -34,7 +34,7 @@ python diagnose.py --no-supabase                            # Supabase 기록 �
 
 ### ③ 저장 (이중)
 - **레포**: `outputs/logs/diagnosis/<version>.json` (상세) + `history.jsonl` (회귀 비교 baseline)
-- **Supabase**: `model_diagnostics` 테이블 ([migration 004](waste-classifier/migrations/004_model_diagnostics.sql))
+- **Supabase**: `model_diagnostics` 테이블 ([migration 004](ml/classifier/migrations/004_model_diagnostics.sql))
 - **게이트 통과 버전만** 이력에 커밋 → 실패 시도가 baseline 을 오염시키지 않음.
 
 ### ④ retrain 안전 게이트 — `retrain.py`
@@ -60,7 +60,7 @@ etc('기타/분류 불가') 피드백이 **30건** 쌓이면 retrain 초입에�
 
 **사람이 하는 단 한 가지**: 픽셀 군집에서 올바른 한국어 이름·배출법은 자동 생성
 불가 → pseudo-class 는 `active=false`(사용자에게 숨김)로 두고, `etc_clusters`
-리뷰 테이블([migration 005](waste-classifier/migrations/005_etc_clusters.sql))을 보고
+리뷰 테이블([migration 005](ml/classifier/migrations/005_etc_clusters.sql))을 보고
 운영자가 이름·배출법을 넣어 `active=true` 로 승격 (→ [ADDING_A_NEW_CLASS.md](ADDING_A_NEW_CLASS.md)).
 
 ```bash

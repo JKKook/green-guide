@@ -2,7 +2,7 @@
 
 > 소스: `aihub_71385_staging/`, `aihub_71647_staging/`, `openimages_staging/`, `synth_indoor_staging/`, `taco_staging/`, `bin/aihubshell` (2026-08-13 탐색)
 
-외부 데이터셋을 다운로드→크롭→[waste-preprocessor](waste-preprocessor.md) `fine-staging/`으로 통합하기 전의 작업 영역. 루트에 위치.
+외부 데이터셋을 다운로드→크롭→[ml/preprocessor](waste-preprocessor.md) `fine-staging/`으로 통합하기 전의 작업 영역. 루트에 위치.
 
 | 디렉터리 | 데이터셋 | 크기 | 상태 |
 |---|---|---|---|
@@ -19,7 +19,7 @@
 - `crop_140.py`: AI-Hub 140 품목 zip → light_bulb(전구≠형광등 오분리 방지), glass_deposit(소주·맥주병), electronics, cardboard 수혈.
 - `collector.py` + `overnight_c.sh`: 클래스별 쿼터(`TARGETS`) 달성까지 야간 반복 수집, 신규 <300 3회면 은퇴.
 - `integrate_staging.py`: crops → fine-staging 통합. PER_CLASS_MAX 10,000, **도메인 우선순위 C(스마트폰) > B(실내) > A(선별장)**, 조건은 파일명 보존 `aihub385_<cond>__*.jpg`.
-- API 키는 `waste-preprocessor/.env`의 `AIHUB_APIKEY`. `bin/aihubshell`은 AI-Hub 공식 CLI(v0.6)이지만 실제 스크립트는 salvage 목적으로 동일 엔드포인트를 직접 curl.
+- API 키는 `ml/preprocessor/.env`의 `AIHUB_APIKEY`. `bin/aihubshell`은 AI-Hub 공식 CLI(v0.6)이지만 실제 스크립트는 salvage 목적으로 동일 엔드포인트를 직접 curl.
 
 ## openimages_staging
 
@@ -28,6 +28,6 @@
 
 ## synth_indoor_staging
 
-생성기는 `waste-classifier/scripts/synthesize_indoor_scenes.py` — 실사용 사진의 저saliency 영역에서 배경 수확 + fine-staging 크롭을 u2netp 누끼로 합성. `synmo_` prefix는 frozen test 자동 제외. 규율: **학습 사이클 도중 fine-staging 수정 금지**. 참고: v9의 합성 실내 접근은 배경 편향으로 폐기됨 → [data-experiments](data-experiments.md).
+생성기는 `ml/classifier/scripts/synthesize_indoor_scenes.py` — 실사용 사진의 저saliency 영역에서 배경 수확 + fine-staging 크롭을 u2netp 누끼로 합성. `synmo_` prefix는 frozen test 자동 제외. 규율: **학습 사이클 도중 fine-staging 수정 금지**. 참고: v9의 합성 실내 접근은 배경 편향으로 폐기됨 → [data-experiments](data-experiments.md).
 
 관련 메모리: AI-Hub 71385 수집은 Supabase 쿼터 원칙과 함께 진행 중이었음 → [supabase-infra](supabase-infra.md).

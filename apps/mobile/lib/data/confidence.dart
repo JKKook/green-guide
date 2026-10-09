@@ -113,3 +113,14 @@ String confidenceLabel(ConfidenceLevel level) {
       return '불확실';
   }
 }
+
+
+/// 결과 화면의 "분류 불가(reject)" 판정 — 셋 중 하나면 reject:
+/// (1) 신뢰도 부족 (top1 < 0.55 또는 정규화 엔트로피 > 0.7)
+/// (2) 모델이 명시적으로 non_object (폐기물 아님 — 재촬영 신호)
+/// (3) 계층 응답이 reject (대분류조차 불확실)
+/// 결과 카드와 사진 위 영역 배지가 같은 규칙을 쓰도록 한 곳에 둔다.
+bool isRejectPrediction(Prediction p) =>
+    assessConfidence(p).shouldReject ||
+    p.predictedClass == 'non_object' ||
+    (p.hier?.isReject ?? false);

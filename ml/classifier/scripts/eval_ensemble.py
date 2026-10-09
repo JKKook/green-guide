@@ -8,9 +8,9 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import numpy as np
+from _base import PROJECT_ROOT
 from greenguide_common.logging import get_logger
 from sklearn.metrics import precision_recall_fscore_support
 from torch.utils.data import DataLoader
@@ -22,7 +22,6 @@ from greenguide_classifier.split import load_splits, subset_items
 
 log = get_logger(__name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parent
 COLOR_ONNX = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx"
 EDGE_ONNX = PROJECT_ROOT / "outputs" / "models" / "cnn_edge" / "classifier.onnx"
 
@@ -48,7 +47,7 @@ def evaluate_ensemble():
 
     y_true, y_color, y_edge, y_ensemble = [], [], [], []
 
-    for (xc, yc), (xe, ye) in zip(color_loader, edge_loader):
+    for (xc, yc), (xe, ye) in zip(color_loader, edge_loader, strict=False):
         assert (yc == ye).all(), "label 순서 다름"
         xc_np = xc.numpy()
         xe_np = xe.numpy()

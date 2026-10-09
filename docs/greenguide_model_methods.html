@@ -42,7 +42,7 @@
 
 <h1>그린가이드 AI — 모델·추론 파이프라인 기술 문서</h1>
 <div class="meta">
-  v1.0 · 2026-08-06 · 작성: 개발 세션 실측 기반 (waste-classifier / waste-api / waste_app)<br>
+  v1.0 · 2026-08-06 · 작성: 개발 세션 실측 기반 (ml/classifier / waste-api / apps/mobile)<br>
   적용 버전: 모델 <b>hier_v2</b> (레지스트리 v20260805_152341) · 서버 <span class="mono">facc879</span> · 앱 88MB 슬림 빌드
 </div>
 
@@ -73,7 +73,7 @@ ONNX 단일 패스)의 이원 구조를 갖는다. 두 경로는 <b>동일한 �
   <tr><td>u2netp</td><td>4.4MB ONNX</td><td>클라우드 전용</td><td>saliency — 객체 마스크·성분 분리(watershed-lite)·다중 물건 후보</td></tr>
   <tr><td>CLIP 이미지 인코더</td><td>INT8 ONNX + 컨셉 임베딩 66개</td><td>클라우드 전용</td><td>정체(identity) 인식 — 제로샷 컨셉 매칭, 한국어 증거 토큰</td></tr>
   <tr><td>RapidOCR</td><td>PP-OCRv5 korean mobile</td><td>클라우드 전용</td><td>라벨 문구·분리배출 마크 텍스트 인식</td></tr>
-  <tr><td>DINOv2 분류기</td><td>ONNX (기본 <b>비활성</b>)</td><td>클라우드 전용</td><td>앙상블 후보 — 홀드아웃 중립이라 <span class="mono">WASTE_API_DINO_W=0</span></td></tr>
+  <tr><td>DINOv2 분류기</td><td>ONNX (기본 <b>비활성</b>)</td><td>클라우드 전용</td><td>앙상블 후보 — 홀드아웃 중립이라 <span class="mono">GREENGUIDE_API_DINO_W=0</span></td></tr>
   <tr><td>VLM 폴백</td><td>Claude Haiku 4.5 (API)</td><td>클라우드 전용</td><td>저확신·reject·증거불일치 시 최종 판정자. 일 200회 상한</td></tr>
   <tr><td>GrabCut (모델 아님 — CV 알고리즘)</td><td>OpenCV</td><td>클라우드 전용</td><td>탭 지점 물건의 픽셀 실루엣 분리 — 탭 분류 크롭·빗금 영역</td></tr>
 </table>

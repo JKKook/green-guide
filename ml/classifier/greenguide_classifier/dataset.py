@@ -36,13 +36,14 @@ def _load_rgb_chw01(item: dict[str, Any]) -> torch.Tensor:
     """manifest item → (3, 224, 224) float32 텐서, [0,1] 범위 (정규화 전).
 
     source_path 는 preprocessor 루트 기준 상대경로.
+    EXIF 방향 보정(decode_rgb)을 거쳐 서빙(api preprocess)과 동일한 픽셀을 학습한다.
     """
     src = item.get("source_path")
     if src is None:
         raise KeyError(f"item {item.get('id')} 에 source_path 없음")
     abs_path = config.PREPROCESSOR_ROOT / src
     with Image.open(abs_path) as im:
-        im = im.convert("RGB").resize(
+        im = imaging.decode_rgb(im).resize(
             (config.IMAGE_SIZE, config.IMAGE_SIZE), Image.BILINEAR,
         )
         arr = np.asarray(im, dtype=np.float32) / 255.0  # (H, W, C)

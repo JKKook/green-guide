@@ -31,7 +31,7 @@ import numpy as np
 import requests
 import torch
 import torch.nn as nn
-from greenguide_common import imaging
+from greenguide_common import imaging, settings
 from greenguide_common.logging import fail_open, get_logger
 from PIL import Image
 from postgrest.types import CountMethod
@@ -73,7 +73,7 @@ def _supabase() -> Client:
 def count_etc_queue(client: Client | None = None) -> int:
     client = client or _supabase()
     res = (
-        client.table("user_uploads")
+        client.table(settings.SUPABASE_TABLE_USER_UPLOADS)
         .select("id", count=CountMethod.exact)
         .eq("feedback_label", "etc")
         .execute()
@@ -164,7 +164,7 @@ def process_etc_queue(apply: bool = False) -> dict[str, Any]:
     """etc 큐를 2단계로 처리. apply=False 면 dry-run(변경 없음, 분석만)."""
     client = _supabase()
     rows = (
-        client.table("user_uploads")
+        client.table(settings.SUPABASE_TABLE_USER_UPLOADS)
         .select("id,image_url,feedback_label")
         .eq("feedback_label", "etc")
         .execute()
@@ -248,7 +248,7 @@ def process_etc_queue(apply: bool = False) -> dict[str, Any]:
 def _apply(client: Client, summary: dict[str, Any]) -> None:
     # 1) 재배정 — feedback_label 을 기존 클래스로
     for upload_id, cls in summary["reassigned"].items():
-        client.table("user_uploads").update(
+        client.table(settings.SUPABASE_TABLE_USER_UPLOADS).update(
             {"feedback_label": cls},
         ).eq("id", upload_id).execute()
     log.info(f"{len(summary['reassigned'])}건 기존 클래스 재배정")
@@ -270,7 +270,7 @@ def _apply(client: Client, summary: dict[str, Any]) -> None:
             "active": False,   # 사용자에겐 숨김 — 이름 붙인 뒤 active=true 로 승격
         }, on_conflict="slug").execute()
         for upload_id in cl["upload_ids"]:
-            client.table("user_uploads").update(
+            client.table(settings.SUPABASE_TABLE_USER_UPLOADS).update(
                 {"feedback_label": slug},
             ).eq("id", upload_id).execute()
         with fail_open(log, "etc_clusters 기록 (migration 005 필요?)"):

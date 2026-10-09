@@ -4,7 +4,7 @@ frozen test 는 AI Hub 분포(길바닥 가전·깔끔한 크롭)라 실사용�
 user_uploads 의 confirmed/corrected 피드백(=사용자 검증 라벨)을 ground truth 로
 현재 모델의 실사용 정확도·혼동을 측정한다.
 
-사용: python realworld_eval.py
+사용: python scripts/realworld_eval.py
 """
 from __future__ import annotations
 
@@ -13,9 +13,10 @@ import json
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
 
+import _base  # noqa: F401 — sys.path 설정
 import numpy as np
 import requests
-from greenguide_common import imaging
+from greenguide_common import imaging, settings
 from greenguide_common.logging import get_logger
 from greenguide_common.supabase import Bucket, get_client
 from PIL import Image
@@ -35,8 +36,8 @@ def _prep(img: Image.Image, center_frac: float | None = None) -> np.ndarray:
     if center_frac:
         w, h = img.size
         s = int(min(w, h) * center_frac)
-        l, t = (w - s) // 2, (h - s) // 2
-        img = img.crop((l, t, l + s, t + s))
+        left, top = (w - s) // 2, (h - s) // 2
+        img = img.crop((left, top, left + s, top + s))
     im = img.convert("RGB").resize((224, 224), Image.BILINEAR)
     return np.ascontiguousarray(((np.asarray(im, np.float32) / 255 - _MEAN) / _STD).transpose(2, 0, 1))[None]
 
@@ -54,7 +55,7 @@ def main() -> int:
         return labels[i], float(p[i])
 
     cli = get_client()
-    rows = (cli.table("user_uploads")
+    rows = (cli.table(settings.SUPABASE_TABLE_USER_UPLOADS)
             .select("id,image_url,storage_path,feedback_label,feedback_status")
             .in_("feedback_status", ["confirmed", "corrected"]).execute().data) or []
     log.info(f"피드백 {len(rows)}건 수집")
@@ -80,20 +81,22 @@ def main() -> int:
             continue
         pred, _ = classify(img)
         pred_c, _ = classify(img, center_frac=0.7)
-        y_true.append(truth); y_pred.append(pred); y_pred_crop.append(pred_c)
+        y_true.append(truth)
+        y_pred.append(pred)
+        y_pred_crop.append(pred_c)
 
     n = len(y_true)
     if n == 0:
         log.warning("평가 가능한 샘플 0 — 피드백 데이터 부족")
         return 0
 
-    acc = sum(t == p for t, p in zip(y_true, y_pred)) / n
-    acc_crop = sum(t == p for t, p in zip(y_true, y_pred_crop)) / n
+    acc = sum(t == p for t, p in zip(y_true, y_pred, strict=False)) / n
+    acc_crop = sum(t == p for t, p in zip(y_true, y_pred_crop, strict=False)) / n
 
     # per-class + 혼동
     per_class: dict[str, dict] = defaultdict(lambda: {"n": 0, "correct": 0})
     confusions: Counter = Counter()
-    for t, p in zip(y_true, y_pred):
+    for t, p in zip(y_true, y_pred, strict=False):
         per_class[t]["n"] += 1
         if t == p:
             per_class[t]["correct"] += 1

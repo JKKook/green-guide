@@ -20,6 +20,7 @@ class PredictionCard extends StatelessWidget {
   final WasteInfo? info;
   final Color accent;
   final ConfidenceAssessment assessment;
+  final Offset? tapNorm; // CAM 요청에 같은 탭 크롭을 쓰기 위한 좌표
   const PredictionCard({
     super.key,
     required this.image,
@@ -27,6 +28,7 @@ class PredictionCard extends StatelessWidget {
     required this.info,
     required this.accent,
     required this.assessment,
+    this.tapNorm,
   });
 
   /// 분석 주체 — 모델 이름으로 기기/서버 구분.
@@ -97,6 +99,7 @@ class PredictionCard extends StatelessWidget {
           accent: accent,
           info: info,
           prediction: prediction,
+          tapNorm: tapNorm,
         ),
       ],
     );

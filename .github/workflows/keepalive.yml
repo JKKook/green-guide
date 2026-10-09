@@ -8,14 +8,16 @@ on:
 jobs:
   ping:
     runs-on: ubuntu-latest
+    # 시크릿은 step 의 if 에서 직접 참조할 수 없어(파싱 실패로 워크플로 전체가 한 번도
+    # 실행되지 않았음, 2026-10-04 확인) job env 로 올리고 env 로 분기한다.
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     steps:
       - name: HF Space /health
         run: curl -fsS --max-time 180 https://ethandev92-waste-api.hf.space/health
       - name: Supabase REST
-        if: ${{ secrets.SUPABASE_URL != '' }}
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        if: ${{ env.SUPABASE_URL != '' }}
         run: |
           curl -fsS --max-time 30 "$SUPABASE_URL/rest/v1/region_waste_rules?select=sido&limit=1" \
             -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" > /dev/null

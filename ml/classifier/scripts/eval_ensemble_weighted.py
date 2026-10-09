@@ -5,9 +5,8 @@ w 를 0.1 ~ 0.9 까지 변경하며 최적값 찾기.
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
+from _base import PROJECT_ROOT
 from greenguide_common.logging import get_logger
 from sklearn.metrics import precision_recall_fscore_support
 from torch.utils.data import DataLoader
@@ -19,7 +18,6 @@ from greenguide_classifier.split import load_splits, subset_items
 
 log = get_logger(__name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parent
 COLOR_ONNX = PROJECT_ROOT / "outputs" / "models" / "cnn" / "classifier.onnx"
 EDGE_ONNX = PROJECT_ROOT / "outputs" / "models" / "cnn_edge" / "classifier.onnx"
 
@@ -38,7 +36,7 @@ def collect_probs():
     edge_loader = DataLoader(edge_ds, batch_size=32, shuffle=False)
 
     ys, color_probs, edge_probs = [], [], []
-    for (xc, yc), (xe, _) in zip(color_loader, edge_loader):
+    for (xc, yc), (xe, _) in zip(color_loader, edge_loader, strict=False):
         logits_c = sc.run(["logits"], {color_in: xc.numpy()})[0]
         logits_e = se.run(["logits"], {edge_in: xe.numpy()})[0]
         color_probs.append(softmax(logits_c, axis=1))

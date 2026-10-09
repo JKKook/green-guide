@@ -14,7 +14,7 @@
 | ImageNet mean/std 상수 직접 기술 | 16 파일 | `greenguide_classifier/dataset.py`, `greenguide_classifier/ood.py`, `visualize_*.py`, `scripts/*` |
 | `_softmax` 자체 구현 | 5곳 | `revalidate`, `eval_ensemble`, `eval_ensemble_weighted`, `etc_queue`, `visualize_multimaterial` |
 | `create_client(os.getenv("SUPABASE_URL"), ...)` | 8곳 | `retrain.py`(4회), `revalidate`, `realworld_eval`, `retrain_hier`, `etc_queue` |
-| PIL 이미지 로드/URL 다운로드 | 24 파일 | `etc_queue._download_image`, `scripts/integrate_taco.download_image` 등 |
+| PIL 이미지 로드/URL 다운로드 | 24 파일 | `etc_queue._download_image`, `scripts/archive/integrate_taco.download_image` 등 |
 | device 선택(cuda/mps/cpu) | 7 파일 | `greenguide_classifier/train.py`, `visualize_cam.py`, `scripts/build_dinov2_*` |
 | 진입점 스크립트 (각자 argparse) | 루트 13 + scripts/ 27 = 40개 | — |
 | 테스트 커버리지 | `src/` 5개 모듈만 (dataset/split/model/hierarchy) | 루트·scripts 는 0 |
@@ -63,7 +63,7 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 각 단계는 `[작업] → verify: [확인 방법]` 형식. 순서는 의존성 순.
 
 ### Phase 0 — Baseline & 도구 (0.5일) ✅ 2026-08-30 완료
-- [x] baseline 커밋 `634025c` — greenguide-classifier/ 디렉터리만(89 파일). monorepo 의 waste_app·waste-api·wiki 는 범위 밖이라 untracked 유지
+- [x] baseline 커밋 `634025c` — greenguide-classifier/ 디렉터리만(89 파일). monorepo 의 apps/mobile·waste-api·wiki 는 범위 밖이라 untracked 유지
 - [x] `pyproject.toml` + `pip install -e .` (`5cfc193`) — `scripts/__init__.py` 추가, ruff 규칙 `E,F,I,B,UP` (E501 은 ignore)
 - [x] `ruff --fix` 안전 수정 97건 적용 (147 → 50건 잔여). 잔여 50건 내역: E702 14 / B905 12 / E402 9(sys.path 해킹 → 2-1 에서 해소) / B007 6 / E741 5 / F841 3 / E701 1
 - [x] pytest 32 passed, **pyright 기준선: 205 errors, 9 warnings** (`pyright src scripts *.py tests`)
@@ -82,7 +82,7 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 
 ### Phase 1 — Characterization tests (1일) ✅ 2026-08-30 완료
 - [x] `tests/test_golden_inference.py` + `tests/fixtures/golden_logits.json` — seed 고정 난수 입력 3장 → `cnn`(13 logits)·`cnn_hier`(25 logits) 출력 고정, `rtol/atol=1e-4`. 모델 파일 없으면 skip. 재생성 `python -m tests.test_golden_inference --update`
-  (worktree 처럼 `outputs/` 가 없는 체크아웃은 `WASTE_GOLDEN_MODELS_DIR=<main tree>/ml/classifier/outputs/models` 지정)
+  (worktree 처럼 `outputs/` 가 없는 체크아웃은 `GREENGUIDE_GOLDEN_MODELS_DIR=<main tree>/ml/classifier/outputs/models` 지정)
 - [x] `_softmax` 5벌 비교 — 전부 max-shift 방식으로 수치 동일, 차이는 **축뿐**: 1-D(`revalidate`) / axis=1(`eval_ensemble*`, `etc_queue`) / axis=0(`visualize_multimaterial`) → `softmax(x, axis)` 하나로 대체 가능
 - [x] 전처리 상수 16곳 → greenguide_common 이관으로 이미 `greenguide_common.imaging` 1곳(0.485 grep 1건). 세부 옵션 차이는 이관 세션이 처리
 - [x] Supabase fake — `greenguide_common.supabase.get_client()` 로 이관됐으므로 conftest 에서 그 함수를 monkeypatch 하면 됨 (classifier 내 `create_client` 직접 호출 0건)
@@ -97,19 +97,20 @@ pyproject.toml           # ★ 신설 — src 패키지 editable 설치 + ruff �
 | 2-1 | ONNX 세션 + softmax | `InferenceSession(` 23회 / `_softmax` 5벌 | `greenguide_classifier/infer.py`: `load_session(path)`, `softmax(x, axis=-1)` → 호출부 교체, 5벌 삭제 | golden 테스트 + `grep "def _softmax"` 0 |
 | 2-2 | device 선택 | 2곳 (`greenguide_classifier/train.py`, `visualize_cam.py`) | `greenguide_classifier/infer.py` `get_device()` 로 통합 | `greenguide_classifier/train.py` smoke |
 | 2-3 | `sys.path` | 10곳 (`scripts/_base.py` 방식) | **유지** — 이관 세션이 채택한 방식이고 `pip install -e .` 도 동작하므로 두 경로 모두 허용. E402 는 ruff `per-file-ignores` 로 scripts/ 한정 허용 | ruff 신규 위반 0 |
-| 2-4 | ruff 잔여 (E702 14 / B905 12 / B007 6 / E741 5 / F841 3) | 로직 접촉 필요 | 파일 단위로 나눠 처리, 커밋당 규칙 하나. B905 는 `strict=True` 가 아니라 **현행 동작 보존** 위해 `strict=False` 명시 | pytest + golden |
+| 2-4 ✅ | ruff 잔여 40건 | **0건** | B905 → `strict=False`(동작 보존) · B007 `_` 접두 · E741 `l`→`ln/left/i` · F841 미사용 대입 제거(`parse_args()` 호출은 유지) · E702/E701 줄 분리 · E402 `import os` 상단 이동 | pytest 41 + golden, 진입점 `--help` 9 통과 |
 
-### Phase 3 — 스크립트 정리 (1일)
-- [ ] 루트 13개 진입점 분류: 운영 파이프라인(`main`, `retrain*`, `revalidate`, `feedback_monitor`, `etc_queue`) / 분석 도구(`diagnose`, `visualize_*`, `eval_ensemble*`, `realworld_eval`)
-  → 운영은 루트 유지, 분석은 `scripts/` 로 이동. `git mv` 사용(히스토리 보존)
-- [ ] `scripts/` 27개 중 데이터 통합 완료된 1회용(`integrate_*`, `extend_manifest_*`, `extract_bg_140`) → `scripts/archive/` 이동. 삭제 X (재현성)
-- [ ] `eval_ensemble.py` vs `eval_ensemble_weighted.py` — 가중치 인자 하나로 합칠 수 있으면 통합, 아니면 그대로
-  → verify: README/HIER_TRAINING_GUIDE 의 실행 명령 전부 갱신 후 실제 실행
+### Phase 3 — 스크립트 정리 ✅ 2026-08-31 완료
+- [x] 루트 진입점 분류 — **운영(루트 유지)**: `main` `retrain` `retrain_hier` `revalidate` `feedback_monitor` `etc_queue`(retrain·ood 가 import) `diagnose`(retrain 이 import).
+  **분석(→ `scripts/`)**: `eval_ensemble` `eval_ensemble_weighted` `visualize_cam` `visualize_multimaterial` `realworld_eval`. `git mv` 로 이력 보존, `PROJECT_ROOT` 는 `_base` 에서 import
+- [x] `scripts/archive/` — `integrate_aihub` `integrate_kaggle_garbage12` `integrate_taco` `extend_manifest_synthetic` `extend_manifest_taco` `extract_bg_140` `_tau_check` (+ README: `PYTHONPATH=scripts` 로 재실행 가능)
+- [x] 실험 셸 스크립트 3개(`_overnight_pipeline` `_test_d1_pipeline` `test_b_continuation`)의 경로 갱신
+- [ ] `eval_ensemble` vs `eval_ensemble_weighted` 통합 — 보류(가중치 스윕 로직이 달라 합치면 인터페이스가 바뀜)
+- 참고: `wiki/`·`docs/plans/` 의 옛 경로 언급은 repo 범위라 손대지 않음 — 상위 구조 세션에 전달
 
 ### Phase 4 — 품질 규칙 고정 (0.5일)
 - [ ] `config.py` 의 import-time 부수효과(`refresh_classes_from_manifest()` 자동 호출, `print`) 를 **명시 호출**로 바꿀지 결정. 바꾼다면 호출부 전수 확인 — 리스크 있으니 별도 PR
 - [ ] `print` 로깅 → `logging` 전환은 **이번 범위 밖**. 공통단 신규 코드만 `logging` 사용
-- [ ] `ruff check` 를 pytest 앞에 두는 `Makefile`/`scripts/check.sh` 1개
+- [x] `scripts/check.sh` — ruff → pytest 순, 실패 시 중단 (2026-08-31)
 - [ ] 이 문서의 진단 표를 최종 수치로 갱신 (목표: InferenceSession 직접 호출 0, softmax 구현 1, create_client 1, sys.path 0)
 
 ---
@@ -122,7 +123,7 @@ grep -rn "InferenceSession("         --include='*.py' . | wc -l   # 2 (infer.py 
 grep -rn "def _softmax"              --include='*.py' . | wc -l   # 0
 grep -rn "create_client("            --include='*.py' . | wc -l   # 0 (greenguide_common.supabase 로 이관)
 grep -rn "0.485"                     --include='*.py' . | wc -l   # 0 (greenguide_common.imaging 로 이관)
-pytest && ruff check . && pyright                                 # 통과, pyright 에러 수 ≤ Phase 0 기준선
+pytest && ruff check . && pyright                                 # ruff 0건 달성(2026-08-31), pyright 에러 수 ≤ Phase 0 기준선
 python tests/test_golden_inference.py                             # golden 일치
 ```
 + README·HIER_TRAINING_GUIDE 의 실행 명령이 전부 실제로 동작.

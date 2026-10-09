@@ -3,7 +3,7 @@
 > 재정립: 2026-07-07
 > 기준 시스템: 활성 모델 13클래스(flat softmax) / ResNet18+DINOv2 앙상블 / 하이브리드(온디바이스+클라우드)
 > 대체 대상: 기존 문서들이 참조했으나 실재하지 않던 `GREENGUIDE_BLUEPRINT.md` 를 이 문서로 확정.
-> 연계 문서: [DIAGNOSIS_PROCESS.md](DIAGNOSIS_PROCESS.md) · [SMART_CAPTURE_STRATEGY.md](SMART_CAPTURE_STRATEGY.md) · [waste-preprocessor/DATA_AUGMENTATION_RESULTS.md](waste-preprocessor/DATA_AUGMENTATION_RESULTS.md) · [AIHUB_PAPER_HYPOTHESIS_TEST.md](waste-preprocessor/AIHUB_PAPER_HYPOTHESIS_TEST.md)
+> 연계 문서: [DIAGNOSIS_PROCESS.md](DIAGNOSIS_PROCESS.md) · [SMART_CAPTURE_STRATEGY.md](SMART_CAPTURE_STRATEGY.md) · [ml/preprocessor/DATA_AUGMENTATION_RESULTS.md](ml/preprocessor/DATA_AUGMENTATION_RESULTS.md) · [AIHUB_PAPER_HYPOTHESIS_TEST.md](ml/preprocessor/AIHUB_PAPER_HYPOTHESIS_TEST.md)
 
 ---
 
@@ -13,7 +13,7 @@
 
 1. **클래스를 늘릴수록 클래스당 데이터가 부족해진다.** 현재도 이미 극심한 불균형 — vinyl 10,176장 vs **etc 189 / non_object 720 / trash 827 / food_waste 985 / electronics 1,002 / cardboard 1,006**. 여기서 "프로덕션급"으로 품목을 더 쪼개면(PET 무색/유색, 우유팩/멸균팩, 갈색/녹색 유리…) 세부 품목당 수백 장 확보도 어렵다.
 2. **flat softmax 는 "애매하면 대분류로만 답하기"를 못 한다.** PET인지 PP인지 헷갈리면 그냥 틀린 세부 라벨을 확신 있게 뱉는다. 사용자에겐 "플라스틱함에 넣으세요"만 맞아도 충분한데, 그걸 표현할 구조가 없다.
-3. **실사용 갭(frozen 95.9% vs 실사용 63.4%, −32.5pp)은 클래스를 늘린다고 좁혀지지 않는다.** [SMART_CAPTURE_STRATEGY.md](SMART_CAPTURE_STRATEGY.md) · [AIHUB_PAPER_HYPOTHESIS_TEST.md](waste-preprocessor/AIHUB_PAPER_HYPOTHESIS_TEST.md) 의 일관된 결론.
+3. **실사용 갭(frozen 95.9% vs 실사용 63.4%, −32.5pp)은 클래스를 늘린다고 좁혀지지 않는다.** [SMART_CAPTURE_STRATEGY.md](SMART_CAPTURE_STRATEGY.md) · [AIHUB_PAPER_HYPOTHESIS_TEST.md](ml/preprocessor/AIHUB_PAPER_HYPOTHESIS_TEST.md) 의 일관된 결론.
 
 ### 해법의 뼈대 (3축 결정 반영)
 
@@ -105,7 +105,7 @@ electronics ┬ small_appliance 소형가전
 
 - 활성 세부품목 전체 softmax → **부모 대분류별 확률 합산**으로 대분류 확률도 동시 산출.
   - `P(대분류 c) = Σ_{fine ∈ c} P(fine)` — 대분류는 세부의 결정적 롤업. 세부가 흩어져도 대분류는 견고.
-- 기존 캐스케이드 그대로 재사용: MediaPipe 손감지 → Stage1 이진 게이트 → 세부 분류기(ResNet18) → **DINOv2 앙상블**(신뢰도 보정). [waste-api/src/api.py](waste-api/src/api.py) `predict_centered`.
+- 기존 캐스케이드 그대로 재사용: MediaPipe 손감지 → Stage1 이진 게이트 → 세부 분류기(ResNet18) → **DINOv2 앙상블**(신뢰도 보정). [services/inference-api/src/api.py](services/inference-api/src/api.py) `predict_centered`.
 - DINOv2 임베딩은 **few-shot 신규 세부품목**의 프로토타입 근거로도 재사용(3.3 참고).
 
 ### 2.3 표현 깊이 = 신뢰도 게이트 (핵심 UX 규칙)
@@ -116,7 +116,7 @@ elif 대분류 확률 ≥ τ_coarse:                        → 대분류만 안
 else:                                              → etc/non_object (재촬영 or 캐치올)
 ```
 
-이 규칙이 "flat softmax 가 애매해도 확신 있게 틀리던 문제"를 구조적으로 제거한다. 기존 [waste_app/lib/data/confidence.dart](waste_app/lib/data/confidence.dart)(top1<0.55 or entropy>0.7 reject)를 **레벨별 임계**로 일반화.
+이 규칙이 "flat softmax 가 애매해도 확신 있게 틀리던 문제"를 구조적으로 제거한다. 기존 [apps/mobile/lib/data/confidence.dart](apps/mobile/lib/data/confidence.dart)(top1<0.55 or entropy>0.7 reject)를 **레벨별 임계**로 일반화.
 
 ---
 
@@ -125,13 +125,13 @@ else:                                              → etc/non_object (재촬영
 ### 3.1 왜 AI-Hub가 세부품목 확장에 맞는가 (그리고 한계)
 
 - AI-Hub 재활용/생활폐기물 세트는 **품목이 세분화·박스 라벨링**되어 있어, flat 6클래스로는 못 쓰던 세부 라벨을 **바로 세부품목 cold-start** 에 매핑 가능. HD 확보됨 → 대량 수용 가능.
-- **정직한 한계(문서로 검증됨)**: AI-Hub는 스튜디오/시설 분포라 **실사용 갭을 혼자 못 닫는다**([AIHUB_PAPER_HYPOTHESIS_TEST.md](waste-preprocessor/AIHUB_PAPER_HYPOTHESIS_TEST.md): "라벨 정확도 ≠ 학습 기여", 진짜 문제는 분포 미스매치). → AI-Hub는 **"폭(breadth)/세부품목을 존재하게 하는" 레버**이고, **"실사용 정확도(depth)"는 크롭·도메인 랜덤화 + 실데이터 수집과 병행**해야 한다. 이 청사진은 AI-Hub를 1순위로 하되 이 병행을 명시한다.
+- **정직한 한계(문서로 검증됨)**: AI-Hub는 스튜디오/시설 분포라 **실사용 갭을 혼자 못 닫는다**([AIHUB_PAPER_HYPOTHESIS_TEST.md](ml/preprocessor/AIHUB_PAPER_HYPOTHESIS_TEST.md): "라벨 정확도 ≠ 학습 기여", 진짜 문제는 분포 미스매치). → AI-Hub는 **"폭(breadth)/세부품목을 존재하게 하는" 레버**이고, **"실사용 정확도(depth)"는 크롭·도메인 랜덤화 + 실데이터 수집과 병행**해야 한다. 이 청사진은 AI-Hub를 1순위로 하되 이 병행을 명시한다.
 
 ### 3.2 AI-Hub 수집·통합 파이프라인 (기존 스크립트 재사용·확장)
 
 이미 있는 통합 인프라를 세부품목 매핑으로 확장:
-- [waste-classifier/scripts/integrate_aihub_140.py](waste-classifier/scripts/integrate_aihub_140.py) — AI-Hub `CLASS`(예: `전자제품`) → `--our-class` 박스 크롭 매핑. **여기에 세부품목 매핑 테이블 추가**.
-- [scripts/filter_aihub_by_quality.py](waste-classifier/scripts/filter_aihub_by_quality.py) — 품질 필터(어두운 시설 컷 제거) 강화.
+- [ml/classifier/scripts/integrate_aihub_140.py](ml/classifier/scripts/integrate_aihub_140.py) — AI-Hub `CLASS`(예: `전자제품`) → `--our-class` 박스 크롭 매핑. **여기에 세부품목 매핑 테이블 추가**.
+- [scripts/filter_aihub_by_quality.py](ml/classifier/scripts/filter_aihub_by_quality.py) — 품질 필터(어두운 시설 컷 제거) 강화.
 - 이미 확보/스테이징된 세트: AI-Hub 71362(재활용품), 140(생활폐기물), **71647(손동작 3D — `aihub_71647_staging/` 에 대기, 손 마스크용)**.
 
 **수집 대상 선정 기준**(품목이 아니라 "부족한 대분류/세부품목 순"):
@@ -144,7 +144,7 @@ else:                                              → etc/non_object (재촬영
 ### 3.3 세부품목 cold-start 을 위한 few-shot 보조 (재학습 없이 등록)
 
 AI-Hub로도 즉시 못 채우는 롱테일 세부품목은 **DINOv2 임베딩 프로토타입**(이미 서빙 중)으로 few-shot 등록:
-- 세부품목별 수십 장 임베딩 평균 → prototype. [waste-classifier/src/ood.py](waste-classifier/src/ood.py) 프로토타입 인프라 재사용.
+- 세부품목별 수십 장 임베딩 평균 → prototype. [ml/classifier/greenguide_classifier/ood.py](ml/classifier/greenguide_classifier/ood.py) 프로토타입 인프라 재사용.
 - 재학습 전까지 **클라우드 retrieval 로 잠정 세부 판정**(active=false 상태로 A/B 관찰) → 데이터 차면 정식 head 로 승격.
 
 ### 3.4 병행 필수 레버 (AI-Hub만으로 부족한 부분)
@@ -202,7 +202,7 @@ ALTER TABLE model_diagnostics ADD COLUMN per_fine JSONB;          -- 세부품�
   → 모두 충족 시 active=true 승격, 아니면 active=false 유지(부모로 롤업)
 ```
 
-- [waste-classifier/src/frozen_test.py](waste-classifier/src/frozen_test.py) 의 안정키 동결을 **세부품목 단위로 확장** → 세부품목별 회귀도 버전 간 비교 가능.
+- [ml/classifier/greenguide_classifier/frozen_test.py](ml/classifier/greenguide_classifier/frozen_test.py) 의 안정키 동결을 **세부품목 단위로 확장** → 세부품목별 회귀도 버전 간 비교 가능.
 - [DIAGNOSIS_PROCESS.md](DIAGNOSIS_PROCESS.md) 의 PASS/FAIL 게이트에 "대분류 recall 은 절대 회귀 금지 / 세부는 승격만" 규칙 추가.
 - 결과: **taxonomy 는 전체 스키마로 미리 정의해두고, 모델은 데이터가 차는 순서대로 자동으로 세분화**된다. 사람은 클러스터 이름·배출법만 넣는다(기존과 동일).
 
@@ -211,10 +211,10 @@ ALTER TABLE model_diagnostics ADD COLUMN per_fine JSONB;          -- 세부품�
 ## 6. 앱 UX 개편 — 계층 표현
 
 - **결과 화면 2단 표시**: 상단 대분류 배지(항상, 큰 배출함 아이콘) + 하단 세부품목 카드(확신 시에만). 세부 불확실 → 대분류만.
-- **배출 가이드 상속**: 세부품목 카드는 부모 대분류 기본 안내 + 세부 특화 안내(라벨 제거/압착/색상 분리)를 덧붙임. `WasteInfo` 에 `parentSlug` 추가([waste_app/lib/data/waste_info.dart](waste_app/lib/data/waste_info.dart)).
+- **배출 가이드 상속**: 세부품목 카드는 부모 대분류 기본 안내 + 세부 특화 안내(라벨 제거/압착/색상 분리)를 덧붙임. `WasteInfo` 에 `parentSlug` 추가([apps/mobile/lib/data/waste_info.dart](apps/mobile/lib/data/waste_info.dart)).
 - **오분리 방지 안내**: "영수증/오염비닐/복합플라스틱 → 일반쓰레기" 같은 세부품목은 눈에 띄게 경고 스타일.
-- **온디바이스 즉답 → 클라우드 정밀 보강**: 온디바이스가 먼저 대분류를 즉시 보여주고, 클라우드 응답 도착 시 세부품목으로 자연스럽게 채워짐(현행 milestone 로더 [waste_app/lib/widgets/result_modal.dart](waste_app/lib/widgets/result_modal.dart) 확장).
-- `/labels` 응답에 `level`/`parent_slug` 포함 → 앱이 계층 렌더(기존 동적 레지스트리 [class_loader.dart](waste_app/lib/services/class_loader.dart) 확장).
+- **온디바이스 즉답 → 클라우드 정밀 보강**: 온디바이스가 먼저 대분류를 즉시 보여주고, 클라우드 응답 도착 시 세부품목으로 자연스럽게 채워짐(현행 milestone 로더 [apps/mobile/lib/widgets/result_modal.dart](apps/mobile/lib/widgets/result_modal.dart) 확장).
+- `/labels` 응답에 `level`/`parent_slug` 포함 → 앱이 계층 렌더(기존 동적 레지스트리 [class_loader.dart](apps/mobile/lib/services/class_loader.dart) 확장).
 
 ---
 
@@ -230,8 +230,8 @@ ALTER TABLE model_diagnostics ADD COLUMN per_fine JSONB;          -- 세부품�
 | **세부품목 f1(frozen)** | active 세부품목 | 각 ≥ 0.80 (미달 시 롤업) |
 | **오분리율** | "일반쓰레기 안내" 세부품목 | 하락 추적 |
 
-- [waste-classifier/realworld_eval.py](waste-classifier/realworld_eval.py) 를 **레벨별(대분류/세부) 동시 산출**로 확장하고 매 retrain 자동 실행([SMART_CAPTURE_STRATEGY.md](SMART_CAPTURE_STRATEGY.md) §4 의 미해결 과제 해소).
-- **핵심 원칙**: 세부품목을 늘리려다 대분류를 망치지 않는다. 대분류 회귀는 즉시 자동 롤백(기존 게이트 [retrain.py](waste-classifier/retrain.py)).
+- [ml/classifier/realworld_eval.py](ml/classifier/realworld_eval.py) 를 **레벨별(대분류/세부) 동시 산출**로 확장하고 매 retrain 자동 실행([SMART_CAPTURE_STRATEGY.md](SMART_CAPTURE_STRATEGY.md) §4 의 미해결 과제 해소).
+- **핵심 원칙**: 세부품목을 늘리려다 대분류를 망치지 않는다. 대분류 회귀는 즉시 자동 롤백(기존 게이트 [retrain.py](ml/classifier/retrain.py)).
 
 ---
 

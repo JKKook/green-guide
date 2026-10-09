@@ -8,8 +8,8 @@ u2netp 객체 mask 로 배경 셀은 제외. 인접 같은 재질을 묶어 영�
 실제로 갈리는지 시각적으로 확인. 갈리면 다중재질 기능으로 발전 가능.
 
 사용:
-    .venv/bin/python visualize_multimaterial.py --image <path>
-    .venv/bin/python visualize_multimaterial.py --label plastic --n 5
+    .venv/bin/python scripts/visualize_multimaterial.py --image <path>
+    .venv/bin/python scripts/visualize_multimaterial.py --label plastic --n 5
 """
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from _base import PROJECT_ROOT
 from greenguide_common import imaging, settings
 from greenguide_common.logging import get_logger
 from PIL import Image
@@ -31,7 +32,6 @@ from greenguide_classifier.model import CamWasteClassifierCNN, WasteClassifierCN
 
 log = get_logger(__name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parent
 CKPT_PATH = PROJECT_ROOT / "outputs" / "checkpoints" / "cnn" / "best.pt"
 U2NETP_PATH = settings.API_ROOT / "models" / "u2netp.onnx"
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "multimaterial"

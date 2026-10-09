@@ -11,19 +11,31 @@ load_dotenv()  # 아래 os.getenv 전에 .env 반영 (이미 설정된 env 는 �
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]  # src/core/config.py → 레포 루트
 
+
+
+def monorepo_root(project_root: Path) -> Path:
+    """services/inference-api → 모노레포 루트. 컨테이너(/app)처럼 부모가 하나뿐인
+    얕은 경로면 자기 자신을 돌려준다 — parents[1] 이 IndexError 로 import 를
+    죽이던 HF Space 배포 회귀(2026-09-11) 방지. sibling 경로는 그 경우 어차피 없다."""
+    parents = project_root.parents
+    return parents[1] if len(parents) > 1 else project_root
+
+
+MONOREPO_ROOT: Path = monorepo_root(PROJECT_ROOT)
+
 # 자매 프로젝트의 ONNX 모델 직접 참조 (로컬 개발용)
 # services/inference-api → <레포 루트>/ml/classifier
-CLASSIFIER_ROOT: Path = PROJECT_ROOT.parents[1] / "ml" / "classifier"
+CLASSIFIER_ROOT: Path = MONOREPO_ROOT / "ml" / "classifier"
 DEFAULT_MODEL_ARCH: str = "cnn"  # mlp | cnn
 
 
 def _resolve_model_path() -> Path:
     """Color stream 모델 — 우선순위:
-    1. WASTE_API_MODEL_PATH 환경변수
-    2. waste-api/models/classifier.onnx  (배포 패키지 내 번들 — Docker 등)
+    1. GREENGUIDE_API_MODEL_PATH 환경변수
+    2. services/inference-api/models/classifier.onnx  (배포 패키지 내 번들 — Docker 등)
     3. ../../ml/classifier/outputs/models/cnn/classifier.onnx  (로컬 sibling)
     """
-    env_path = os.getenv("WASTE_API_MODEL_PATH")
+    env_path = os.getenv("GREENGUIDE_API_MODEL_PATH")
     if env_path:
         return Path(env_path)
 
@@ -36,7 +48,7 @@ def _resolve_model_path() -> Path:
 
 def _resolve_edge_model_path() -> Path | None:
     """Edge stream 모델 (선택). 없으면 ensemble 비활성."""
-    env_path = os.getenv("WASTE_API_EDGE_MODEL_PATH")
+    env_path = os.getenv("GREENGUIDE_API_EDGE_MODEL_PATH")
     if env_path:
         p = Path(env_path)
         return p if p.exists() else None
@@ -57,7 +69,7 @@ EDGE_MODEL_PATH: Path | None = _resolve_edge_model_path()
 # Ensemble 가중치 (color weight)
 # 0.8 이 test set 에서 최적 (92.61% vs color 단독 91.82%)
 ENSEMBLE_COLOR_WEIGHT: float = float(
-    os.getenv("WASTE_API_ENSEMBLE_COLOR_WEIGHT", "0.8"),
+    os.getenv("GREENGUIDE_API_ENSEMBLE_COLOR_WEIGHT", "0.8"),
 )
 
 # 클래스 정의 (greenguide-preprocessor·greenguide-classifier와 동일 순서)
@@ -81,7 +93,7 @@ SUPPORTED_CONTENT_TYPES: tuple[str, ...] = (
 # 사용자 사진 수집 (active learning loop) 활성 여부.
 # False 면 Supabase 호출 자체를 안 함 → 오프라인 추론만 동작.
 COLLECT_USER_UPLOADS: bool = (
-    os.getenv("WASTE_API_COLLECT_UPLOADS", "true").lower() in ("1", "true", "yes")
+    os.getenv("GREENGUIDE_API_COLLECT_UPLOADS", "true").lower() in ("1", "true", "yes")
 )
 
 # 서버
@@ -113,16 +125,19 @@ SUPABASE_KEY: str | None = os.getenv("SUPABASE_KEY")
 ANTHROPIC_API_KEY: str | None = os.getenv("ANTHROPIC_API_KEY")
 
 # ── 계층 분류(hier) ──
-HIER_MODEL_PATH_ENV: str | None = os.getenv("WASTE_API_HIER_MODEL_PATH")
-DINO_WEIGHT: float = float(os.getenv("WASTE_API_DINO_W", "0"))       # 0 = DINOv2 앙상블 비활성
-CAM_PRIOR_WEIGHT: float = float(os.getenv("WASTE_API_CAM_W", "0.15"))
+HIER_MODEL_PATH_ENV: str | None = os.getenv("GREENGUIDE_API_HIER_MODEL_PATH")
+DINO_WEIGHT: float = float(os.getenv("GREENGUIDE_API_DINO_W", "0"))       # 0 = DINOv2 앙상블 비활성
+CAM_PRIOR_WEIGHT: float = float(os.getenv("GREENGUIDE_API_CAM_W", "0.15"))
 
 # ── 증거 엔진 (CLIP 정체 / OCR) ──
-CLIP_ENABLED: bool = os.getenv("WASTE_API_CLIP", "1") != "0"
-CLIP_PRIOR_WEIGHT: float = float(os.getenv("WASTE_API_CLIP_W", "0.5"))
-CLIP_SCENE_WEIGHT: float = float(os.getenv("WASTE_API_CLIP_SCENE_W", "0.2"))
-OCR_ENABLED: bool = os.getenv("WASTE_API_OCR", "1") != "0"
-OCR_SKIP_CONFIDENCE: float = float(os.getenv("WASTE_API_OCR_SKIP_CONF", "0.75"))
+CLIP_ENABLED: bool = os.getenv("GREENGUIDE_API_CLIP", "1") != "0"
+CLIP_PRIOR_WEIGHT: float = float(os.getenv("GREENGUIDE_API_CLIP_W", "0.5"))
+CLIP_SCENE_WEIGHT: float = float(os.getenv("GREENGUIDE_API_CLIP_SCENE_W", "0.2"))
+OCR_ENABLED: bool = os.getenv("GREENGUIDE_API_OCR", "1") != "0"
+OCR_SKIP_CONFIDENCE: float = float(os.getenv("GREENGUIDE_API_OCR_SKIP_CONF", "0.75"))
+# 분리배출 표시 최우선 판정 (스마트촬영): 항상 OCR + 몸체 표시가 읽히면 결과 교체
+MARK_PRIORITY_SMART: bool = os.getenv("GREENGUIDE_API_MARK_PRIORITY", "1") != "0"
+MARK_OVERRIDE_MIN_SCORE: float = float(os.getenv("GREENGUIDE_API_MARK_MIN_SCORE", "0.6"))
 
 # ── VLM 폴백 ──
 VLM_MODEL: str = os.getenv("VLM_MODEL", "claude-haiku-4-5-20251001")

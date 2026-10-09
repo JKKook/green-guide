@@ -1,8 +1,8 @@
 # 온디바이스 vs 클라우드 — 모델·학습데이터 구분
 
-> 소스: `waste-api/models/`, `waste-api/src/api.py`, `waste_app/lib/services/{local_inference,remote_model_service,prediction_service}.dart`, `waste-classifier/HIER_TRAINING_GUIDE.md` §2, `docs/greenguide_model_methods.html` §1·§2·§6 (2026-08-13 질의로 생성)
+> 소스: `services/inference-api/models/`, `services/inference-api/src/api.py`, `apps/mobile/lib/services/{local_inference,remote_model_service,prediction_service}.dart`, `ml/classifier/HIER_TRAINING_GUIDE.md` §2, `docs/greenguide_model_methods.html` §1·§2·§6 (2026-08-13 질의로 생성)
 
-핵심 원칙: **두 경로는 동일한 분류기 가중치를 공유한다.** 차이는 모델이 아니라 *파이프라인*(보조 모델·TTA·융합·VLM 유무)이다. 따라서 "온디바이스 전용 학습데이터"는 존재하지 않는다 — 학습은 전부 [waste-classifier](waste-classifier.md)에서 1회 이루어지고, 산출 ONNX가 양쪽에 배포된다.
+핵심 원칙: **두 경로는 동일한 분류기 가중치를 공유한다.** 차이는 모델이 아니라 *파이프라인*(보조 모델·TTA·융합·VLM 유무)이다. 따라서 "온디바이스 전용 학습데이터"는 존재하지 않는다 — 학습은 전부 [ml/classifier](waste-classifier.md)에서 1회 이루어지고, 산출 ONNX가 양쪽에 배포된다.
 
 ## 클라우드 (waste-api, HF Spaces) — 모델 인벤토리
 
@@ -18,7 +18,7 @@
 | Claude Haiku 4.5 (API) | — | VLM 폴백 (일 200회 캡) | 외부 API — 학습 무관 |
 | flat color/edge ONNX (레거시) | 43MB×2 | `/predict` 구경로 | 자체 학습 (구 6~13클래스 세대) |
 
-## 온디바이스 (waste_app, Flutter) — 모델
+## 온디바이스 (apps/mobile, Flutter) — 모델
 
 | 모델 | 전달 방식 | 비고 |
 |---|---|---|
@@ -45,7 +45,7 @@ MODEL_METHODS §4 주석: Kaggle류 스튜디오 데이터는 "노이즈 부재�
 
 ## 서브프로젝트별 역할 한 줄
 
-- [waste-preprocessor](waste-preprocessor.md): 위 학습데이터의 물리 보관처(`data/raw/` + `fine-staging/`)와 manifest. 모델 없음.
-- [waste-classifier](waste-classifier.md): 유일한 학습 주체. hier·stage1·DINOv2 head·CLIP 컨셉·prototype 전부 여기서 산출.
+- [ml/preprocessor](waste-preprocessor.md): 위 학습데이터의 물리 보관처(`data/raw/` + `fine-staging/`)와 manifest. 모델 없음.
+- [ml/classifier](waste-classifier.md): 유일한 학습 주체. hier·stage1·DINOv2 head·CLIP 컨셉·prototype 전부 여기서 산출.
 - [waste-api](waste-api.md): 클라우드 서빙 — 위 표 전체를 조합한 캐스케이드.
 - [waste-app](waste-app.md): 온디바이스 서빙 — hier 단일 패스 + OTA.

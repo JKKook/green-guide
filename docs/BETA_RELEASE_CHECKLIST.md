@@ -3,7 +3,7 @@
 전체 점검(UI/UX · 라이선스 · 기능/릴리즈 · 백엔드) 결과와 조치 상태.
 검증 기준: `flutter analyze` 통과 · `flutter test` 9/9 통과 · `flutter build apk --release` 성공.
 
-## ✅ 이번에 적용한 수정 (waste_app)
+## ✅ 이번에 적용한 수정 (apps/mobile)
 
 | 영역 | 내용 | 파일 |
 | --- | --- | --- |
@@ -59,14 +59,15 @@ QA 중 발견·수정한 것:
 3. ~~onnxruntime 16KB 페이지 미지원~~ → **✅ 2026-08-29 온디바이스 모드 베타 제외.**
    `onnxruntime` 의존성·`local_inference.dart`·`remote_model_service.dart`·설정 "어디서 분류할지" 토글·`/model/latest` 클라이언트 제거.
    APK 93.7MB → **69.4MB**, 네이티브 .so 에 onnxruntime 없음 확인. 정식 출시 때 16KB 지원 바인딩이 나오면 복원(서버 모델은 그대로 HF Hub 에 있음).
-4. **약관 플레이스홀더 확정** — `[운영자명]`, `[문의 이메일]`, `[2026. 00. 00.]`, `[30일]`, `[6개월]`,
-   `[보호책임자명]`, `[주소]`, `[관리책임자명]`. **법무 검토 필수**(국외이전 고지, 위치기반서비스 신고 여부,
-   만 14세 미만 절차, 학습 활용 철회 시 삭제 프로세스).
-5. **AI 학습 동의(`ai_training_opt_in`)가 서버에 전달되지 않음** — 앱은 로컬 저장만 하고,
-   서버는 `WASTE_API_COLLECT_UPLOADS=true` 로 동의와 무관하게 전 업로드를 저장.
-   → 서버에 opt-in 필드 추가하거나, 약관 문구를 현재 동작에 맞게 유지할지 결정 필요(이번엔 후자 방향으로 문구만 보정).
+4. ~~약관 플레이스홀더 확정~~ → **✅ 2026-10-04 사용자 확정값 반영** (운영자 그린가이드(개인 개발자 운영), 보호책임자 이종국,
+   문의 officialgreenguide@gmail.com, 시행일 2026. 10. 04., 피드백 없는 업로드 7일 후 삭제, 위치 확인자료 미생성, 주소는 "문의처로 요청 시 안내"). **정식 출시 전 법무 검토 필수**(국외이전 고지,
+   위치기반서비스 신고 여부, 만 14세 미만 절차, 학습 활용 철회 시 삭제 프로세스).
+5. ~~AI 학습 동의(`ai_training_opt_in`)가 서버에 전달되지 않음~~ → **✅ 2026-10-04 전달 구현.** 앱이 `/predict-hier` 폼 필드
+   `ai_training_opt_in` 으로 보내고 서버가 `user_uploads.ai_training_opt_in` 에 기록(마이그레이션 `013_ai_training_opt_in.sql`,
+   **Supabase 적용 필요**). 설정 › 정보에 철회 스위치. 학습 데이터셋 추출 시 `where ai_training_opt_in is true` 로 필터.
 6. **Google Play 요건** — 비공개 테스트도 개인정보처리방침 **외부 URL** · Data Safety 폼(사진 업로드·대략적 위치) 필요.
-   현재 약관은 앱 내 화면만 존재.
+   → 공개본 `docs/privacy/index.html`(방침) · `docs/privacy/delete.html`(삭제 요청) 를 GitHub Pages(`gh-pages` 브랜치)로 게시.
+   앱 내 `legal_terms.dart` 가 정본이며 바뀌면 HTML 도 같이 갱신한다. Data Safety 폼은 사용자 작업.
 
 ## 🟠 백엔드 후속 (waste-api)
 

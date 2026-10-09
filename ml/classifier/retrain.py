@@ -62,7 +62,7 @@ QUARANTINE_DIR: Path = PREPROCESSOR_ROOT / "data" / "raw" / "quarantine_too_few_
 def fetch_feedback_rows():
     client = get_client()
     res = (
-        client.table("user_uploads")
+        client.table(settings.SUPABASE_TABLE_USER_UPLOADS)
         .select("*")
         .in_("feedback_status", ["confirmed", "corrected"])
         .execute()

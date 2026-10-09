@@ -66,11 +66,6 @@ def normalize_hwc(arr: np.ndarray) -> np.ndarray:
     return (arr - MEAN_ARRAY) / STD_ARRAY
 
 
-def normalize_chw(arr: np.ndarray) -> np.ndarray:
-    """(C, H, W) 또는 (N, C, H, W) [0,1] → ImageNet 정규화."""
-    return (arr - MEAN_CHW) / STD_CHW
-
-
 def to_normalized_array(img: Image.Image) -> np.ndarray:
     """PIL(RGB) → (H, W, C) float32 ImageNet 정규화 배열."""
     return normalize_hwc(to_unit_array(img))
@@ -97,21 +92,3 @@ def preprocess(
     if layout == "nchw":
         return chw[None]
     raise ValueError(f"unknown layout={layout!r}")
-
-
-def recompress_for_storage(
-    src: Path | str | bytes | Image.Image,
-    *,
-    max_side: int,
-    fmt: str = "JPEG",
-    quality: int = 90,
-) -> bytes:
-    """긴 변을 max_side 로 축소(확대는 하지 않음)해 재인코딩한 bytes."""
-    img = decode_rgb(src)
-    w, h = img.size
-    scale = max_side / max(w, h)
-    if scale < 1.0:
-        img = img.resize((max(1, round(w * scale)), max(1, round(h * scale))), Image.Resampling.LANCZOS)
-    buf = io.BytesIO()
-    img.save(buf, format=fmt, quality=quality)
-    return buf.getvalue()

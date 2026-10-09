@@ -22,6 +22,7 @@ import math
 from collections import Counter
 from datetime import UTC, datetime
 
+from greenguide_common import settings
 from greenguide_common.supabase import get_client
 
 from greenguide_classifier import config
@@ -64,7 +65,7 @@ def main() -> int:
 
     cli = get_client()
 
-    rows = (cli.table("user_uploads")
+    rows = (cli.table(settings.SUPABASE_TABLE_USER_UPLOADS)
             .select("id,image_url,predicted_class,predicted_confidence,"
                     "all_probabilities,feedback_status,feedback_label,uploaded_at,feedback_at")
             .execute().data) or []

@@ -15,6 +15,7 @@ import '../../../theme/design_tokens.dart';
 import '../../../widgets/animated_entry.dart';
 import 'banners.dart';
 import 'evidence_chips.dart';
+import 'explain_button.dart';
 import 'feedback_card.dart';
 import 'guide_card.dart';
 import 'multi_material_card.dart';
@@ -30,6 +31,7 @@ class ResultLoadedContent extends StatelessWidget {
   final bool regionSet; // 지역 설정 여부 (규정 데이터가 없을 때 캡션 분기)
   final bool isSmartCapture; // 다시 촬영하기 / 다시 선택하기 라벨
   final String? sceneNote; // 장면 결과 vs 물건별 결과 불일치 안내
+  final Offset? tapNorm; // 결과를 만든 탭 좌표 — CAM 요청에 동일 적용
   const ResultLoadedContent({
     super.key,
     required this.image,
@@ -41,6 +43,7 @@ class ResultLoadedContent extends StatelessWidget {
     this.regionSet = false,
     this.isSmartCapture = false,
     this.sceneNote,
+    this.tapNorm,
   });
 
   @override
@@ -50,10 +53,8 @@ class ResultLoadedContent extends StatelessWidget {
     // reject: (1) 신뢰도 부족 (top1 < 0.55 또는 entropy > 0.7), 또는
     //         (2) 모델이 명시적으로 non_object 라고 분류 (폐기물 아님 — 재촬영 신호)
     //         → 둘 다 "기타/분류 불가" 로 정직하게 결론.
-    final isNonObject = prediction.predictedClass == 'non_object';
-    // 계층 응답의 reject(대분류조차 불확실) 도 동일하게 처리
-    final hierReject = prediction.hier?.isReject ?? false;
-    final reject = assessment.shouldReject || isNonObject || hierReject;
+    //         (3) 계층 응답의 reject(대분류조차 불확실) 도 동일하게 처리
+    final reject = isRejectPrediction(prediction);
     // 계층 응답이면 롤업 조회 — 세부 비활성 시 부모 대분류 카드로 안내
     final info = reject
         ? infoFor('etc')
@@ -97,6 +98,7 @@ class ResultLoadedContent extends StatelessWidget {
               prediction: prediction,
               isMultiMaterial: true,
               image: image,
+              tapNorm: tapNorm,
             ),
           ),
           const SizedBox(height: kSpaceM),
@@ -119,6 +121,17 @@ class ResultLoadedContent extends StatelessWidget {
               AnimatedEntry(
                 child: RegionRescueBanner(region: r, info: rInfo),
               ),
+              const SizedBox(height: kSpaceS),
+              AnimatedEntry(
+                index: 1,
+                child: ExplainButton(
+                  image: image,
+                  accent: rAccent,
+                  info: rInfo,
+                  prediction: prediction,
+                  tapNorm: tapNorm,
+                ),
+              ),
               if (rInfo != null) ...[
                 const SizedBox(height: kSpaceM),
                 AnimatedEntry(
@@ -139,11 +152,22 @@ class ResultLoadedContent extends StatelessWidget {
           //     "분류 불가" 로 단정하지 않고 물건별 분류(위 후보 카드·마커)로 안내.
           //     장면 reject 는 물건이 하나인데 어렵다는 뜻일 때만 의미가 있음.
           AnimatedEntry(
-            child: RejectCard(prediction: prediction, isMultiObject: true),
+            child: RejectCard(
+              prediction: prediction,
+              isMultiObject: true,
+              image: image,
+              tapNorm: tapNorm,
+            ),
           ),
         ] else if (reject) ...[
           // (3) 단일재질이지만 모델이 어느 클래스에도 확신 못 함 → etc reject.
-          AnimatedEntry(child: RejectCard(prediction: prediction)),
+          AnimatedEntry(
+            child: RejectCard(
+              prediction: prediction,
+              image: image,
+              tapNorm: tapNorm,
+            ),
+          ),
           if (info != null) ...[
             const SizedBox(height: kSpaceM),
             AnimatedEntry(
@@ -172,6 +196,7 @@ class ResultLoadedContent extends StatelessWidget {
               info: info,
               accent: accent,
               assessment: assessment,
+              tapNorm: tapNorm,
             ),
           ),
           if (sceneNote != null) ...[
@@ -214,6 +239,20 @@ class ResultLoadedContent extends StatelessWidget {
           ],
         ],
 
+        // 사진 위 빗금과 같은 영역 목록 — 다중재질 카드(realMulti)가 아닌 분기에서도
+        // 오버레이에 그려진 영역과 하단 목록이 같은 집합·순서·색을 갖도록.
+        if (!realMulti && isMulti) ...[
+          const SizedBox(height: kSpaceM),
+          AnimatedEntry(
+            index: 2,
+            child: MultiMaterialCard(
+              regions: regions!.regions,
+              title: '사진 위 영역별 재질',
+              subtitle: '빗금 색·순서와 같아요. 확신이 낮은 영역도 참고용으로 함께 보여줘요.',
+            ),
+          ),
+        ],
+
         // 시맨틱 증거 배지 — 서버가 분류에 실제로 융합한 단서 노출 (신뢰 UI).
         // 분리배출 마크·라벨 문구·형태(정체) 인식 (SEMANTIC_FUSION_PLAN Phase 3)
         if (prediction.evidence.isNotEmpty) ...[
@@ -246,7 +285,7 @@ class ResultLoadedContent extends StatelessWidget {
                 Navigator.of(context).pop(false);
               },
               child: Container(
-                height: 54,
+                height: 56,
                 decoration: BoxDecoration(
                   border: Border.all(color: DsTokens.of(context).accentSoft),
                   borderRadius: BorderRadius.circular(kRadiusMedium),

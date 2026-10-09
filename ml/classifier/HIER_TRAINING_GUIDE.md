@@ -352,7 +352,7 @@ PIL.open → convert("RGB") → resize(224², BILINEAR) → np/255 → (3,224,22
 preprocess.py)·온디바이스(local_inference.dart)도 동일 수식** — train/serve
 skew 를 없애는 단일 계약이며, 테스트로 고정돼 있다.
 
-**(＋) 서빙 전용 전처리 — [waste-api/src/preprocess.py](../waste-api/src/preprocess.py)**
+**(＋) 서빙 전용 전처리 — [services/inference-api/src/preprocess.py](../services/inference-api/src/preprocess.py)**
 `normalize_orientation`: EXIF 회전을 픽셀에 굽고 **GPS 등 메타데이터 제거**
 (privacy) → u2netp 객체-인지 크롭(§5-4) → (c) 와 동일 변환.
 

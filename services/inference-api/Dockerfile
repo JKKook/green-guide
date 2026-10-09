@@ -31,7 +31,7 @@ ENV PORT=7860
 EXPOSE 7860
 
 # 모델 경로 명시 (config._resolve_model_path 가 우선 인식)
-ENV WASTE_API_MODEL_PATH=/app/models/classifier.onnx
+ENV GREENGUIDE_API_MODEL_PATH=/app/models/classifier.onnx
 
 # SUPABASE_URL / SUPABASE_KEY 는 HF Spaces Secrets 로 주입
 # (Settings → Variables and secrets 에서 추가)

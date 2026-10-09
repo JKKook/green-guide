@@ -31,7 +31,7 @@ from datetime import UTC, datetime
 
 import numpy as np
 import requests
-from greenguide_common import imaging
+from greenguide_common import imaging, settings
 from greenguide_common.logging import get_logger
 from greenguide_common.supabase import get_client
 from PIL import Image
@@ -52,8 +52,8 @@ def _prep(img: Image.Image, center_frac: float | None) -> np.ndarray:
     if center_frac:
         w, h = img.size
         s = int(min(w, h) * center_frac)
-        l, t = (w - s) // 2, (h - s) // 2
-        img = img.crop((l, t, l + s, t + s))
+        left, top = (w - s) // 2, (h - s) // 2
+        img = img.crop((left, top, left + s, top + s))
     im = img.convert("RGB").resize((224, 224), Image.BILINEAR)
     return np.ascontiguousarray(((np.asarray(im, np.float32) / 255 - _MEAN) / _STD).transpose(2, 0, 1))[None]
 
@@ -88,7 +88,7 @@ def main() -> int:
         return _run(sess, inp, img)
 
     cli = get_client()
-    rows = (cli.table("user_uploads")
+    rows = (cli.table(settings.SUPABASE_TABLE_USER_UPLOADS)
             .select("id,image_url,predicted_class,predicted_confidence")
             .eq("feedback_status", "pending").execute().data) or []
     if args.limit:

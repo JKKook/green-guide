@@ -13,17 +13,25 @@ class EvidenceChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    // 판정을 결정한 분리배출 표시(primary)는 맨 앞에, 강조색으로.
+    final ordered = [
+      ...evidence.where((e) => e.primary),
+      ...evidence.where((e) => !e.primary),
+    ];
     return Wrap(
       spacing: 6,
       runSpacing: 6,
       children: [
-        for (final e in evidence)
+        for (final e in ordered)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: cs.secondaryContainer.withValues(alpha: 0.55),
+              color: e.primary
+                  ? cs.primaryContainer
+                  : cs.secondaryContainer.withValues(alpha: 0.55),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: cs.outlineVariant),
+              border: Border.all(
+                  color: e.primary ? cs.primary : cs.outlineVariant),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -36,20 +44,26 @@ class EvidenceChips extends StatelessWidget {
                     _ => Icons.notes,
                   },
                   size: 14,
-                  color: cs.onSecondaryContainer,
+                  color: e.primary
+                      ? cs.onPrimaryContainer
+                      : cs.onSecondaryContainer,
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  switch (e.type) {
-                    'mark' => "분리배출 표시 '${e.token}' 인식",
-                    'identity' => '형태 인식: ${e.token}',
-                    'vlm' => 'AI 정밀 분석: ${e.token}',
-                    _ => "라벨 문구 '${e.token}' 인식",
-                  },
+                  e.primary
+                      ? "분리배출 표시 '${e.token.toUpperCase()}' 기준으로 판정"
+                      : switch (e.type) {
+                          'mark' => "분리배출 표시 '${e.token}' 인식",
+                          'identity' => '형태 인식: ${e.token}',
+                          'vlm' => 'AI 정밀 분석: ${e.token}',
+                          _ => "라벨 문구 '${e.token}' 인식",
+                        },
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
-                    color: cs.onSecondaryContainer,
+                    color: e.primary
+                        ? cs.onPrimaryContainer
+                        : cs.onSecondaryContainer,
                   ),
                 ),
               ],

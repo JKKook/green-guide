@@ -27,7 +27,7 @@ class WasteClassifierMLP(nn.Module):
 
         layers: list[nn.Module] = []
         in_dim = input_dim
-        for h, p in zip(hidden_dims, dropout_rates):
+        for h, p in zip(hidden_dims, dropout_rates, strict=False):
             layers.append(nn.Linear(in_dim, h))
             layers.append(nn.ReLU(inplace=True))
             layers.append(nn.Dropout(p))
@@ -175,7 +175,7 @@ class CamWasteClassifierConvNeXt(nn.Module):
 
 
 def build_hier_model(num_classes: int, backbone: str = "resnet18") -> nn.Module:
-    """계층 학습용 백본 팩토리 (A1 실험 — env WASTE_HIER_BACKBONE 로 선택)."""
+    """계층 학습용 백본 팩토리 (A1 실험 — env GREENGUIDE_HIER_BACKBONE 로 선택)."""
     if backbone == "resnet18":
         return WasteClassifierCNN(num_classes=num_classes)
     if backbone == "convnext_tiny":

@@ -62,7 +62,7 @@ def main() -> None:
     conf: dict[str, Counter] = defaultdict(Counter)
     cond_err: dict[str, Counter] = defaultdict(Counter)   # target → cond 별 (err, total)
     cond_tot: dict[str, Counter] = defaultdict(Counter)
-    for it, p in zip(fine_items, preds):
+    for it, p in zip(fine_items, preds, strict=False):
         t_slug = it["sup_slug"]
         p_slug = FINE_LABELS[p]
         conf[t_slug][p_slug] += 1

@@ -33,7 +33,7 @@ Future<Directory> setUpTestEnv({Map<String, Object> prefs = const {}}) async {
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues(prefs);
   PackageInfo.setMockInitialValues(
-    appName: 'waste_app',
+    appName: 'greenguide',
     packageName: 'test',
     version: '1.0.0-test',
     buildNumber: '1',
@@ -42,7 +42,7 @@ Future<Directory> setUpTestEnv({Map<String, Object> prefs = const {}}) async {
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
   await HistoryRepository.reset();
-  final dir = await Directory.systemTemp.createTemp('waste_app_test_');
+  final dir = await Directory.systemTemp.createTemp('greenguide_test_');
   PathProviderPlatform.instance = _FakePathProvider(dir.path);
   return dir;
 }

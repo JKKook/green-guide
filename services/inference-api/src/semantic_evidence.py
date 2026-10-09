@@ -37,26 +37,33 @@ _BOOST_IDENTITY = 2.5
 
 # 한글 패턴은 부분문자열 매칭(공백 제거 후), 라틴 패턴은 단어 경계 정규식.
 _LEXICON: list[tuple[str, str, float]] = [
-    # ── A급: 분리배출 표시/재질어 ──
+    # ── A급: 분리배출 표시/재질어 (자원재활용법 분리배출 표시 — 2021 개정 포함) ──
     ("무색페트", "pet", _BOOST_MARK),
     ("페트", "pet", _BOOST_MARK),
     ("hdpe", "plastic_other", _BOOST_MARK),
     ("ldpe", "vinyl_clean", _BOOST_MARK),      # LDPE 마크는 대부분 비닐 포장
+    ("pvc", "plastic_other", _BOOST_MARK),
     ("pp", "plastic_other", _BOOST_MARK),
     ("ps", "plastic_other", _BOOST_MARK),
+    ("other", "plastic_other", _BOOST_MARK),   # 복합재질 플라스틱 (OTHER 표시)
+    ("복합재질", "plastic_other", _BOOST_MARK),
     ("pet", "pet", _BOOST_MARK),
     ("플라스틱", "plastic", _BOOST_MARK),
     ("비닐류", "vinyl", _BOOST_MARK),
     ("비닐", "vinyl", _BOOST_MARK),
     ("캔류", "metal", _BOOST_MARK),
     ("알루미늄", "metal", _BOOST_MARK),
+    ("알미늄", "metal", _BOOST_MARK),           # 표시 표기 '알미늄'
     ("철", "metal", _BOOST_MARK * 0.5),         # 1글자급 오탐 여지 — 약화
     ("유리", "glass", _BOOST_MARK),
     ("종이팩", "carton", _BOOST_MARK),
+    ("일반팩", "carton", _BOOST_MARK),
     ("멸균팩", "carton", _BOOST_MARK),
-    ("종이", "paper", _BOOST_MARK * 0.7),       # '종이팩' 보다 먼저 매칭되지 않게 아래 배치 유지
+    ("종이", "paper", _BOOST_MARK),             # '종이팩' 뒤에 배치 — 같은 줄이면 긴 토큰이 우선
     ("스티로폼", "styrofoam", _BOOST_MARK),
     ("발포", "styrofoam", _BOOST_MARK),
+    ("도포", "trash_other", _BOOST_MARK),       # 2021 개정 '도포·첩합' 표시 = 재활용 어려움 → 종량제
+    ("첩합", "trash_other", _BOOST_MARK),
     ("일반쓰레기", "trash", _BOOST_MARK),
     # ── B급: 정체어 ──
     # 의약/건강기능식품 용기 → 플라스틱 통
@@ -109,6 +116,28 @@ _LATIN_RE = {
     for tok, _, _ in _LEXICON if tok.isascii()
 }
 
+# 부속 표기 — '캡:PP' '라벨:PP' '뚜껑:HDPE' 처럼 몸체가 아닌 부속의 재질.
+# 토큰 바로 앞에 부속어가 붙은 경우만 (같은 줄의 '몸체:PET 라벨:PP' 에서 PET 는 몸체).
+# 증거로는 쓰되 최우선 판정(override) 후보에서는 뺀다 (몸체 표기가 우선).
+_ATTACHMENT_PREFIX_RE = re.compile(r"(캡|라벨|뚜껑|마개|cap|label)[:：]?$")
+
+# 일반 문장에서도 흔히 나오는 토큰은 '표시 줄' 모양일 때만 매칭 (교체 판정 오탐 방지):
+# OTHER 는 짧은 줄(OTHER / OTHER캡:PP), 도포·첩합은 둘이 함께, 발포는 '발포스티렌' 계열만.
+def _strict_ok(tok: str, norm: str) -> bool:
+    if tok == "other":
+        return len(norm) <= 12
+    if tok in ("도포", "첩합"):
+        return ("도포" in norm and "첩합" in norm) or norm in ("도포", "첩합")
+    if tok == "발포":
+        return norm in ("발포", "발포스티렌", "발포폴리스티렌") or norm.startswith("발포스티")
+    return True
+
+
+def _token_positions(tok: str, norm: str) -> list[int]:
+    if tok.isascii():
+        return [m.start() for m in _LATIN_RE[tok].finditer(norm)]
+    return [i for i in range(len(norm)) if norm.startswith(tok, i)]
+
 
 class SemanticEvidence:
     """OCR 1회 실행 + 어휘 매칭 → fine prior 벡터. 실패 시 증거 없음으로 격리."""
@@ -117,7 +146,7 @@ class SemanticEvidence:
         self.available = False
         self._ocr = None
         if not config.OCR_ENABLED:
-            log.info("OCR 비활성 (WASTE_API_OCR=0)")
+            log.info("OCR 비활성 (GREENGUIDE_API_OCR=0)")
             return
         det = _OCR_DIR / "det.onnx"
         rec = _OCR_DIR / "korean_rec_v5.onnx"
@@ -177,25 +206,55 @@ def match_evidence(texts: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if len(norm) < 2:
             continue
         for tok, target, boost in _LEXICON:
-            if tok.isascii():
-                if not _LATIN_RE[tok].search(norm):
-                    continue
-            elif tok not in norm:
+            positions = _token_positions(tok, norm)
+            if not positions or not _strict_ok(tok, norm):
                 continue
-            key = (tok, target)
+            is_mark = boost >= _BOOST_MARK * 0.5
+            # 몸체 표기가 하나라도 있으면 몸체, 전부 부속어 뒤면 부속
+            attachment = is_mark and all(
+                _ATTACHMENT_PREFIX_RE.search(norm[:p]) for p in positions)
+            key = (tok, target, attachment)
             if key in seen:
                 continue
             seen.add(key)
             found.append({
-                "type": "mark" if boost >= _BOOST_MARK * 0.5 else "text",
+                "type": "mark" if is_mark else "text",
                 "token": tok,
                 "matched_text": t["text"],
                 "mapped_class": target,
                 "boost": boost,
                 "score": t["score"],
                 "bbox_norm": t["bbox_norm"],
+                "attachment": attachment,
+                "primary": False,
             })
     return found
+
+
+def mark_override(evidence: list[dict[str, Any]],
+                  min_score: float | None = None) -> dict[str, Any] | None:
+    """분리배출 표시 최우선 판정 — 몸체 표시 중 OCR 확신이 가장 높은 한 건.
+
+    스마트촬영에서 표시가 읽히면 모델 결과를 이 재질로 교체한다(법정 표시 =
+    사실상 정답지, 2026-10-05 사용자 결정). 부속 표기(캡·라벨)만 있으면 교체하지
+    않는다. 선택된 증거는 primary=True 로 표시돼 앱 칩에 1순위로 노출된다.
+    """
+    thr = config.MARK_OVERRIDE_MIN_SCORE if min_score is None else min_score
+    best = None
+    for ev in evidence:
+        if ev.get("type") != "mark" or ev.get("attachment"):
+            continue
+        if float(ev.get("boost", 0)) < _BOOST_MARK:
+            continue   # 약화된 토큰('철' 등 오탐 여지)은 보조 증거로만
+        if float(ev.get("score", 0)) < thr:
+            continue
+        # 같은 줄에서 '종이팩'과 '종이'가 함께 잡히면 긴 토큰(구체적 표시)이 우선
+        rank = (float(ev["score"]), len(ev["token"]))
+        if best is None or rank > (float(best["score"]), len(best["token"])):
+            best = ev
+    if best is not None:
+        best["primary"] = True
+    return best
 
 
 def evidence_prior(

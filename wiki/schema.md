@@ -5,7 +5,7 @@ karpathy LLM Wiki 패턴(gist 442a6bf555914893e9891c11519de94f) 기반의 지속
 
 ## 3계층 구조
 
-1. **Raw sources (읽기 전용)** — 프로젝트 원본: 루트 `*.md` 계획 문서, `waste_app/`, `waste-api/`, `waste-classifier/`, `waste-preprocessor/`, `*_staging/`, `docs/`, `bin/`. **절대 수정 금지.**
+1. **Raw sources (읽기 전용)** — 프로젝트 원본: 루트 `*.md` 계획 문서, `apps/mobile/`, `services/inference-api/`, `ml/classifier/`, `ml/preprocessor/`, `*_staging/`, `docs/`, `bin/`. **절대 수정 금지.**
 2. **Wiki pages (`wiki/*.md`)** — 원본을 종합·압축한 지식 페이지. 자유롭게 생성/갱신/병합.
 3. **Meta (`wiki/index.md`, `wiki/log.md`, `wiki/schema.md`)** — index는 전체 페이지 목록+한 줄 요약, log는 append-only 작업 이력, schema는 이 규칙.
 

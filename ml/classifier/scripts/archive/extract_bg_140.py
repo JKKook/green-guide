@@ -73,7 +73,8 @@ def bg_crops(img: Image.Image, boxes: list[tuple], n: int, rng: random.Random) -
         s = rng.randint(int(min(W, H) * 0.3), int(min(W, H) * 0.55))
         if s < 64:
             continue
-        x = rng.randint(0, W - s); y = rng.randint(0, H - s)
+        x = rng.randint(0, W - s)
+        y = rng.randint(0, H - s)
         crop = (x, y, x + s, y + s)
         if all(_overlap_frac(crop, b) < MAX_OVERLAP for b in boxes):
             out.append(img.crop(crop).resize((STORE, STORE), Image.BILINEAR))

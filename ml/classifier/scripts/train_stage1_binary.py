@@ -84,7 +84,7 @@ def train(args) -> int:
         lbl = "non_object" if it["label"] == "non_object" else "waste"
         by_label[lbl].append(it)
     train_items, val_items = [], []
-    for lbl, lst in by_label.items():
+    for _lbl, lst in by_label.items():
         idx = rng.permutation(len(lst))
         cut = int(len(lst) * 0.8)
         train_items += [lst[i] for i in idx[:cut]]
@@ -144,7 +144,8 @@ def train(args) -> int:
         train_correct = train_total = 0
         train_loss_sum = 0.0
         for i, (x, y) in enumerate(train_loader):
-            x = x.to(device); y = y.to(device)
+            x = x.to(device)
+            y = y.to(device)
             optimizer.zero_grad()
             logits = model(x)
             loss = criterion(logits, y)
@@ -167,7 +168,8 @@ def train(args) -> int:
         val_waste_correct = val_waste_total = 0
         with torch.no_grad():
             for x, y in val_loader:
-                x = x.to(device); y = y.to(device)
+                x = x.to(device)
+                y = y.to(device)
                 preds = model(x).argmax(1)
                 val_correct += (preds == y).sum().item()
                 val_total += y.size(0)

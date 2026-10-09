@@ -310,13 +310,15 @@ def analyze_regions(raw: bytes, tap_x: float | None, tap_y: float | None) -> dic
                         regions = pre_verify[:1]
                         log.info("verify 전멸 → 탭 최상위 영역 유지")
             if regions:
-                overlay_b64 = render_hatching(
-                    raw, regions, grid_h, grid_w, ClassRegistry.color_map(),
-                )
+                # 빗금 색과 응답의 color_hex 를 같은 맵에서 뽑아 오버레이·배지·목록이
+                # 한 색을 쓰게 한다 (앱이 자체 팔레트로 다시 칠하며 어긋나던 문제).
+                colors = ClassRegistry.color_map()
+                overlay_b64 = render_hatching(raw, regions, grid_h, grid_w, colors)
                 regions_out = [
                     MaterialRegion(
                         slug=r["slug"], bbox_norm=r["bbox_norm"],
                         avg_conf=r["avg_conf"], cell_count=len(r["cells"]),
+                        color_hex=colors.get(r["slug"]),
                     )
                     for r in regions
                 ]

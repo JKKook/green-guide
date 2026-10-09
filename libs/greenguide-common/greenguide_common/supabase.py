@@ -46,11 +46,6 @@ def try_get_client() -> "Client | None":
         return None
 
 
-def reset_client() -> None:
-    """테스트 격리용."""
-    get_client.cache_clear()
-
-
 def upload_and_get_url(
     bucket: Bucket | str,
     remote_path: str,

@@ -13,9 +13,9 @@ ResNet18 의 마지막 conv block (layer4) 의 activation × gradient 을 이용
 
 사용:
     cd greenguide-classifier
-    .venv/bin/python visualize_cam.py --image <path>
-    .venv/bin/python visualize_cam.py --label plastic --n 5   # 클래스에서 5장 샘플
-    .venv/bin/python visualize_cam.py --image x.jpg --target-class trash  # 강제 클래스
+    .venv/bin/python scripts/visualize_cam.py --image <path>
+    .venv/bin/python scripts/visualize_cam.py --label plastic --n 5   # 클래스에서 5장 샘플
+    .venv/bin/python scripts/visualize_cam.py --image x.jpg --target-class trash  # 강제 클래스
 """
 from __future__ import annotations
 
@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
+from _base import PROJECT_ROOT
 from greenguide_common import imaging, settings
 from greenguide_common.logging import get_logger
 from PIL import Image
@@ -38,7 +39,6 @@ from greenguide_classifier.model import WasteClassifierCNN
 
 log = get_logger(__name__)
 
-PROJECT_ROOT: Path = Path(__file__).resolve().parent
 CKPT_PATH: Path = PROJECT_ROOT / "outputs" / "checkpoints" / "cnn" / "best.pt"
 OUTPUT_DIR: Path = PROJECT_ROOT / "outputs" / "cam"
 

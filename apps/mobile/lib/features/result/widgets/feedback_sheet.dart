@@ -80,7 +80,8 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
     final canSend = _result != null;
 
     return SafeArea(
-      child: Padding(
+      // 큰 글꼴·낮은 화면(또는 키보드)에서 시트 높이를 넘치면 내부 스크롤
+      child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
           kSpaceXL,
           0,

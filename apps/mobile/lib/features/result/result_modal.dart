@@ -7,8 +7,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../api/models.dart';
 import '../../core/feedback/app_snackbar.dart';
 import '../../data/haptics.dart';
+import '../../data/image_quality.dart';
+import '../../services/prediction_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/design_tokens.dart';
 import 'result_controller.dart';
@@ -32,6 +35,11 @@ Future<bool?> showResultModal(
   BuildContext context,
   File image, {
   bool isSmartCapture = false,
+  UploadMeta? meta,
+  ImageQualityResult? initialQuality,
+  // 테스트 전용 주입 — 위젯 테스트에서 네트워크 없이 로드 상태를 그리기 위함.
+  @visibleForTesting PredictionService? prediction,
+  @visibleForTesting ApiFactory? api,
 }) {
   return showModalBottomSheet<bool>(
     context: context,
@@ -41,14 +49,17 @@ Future<bool?> showResultModal(
     backgroundColor: Theme.of(context).scaffoldBackgroundColor,
     barrierColor: Colors.black,
     shape: const RoundedRectangleBorder(),
-    builder: (_) => DraggableScrollableSheet(
-      initialChildSize: 1.0,
-      minChildSize: 1.0,
-      expand: false,
-      builder: (_, controller) => _ResultModal(
+    // 풀스크린 고정 시트 — DraggableScrollableSheet(min=max=1.0) 는 스크롤 오프셋 0 에서
+    // 느린 위 드래그를 시트 크기 조절로 삼켜 리스트가 안 움직였다(플링만 동작, 2026-10-05 QA).
+    // 크기 조절이 필요 없으므로 일반 ListView 스크롤로 둔다.
+    builder: (_) => SizedBox.expand(
+      child: _ResultModal(
         image: image,
-        scrollController: controller,
         isSmartCapture: isSmartCapture,
+        meta: meta,
+        initialQuality: initialQuality,
+        prediction: prediction,
+        api: api,
       ),
     ),
   );
@@ -56,12 +67,18 @@ Future<bool?> showResultModal(
 
 class _ResultModal extends StatefulWidget {
   final File image;
-  final ScrollController scrollController;
   final bool isSmartCapture;
+  final UploadMeta? meta;
+  final ImageQualityResult? initialQuality;
+  final PredictionService? prediction;
+  final ApiFactory? api;
   const _ResultModal({
     required this.image,
-    required this.scrollController,
     this.isSmartCapture = false,
+    this.meta,
+    this.initialQuality,
+    this.prediction,
+    this.api,
   });
 
   @override
@@ -72,6 +89,10 @@ class _ResultModalState extends State<_ResultModal> {
   late final ResultController c = ResultController(
     image: widget.image,
     isSmartCapture: widget.isSmartCapture,
+    meta: widget.meta,
+    initialQuality: widget.initialQuality,
+    prediction: widget.prediction,
+    api: widget.api,
   );
 
   @override
@@ -80,8 +101,11 @@ class _ResultModalState extends State<_ResultModal> {
     c.start();
   }
 
+  final ScrollController _scroll = ScrollController();
+
   @override
   void dispose() {
+    _scroll.dispose();
     c.dispose();
     super.dispose();
   }
@@ -192,8 +216,15 @@ class _ResultModalState extends State<_ResultModal> {
                     },
                   )
                 : ListView(
-                    controller: widget.scrollController,
-                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 30),
+                    controller: _scroll,
+                    // 하단 인셋(홈 인디케이터)만큼 더 띄움 — 모달 시트는 useSafeArea 여도
+                    // bottom 을 비워 두지 않아 마지막 버튼이 제스처 영역과 겹쳤음
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      6,
+                      20,
+                      30 + MediaQuery.viewPaddingOf(context).bottom,
+                    ),
                     children: [
                       // 분석한 사진 + 영역별 빗금 오버레이 + 재질 라벨
                       // 탭-투-셀렉트: 물건을 탭하면 그 객체만 재분류
@@ -217,6 +248,7 @@ class _ResultModalState extends State<_ResultModal> {
                                     RegionsView(
                                       image: widget.image,
                                       regions: c.regions,
+                                      prediction: c.prediction,
                                     ),
                                     if (c.lastTapNorm != null &&
                                         c.imgSize != null)
@@ -403,6 +435,7 @@ class _ResultModalState extends State<_ResultModal> {
                           regionInfo: c.regionInfo,
                           regionSet: c.regionSet,
                           isSmartCapture: widget.isSmartCapture,
+                          tapNorm: c.lastTapNorm,
                         ),
                     ],
                   ),

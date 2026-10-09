@@ -1,6 +1,6 @@
 # 모델 버전 · 정확도 현황
 
-> 소스: `waste-classifier/outputs/`, `docs/plans/ACCURACY_LATENCY_BLUEPRINT.md` §0, `docs/greenguide_model_methods.html` §4·§7 (2026-08-13 탐색)
+> 소스: `ml/classifier/outputs/`, `docs/plans/ACCURACY_LATENCY_BLUEPRINT.md` §0, `docs/greenguide_model_methods.html` §4·§7 (2026-08-13 탐색)
 
 **수치의 단일 출처(SSOT)는 ACCURACY_LATENCY_BLUEPRINT §0 + MODEL_METHODS(2026-08-06).** 문서마다 실사용 수치가 다른 이유는 평가 오염 사고([retrain-loop](retrain-loop.md)) 때문 — 51장 중 31장이 train 오염이라 51장 지표는 무효, 정직한 홀드아웃은 n=18~20.
 

@@ -79,7 +79,7 @@ log p_fused(fine) = log p_ensemble(fine)            # CNN+DINOv2 (기존)
 ## 5. 성능 예산·배포
 
 - OCR 0.2~1.1s(로컬 CPU) — HF Spaces에서 1~2s 예상. 정확도 최우선 지시에 따라
-  기본 활성, env `WASTE_API_OCR=0` 으로 끌 수 있게.
+  기본 활성, env `GREENGUIDE_API_OCR=0` 으로 끌 수 있게.
 - 모델 번들: det+rec+dict ~15MB를 `models/ocr/` LFS 로 고정 (런타임 다운로드 금지).
 - 실패 격리: OCR 예외 시 증거 없음으로 진행 (기존 동작 보존).
 
@@ -108,7 +108,7 @@ log p_fused(fine) = log p_ensemble(fine)            # CNN+DINOv2 (기존)
   **부스트 전용 + 확신 임계 0.30 + 우도비 상한 8** 로 재설계.
 - **CAM 융합(신호④)**: 단독 0, w0.4+ 에서 -1~-4 (같은 CNN 자기강화 실증).
   사용자 설계 결정(탭 경로 필수 고려)에 따라 **w=0.15(무해 실측)** 로 탭 경로에
-  융합, env WASTE_API_CAM_W 로 조정 가능. v7(회전증강) 이후 재스윕 권장.
+  융합, env GREENGUIDE_API_CAM_W 로 조정 가능. v7(회전증강) 이후 재스윕 권장.
 
 ## Phase 1 결과 + 도중 발견한 2개의 더 큰 레버 (2026-07-15)
 

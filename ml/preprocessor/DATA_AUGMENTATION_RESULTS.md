@@ -48,7 +48,7 @@
 | electronics | Battery | 2 |
 | **합계** | | **1,145** |
 
-매핑 결정 로그: `waste-classifier/diagnostics/taco_mapping_decisions.csv`
+매핑 결정 로그: `ml/classifier/diagnostics/taco_mapping_decisions.csv`
 
 ### 2.2 MIT Indoor 67 (실내 배경 풀)
 - **출처**: http://groups.csail.mit.edu/vision/LabelMe/NewImages/indoorCVPR_09.tar
@@ -61,11 +61,11 @@
 
 배경 풀 구성 결과: **287장** (모두 256x256 center-cropped JPEG q=85)
 
-추출 스크립트: `waste-classifier/scripts/build_indoor_bg_pool.py`
+추출 스크립트: `ml/classifier/scripts/build_indoor_bg_pool.py`
 
 ### 2.3 합성 데이터
 - **출처**: Kaggle/AI Hub 객체 (라벨 정합성 우선) + MIT 67 배경 풀 + albumentations
-- **엔진**: `waste-classifier/scripts/synthesize_indoor.py` (자체 작성)
+- **엔진**: `ml/classifier/scripts/synthesize_indoor.py` (자체 작성)
 - **합성 후 결과**: 1,825장 (5 약점 클래스)
 
 ---
@@ -233,15 +233,15 @@
 ## 7. 신규 인프라 (이번에 만든 것)
 
 ### 스크립트
-- [waste-classifier/scripts/integrate_taco.py](../waste-classifier/scripts/integrate_taco.py) — TACO 매핑 + ingest
-- [waste-classifier/scripts/build_indoor_bg_pool.py](../waste-classifier/scripts/build_indoor_bg_pool.py) — MIT 67 → 배경 풀
-- [waste-classifier/scripts/synthesize_indoor.py](../waste-classifier/scripts/synthesize_indoor.py) — 합성 엔진 (albumentations 기반)
-- [waste-classifier/scripts/extend_manifest_taco.py](../waste-classifier/scripts/extend_manifest_taco.py) — TACO manifest 등재
-- [waste-classifier/scripts/extend_manifest_synthetic.py](../waste-classifier/scripts/extend_manifest_synthetic.py) — 합성 manifest 등재 + cleanup
-- [waste-classifier/scripts/_overnight_pipeline.sh](../waste-classifier/scripts/_overnight_pipeline.sh) — 야간 자동화 chain (9 phase)
+- [ml/classifier/scripts/integrate_taco.py](../ml/classifier/scripts/integrate_taco.py) — TACO 매핑 + ingest
+- [ml/classifier/scripts/build_indoor_bg_pool.py](../ml/classifier/scripts/build_indoor_bg_pool.py) — MIT 67 → 배경 풀
+- [ml/classifier/scripts/synthesize_indoor.py](../ml/classifier/scripts/synthesize_indoor.py) — 합성 엔진 (albumentations 기반)
+- [ml/classifier/scripts/extend_manifest_taco.py](../ml/classifier/scripts/extend_manifest_taco.py) — TACO manifest 등재
+- [ml/classifier/scripts/extend_manifest_synthetic.py](../ml/classifier/scripts/extend_manifest_synthetic.py) — 합성 manifest 등재 + cleanup
+- [ml/classifier/scripts/_overnight_pipeline.sh](../ml/classifier/scripts/_overnight_pipeline.sh) — 야간 자동화 chain (9 phase)
 
 ### 의존성 추가
-- `albumentations==1.4.18` (waste-classifier/.venv)
+- `albumentations==1.4.18` (ml/classifier/.venv)
 - `opencv-python==4.10.0.84`
 
 ### 데이터 (디스크)
@@ -251,8 +251,8 @@
 - `data/raw/synthetic_indoor/_manifest.jsonl` — 합성별 메타 (재현용)
 
 ### 백업
-- `waste-classifier/outputs/backups/test_C1_pre/` — 학습 직전 Test A 스냅샷
-- `waste-classifier/outputs/backups/test_C1/classifier.onnx` — Test C1 학습 모델 (참고용)
+- `ml/classifier/outputs/backups/test_C1_pre/` — 학습 직전 Test A 스냅샷
+- `ml/classifier/outputs/backups/test_C1/classifier.onnx` — Test C1 학습 모델 (참고용)
 
 ### 복원 상태 (학습 후)
 - ✅ active 모델 ONNX = Test A baseline (sha 일치)
@@ -293,7 +293,7 @@ Test C1 의 70% 크롭 +4.4pp 효과를 활용하기 위한 앱 측 변경 + 모
 
 | Fix | 위치 | 변경 |
 |---|---|---|
-| **Work 1** | waste-api, waste_app | `/predict-centered` endpoint — u2netp 자동 객체 크롭 후 분류. smart capture 시 자동 호출 |
+| **Work 1** | waste-api, apps/mobile | `/predict-centered` endpoint — u2netp 자동 객체 크롭 후 분류. smart capture 시 자동 호출 |
 | **Work 3** | confidence.dart | `_kRejectThreshold` 0.45 → 0.55, `normalizedEntropy > 0.7` 면 reject |
 | **Fix 1** | result_modal.dart | `realMulti = isMulti && !reject` — global 이 낮은 신뢰도면 regions noise 차단 |
 | **Fix 1.5** | result_modal.dart | regions 각 `avgConf >= 0.75` 까지 만족해야 진짜 다중재질 |
@@ -338,7 +338,7 @@ Test C1 의 70% 크롭 +4.4pp 효과를 활용하기 위한 앱 측 변경 + 모
 
 ---
 
-*문서 위치: [/Users/whdrnr01/ai/waste-preprocessor/DATA_AUGMENTATION_RESULTS.md](DATA_AUGMENTATION_RESULTS.md)*
+*문서 위치: [/Users/whdrnr01/ai/ml/preprocessor/DATA_AUGMENTATION_RESULTS.md](DATA_AUGMENTATION_RESULTS.md)*
 *관련 문서:*
 *- [DATA_AUGMENTATION_DESIGN.md](DATA_AUGMENTATION_DESIGN.md) — 설계서*
 *- [AIHUB_PAPER_HYPOTHESIS_TEST.md](AIHUB_PAPER_HYPOTHESIS_TEST.md) — 이전 가설 검증 (AI Hub paper 제거 실험)*

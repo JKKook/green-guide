@@ -1,6 +1,6 @@
 # 계층 Taxonomy — 대분류 14 × 세부 25
 
-> 소스: `waste-classifier/src/taxonomy.py` (단일 진실), `waste-api/models/taxonomy.json`, `docs/plans/GREENGUIDE_BLUEPRINT.md` §1 (2026-08-13 탐색)
+> 소스: `ml/classifier/greenguide_classifier/taxonomy.py` (단일 진실), `services/inference-api/models/taxonomy.json`, `docs/plans/GREENGUIDE_BLUEPRINT.md` §1 (2026-08-13 탐색)
 
 flat softmax 확장의 한계(클래스↑=클래스당 데이터↓, "애매하면 대분류만 답하기" 불가)를 극복하는 2단 계층. 모델은 **fine 25 단일 head**만 학습하고 대분류는 결정적 롤업 `P(coarse) = Σ P(fine children)`.
 

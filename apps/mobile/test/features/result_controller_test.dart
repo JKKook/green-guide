@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:greenguide/api/api_client.dart';
 import 'package:greenguide/api/models.dart';
+import 'package:greenguide/data/image_quality.dart';
 import 'package:greenguide/data/settings_store.dart';
 import 'package:greenguide/features/result/result_controller.dart';
 import 'package:greenguide/services/prediction_service.dart';
@@ -25,12 +26,16 @@ class _FakePrediction extends PredictionService {
   final Object? error;
   int calls = 0;
 
+  UploadMeta? lastMeta;
+
   @override
   Future<Prediction> predict(
     File image, {
     bool centered = false,
+    UploadMeta? meta,
     UploadProgress? onUploadProgress,
   }) async {
+    lastMeta = meta;
     calls++;
     onUploadProgress?.call(10, 10);
     if (error != null) throw error!;
@@ -76,9 +81,46 @@ class _FakeApi extends WasteApiClient {
     File imageFile, {
     double? tapX,
     double? tapY,
+    UploadMeta? meta,
     UploadProgress? onUploadProgress,
   }) async {
     return _pred('plastic');
+  }
+}
+
+class _FakeApiWithRegions extends _FakeApi {
+  @override
+  Future<PredictionWithRegions> predictWithRegions(
+    File imageFile, {
+    double? tapX,
+    double? tapY,
+  }) async {
+    regionTaps.add(tapX == null ? null : Offset(tapX, tapY!));
+    return PredictionWithRegions.fromJson({
+      'predicted_class': 'paper',
+      'predicted_index': 0,
+      'confidence': 0.9,
+      'all_probabilities': {'paper': 0.9},
+      'model_arch': 'test',
+      'inference_ms': 1,
+      'overlay_base64': 'data:image/jpeg;base64,AAAA',
+      'regions': [
+        {
+          'slug': 'paper',
+          'bbox_norm': [0, 0, 0.5, 0.5],
+          'avg_conf': 0.9,
+          'cell_count': 2,
+          'color_hex': '#112233',
+        },
+        {
+          'slug': 'metal',
+          'bbox_norm': [0.5, 0.5, 1, 1],
+          'avg_conf': 0.8,
+          'cell_count': 2,
+          'color_hex': '#445566',
+        },
+      ],
+    });
   }
 }
 
@@ -109,6 +151,39 @@ void main() {
     api: () async => api ?? _FakeApi(objects: objects),
     settings: SettingsStore(),
   );
+
+  test('UploadMeta 가 분류 요청까지 전달된다', () async {
+    const meta = UploadMeta(captureMode: 'smart', orientation: 6);
+    final svc = _FakePrediction();
+    final c = ResultController(
+      image: image,
+      isSmartCapture: true,
+      meta: meta,
+      prediction: svc,
+      api: () async => _FakeApi(),
+      settings: SettingsStore(),
+    );
+    await c.classify();
+    expect(svc.lastMeta, same(meta));
+  });
+
+  test('initialQuality 를 받으면 재평가 없이 그대로 쓴다', () async {
+    const q = ImageQualityResult(
+      brightness: 30,
+      sharpness: 10,
+      issues: [ImageQualityIssue.tooDark],
+    );
+    final c = ResultController(
+      image: image,
+      isSmartCapture: false,
+      initialQuality: q,
+      prediction: _FakePrediction(),
+      api: () async => _FakeApi(),
+      settings: SettingsStore(),
+    );
+    c.start();
+    expect(c.quality, same(q));
+  });
 
   test('로더는 분류와 재질 분석이 모두 끝나야 사라진다', () async {
     final c = make();
@@ -238,5 +313,17 @@ void main() {
     c.dispose();
     await f;
     expect(notified, 1, reason: '업로드 진행 1회만 (dispose 전)');
+  });
+
+  test('탭 재분류 시 이전 빗금 오버레이를 즉시 비우고 재분석 결과로 교체한다', () async {
+    final api = _FakeApiWithRegions();
+    final c = make(api: api);
+    await c.fetchRegions();
+    expect(c.regions, isNotNull);
+    await c.reclassifyAt(0.5, 0.5);
+    expect(c.regions, isNull); // 재분석 응답 전 — 옛 빗금 잔상 없음
+    await _settle();
+    expect(c.regions, isNotNull); // 탭 기준 재분석 결과로 교체
+    expect(api.regionTaps.last, const Offset(0.5, 0.5));
   });
 }

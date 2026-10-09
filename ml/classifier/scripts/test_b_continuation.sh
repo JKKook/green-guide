@@ -28,7 +28,7 @@ echo "[continuation] Test B classifier backed up to outputs/backups/test_B/" \
 
 # Realworld eval (uses outputs/models/cnn/classifier.onnx)
 echo "[continuation] realworld eval..." | tee -a outputs/logs/test_B_continuation.log
-.venv/bin/python realworld_eval.py >> outputs/logs/test_B_continuation.log 2>&1
+.venv/bin/python scripts/realworld_eval.py >> outputs/logs/test_B_continuation.log 2>&1
 
 # Diagnose (frozen test)
 echo "[continuation] diagnose (frozen test)..." | tee -a outputs/logs/test_B_continuation.log

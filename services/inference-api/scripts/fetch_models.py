@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""로컬 개발용 — HF Hub ethanDev92/waste-models/serving/ 을 waste-api/models/ 로 내려받는다.
+"""로컬 개발용 — HF Hub ethanDev92/waste-models/serving/ 을 services/inference-api/models/ 로 내려받는다.
 Docker 빌드(Dockerfile)와 같은 원본을 쓴다. 실행: .venv/bin/python scripts/fetch_models.py
 """
 from __future__ import annotations

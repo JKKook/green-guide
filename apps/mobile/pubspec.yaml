@@ -1,7 +1,7 @@
 name: greenguide
 description: "GreenGuide AI - Waste Classification"
 publish_to: 'none'
-version: 1.0.0-beta.1+1
+version: 1.0.0-beta.1+3
 
 environment:
   sdk: ^3.11.5
@@ -59,9 +59,10 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/icon/icon.png"
-  # 파스텔 스카이 그라디언트 배경 (2026-08 아이콘 리뉴얼 — 원본 assets/icon/icon.svg)
+  # ㄱ 모노그램 + 스카이 그라디언트 배경 (2026-10 아이콘 v2 — 원본 assets/icon/icon.svg, 모노크롬 레이어 포함)
   adaptive_icon_background: "assets/icon/icon_background.png"
   adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  adaptive_icon_monochrome: "assets/icon/icon_monochrome.png"
   min_sdk_android: 23
   macos:
     generate: true
@@ -81,12 +82,14 @@ flutter_native_splash:
 flutter:
   uses-material-design: true
   assets:
-    - assets/icon/
+    - assets/icon/icon_about.png # 런처 원본(icon*.png)은 번들 제외 — flutter_launcher_icons 입력 전용
     - assets/splash/
     - assets/banners/
     - assets/licenses/
   fonts:
-    # 본문 기본 폰트 — 시안(Claude Design) 확정: Pretendard (OFL)
+    # 본문 기본 폰트 — 시안(Claude Design) 확정: Pretendard (OFL).
+    # 번들본은 tool/subset_fonts.py 로 KS X 1001 2350자+라틴·기호만 남긴 서브셋(종당 1.5MB→0.45MB),
+    # 원본은 assets/fonts/_src/ (번들 제외). 내부 이름은 OFL RFN 규정으로 'GreenGuide Sans'.
     - family: Pretendard
       fonts:
         - asset: assets/fonts/Pretendard-Regular.otf
@@ -97,13 +100,9 @@ flutter:
           weight: 600
         - asset: assets/fonts/Pretendard-Bold.otf
           weight: 700
-    # 유한킴벌리 푸른숲체 (YK Green Forest) — woff2 원본에서 OTF 변환.
-    # Medium 을 w400 으로 매핑해 fontWeight.normal 이 Medium 을 쓴다.
+    # 유한킴벌리 푸른숲체 (YK Green Forest) — woff2 원본에서 OTF 변환, Bold 만 사용(툴팁 w700).
+    # Light·Medium 은 미사용이라 번들 제외(2026-10-04 용량 최적화). 서브셋·원본 위치는 Pretendard 와 같다.
     - family: PureunSup
       fonts:
-        - asset: assets/fonts/PureunSup-Light.otf
-          weight: 300
-        - asset: assets/fonts/PureunSup-Medium.otf
-          weight: 400
         - asset: assets/fonts/PureunSup-Bold.otf
           weight: 700

@@ -63,7 +63,7 @@ GreenGuide AI
 |---|---|---|
 | 프레임워크 | **FastAPI** | 비동기 지원, Pydantic 통합, OpenAPI 문서 자동 생성, 타입 안전 |
 | 추론 엔진 | **ONNX Runtime** | Framework-agnostic, CPU/GPU 모두 지원, 가벼움 |
-| 모델 | CNN (기본) — `WASTE_API_MODEL_PATH` 로 MLP 도 가능 | 정확도·크기 균형 |
+| 모델 | CNN (기본) — `GREENGUIDE_API_MODEL_PATH` 로 MLP 도 가능 | 정확도·크기 균형 |
 | 모델 로드 | 서버 시작 시 1회 (lifespan event) | cold start 제거, 매 요청 빠름 |
 | 이미지 처리 | Pillow | 다양한 포맷 자동 지원 (JPG·PNG·WebP 등) |
 | CORS | `*` (개발 단계) | Flutter web·다른 origin에서 호출 가능. 배포 시 좁힐 것 |
@@ -98,7 +98,7 @@ GreenGuide AI
 ### Active Learning Loop
 사용자 사진 수집은 기본 활성. 환경변수로 끄기:
 ```bash
-WASTE_API_COLLECT_UPLOADS=false python main.py
+GREENGUIDE_API_COLLECT_UPLOADS=false python main.py
 ```
 수집된 데이터는 [`../greenguide-classifier/retrain.py`](../greenguide-classifier/retrain.py) 로 모델 재학습에 사용.
 
@@ -158,11 +158,11 @@ python main.py --host 0.0.0.0 --port 8000 --workers 4
 ### 4. 환경 변수
 | 변수 | 기본값 | 설명 |
 |---|---|---|
-| `WASTE_API_MODEL_PATH` | `../greenguide-classifier/outputs/models/cnn/classifier.onnx` | ONNX 모델 경로 (절대/상대 경로) |
+| `GREENGUIDE_API_MODEL_PATH` | `../greenguide-classifier/outputs/models/cnn/classifier.onnx` | ONNX 모델 경로 (절대/상대 경로) |
 
 예: MLP 모델로 전환
 ```bash
-WASTE_API_MODEL_PATH=../greenguide-classifier/outputs/models/mlp/classifier.onnx \
+GREENGUIDE_API_MODEL_PATH=../greenguide-classifier/outputs/models/mlp/classifier.onnx \
   python main.py
 ```
 
@@ -308,7 +308,7 @@ CNN 의 전체 test accuracy 92.35% 와 일치하는 결과. plastic/glass 혼�
 ## 프로젝트 구조
 
 ```
-waste-api/
+services/inference-api/
 ├── .gitignore
 ├── README.md
 ├── pytest.ini
