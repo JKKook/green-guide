@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../../core/ui/ds_card.dart';
+import '../../../core/ui/keep_all.dart';
 import '../../../data/collection_schedule.dart';
 import '../../../data/tips.dart';
 import '../../../theme/app_theme.dart';
@@ -94,7 +95,7 @@ class TipCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  tip,
+                  keepAll(tip),
                   style: TextStyle(
                     fontSize: 12.5,
                     height: 1.55,

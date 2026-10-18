@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../api/models.dart';
 import '../../../core/ui/ds_card.dart';
+import '../../../core/ui/keep_all.dart';
 import '../../../data/waste_info.dart';
 import '../../../theme/design_tokens.dart';
 
@@ -105,7 +106,7 @@ class GuideCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
-                    width: 64,
+                    width: 72,
                     child: Text(
                       label,
                       style: TextStyle(
@@ -117,7 +118,7 @@ class GuideCard extends StatelessWidget {
                   ),
                   Expanded(
                     child: Text(
-                      value,
+                      keepAll(value),
                       style: TextStyle(
                         fontSize: 13,
                         height: 1.5,
@@ -156,7 +157,7 @@ class GuideCard extends StatelessWidget {
                 const SizedBox(width: 9),
                 Expanded(
                   child: Text(
-                    s,
+                    keepAll(s),
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.5,
@@ -169,12 +170,12 @@ class GuideCard extends StatelessWidget {
           ],
           const SizedBox(height: 12),
           Text(
-            hasRegion
+            keepAll(hasRegion
                 ? '출처 · ${regionInfo!.sido} ${regionInfo!.sigungu} 폐기물 관리 조례 '
                       '(행안부 생활쓰레기 배출정보 표준데이터) · 관리구역에 따라 다를 수 있어요'
                 : regionSet
                 ? '전국 공통 안내 · 우리 동네 조례 데이터는 아직 준비 중이에요'
-                : '전국 공통 안내 · 지역을 설정하면 우리 동네 조례 기준도 함께 알려드려요',
+                : '전국 공통 안내 · 지역을 설정하면 우리 동네 조례 기준도 함께 알려드려요'),
             style: TextStyle(fontSize: 10.5, height: 1.4, color: t.muted),
           ),
         ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/models.dart';
 import '../core/di/app_scope.dart';
+import '../core/ui/keep_all.dart';
 import '../data/haptics.dart';
 import '../data/waste_info.dart';
 import '../theme/app_theme.dart';
@@ -90,7 +91,7 @@ class _CriteriaSheetBodyState extends State<_CriteriaSheetBody> {
             ),
             const SizedBox(height: kSpaceM),
             Text(
-              info.summary,
+              keepAll(info.summary),
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             // 우리 동네 규정 — 결과 화면 가이드 카드와 같은 행 (공공데이터, 조례 기준)
@@ -176,7 +177,7 @@ class _CriteriaRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 64,
+          width: 72,
           child: Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -186,7 +187,8 @@ class _CriteriaRow extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
+          child: Text(keepAll(value),
+              style: Theme.of(context).textTheme.bodyMedium),
         ),
       ],
     );

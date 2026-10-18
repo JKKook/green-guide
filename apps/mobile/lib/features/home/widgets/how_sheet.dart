@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../../core/ui/ds_card.dart';
+import '../../../core/ui/keep_all.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/design_tokens.dart';
 
@@ -86,7 +87,7 @@ class HowSheet extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          steps[i].$3,
+                          keepAll(steps[i].$3),
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 11, color: t.muted2),
                         ),
@@ -117,7 +118,7 @@ class HowSheet extends StatelessWidget {
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            '확신이 낮을 때만 · 클라우드 2차 재분류',
+                            keepAll('확신이 낮을 때만 · 클라우드 2차 재분류'),
                             style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w600,
@@ -152,14 +153,14 @@ class HowSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        '피드백 한 번이 AI를 더 똑똑하게 만들어요',
-                        style: TextStyle(
+                      Text(
+                        keepAll('피드백 한 번이 AI를 더 똑똑하게 만들어요'),
+                        style: const TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '결과 화면에서 정확함/수정만 눌러주세요',
+                        keepAll('결과 화면에서 정확함/수정만 눌러주세요'),
                         style: TextStyle(fontSize: 11.5, color: t.muted2),
                       ),
                     ],

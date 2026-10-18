@@ -6,10 +6,9 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/design_tokens.dart';
 
-/// 한글 어절 단위 줄바꿈 — Flutter 는 한글을 글자 단위로 끊으므로("사시나/요?")
-/// 어절 안의 글자 사이에 단어 결합자(U+2060)를 넣어 공백에서만 줄이 바뀌게 한다.
-String keepAll(String text) =>
-    text.split(' ').map((w) => w.split('').join('\u2060')).join(' ');
+// 한글 어절 단위 줄바꿈 — 앱 공통(core/ui)으로 옮김. 온보딩 단계들이 이 파일을
+// 통해 쓰므로 그대로 내보낸다.
+export '../../../core/ui/keep_all.dart' show keepAll;
 
 /// 주요 CTA — 52px · radius 16 · accent-700.
 class OnboardingButton extends StatelessWidget {
