@@ -94,12 +94,20 @@ class HierWasteClassifier:
         # OOD 프로토타입 (선택) — build_hier_prototypes.py 산출물.
         # softmax 는 OOD 에 과신하므로 임베딩 거리로 '학습된 무엇과도 안 닮음'을 잡는다.
         self.ood_protos: np.ndarray | None = None   # (C, 512) L2-normalized
-        # 2단 임계 (τ 분석 근거: val p90=0.217/p95=0.320, noise=0.335, gray=0.353)
-        #  - soft: 넘으면 세부 표시 억제(대분류 캡) — val 오거부 ~5.6%지만 안내는 유지
+        # 2단 임계 — build_hier_prototypes.py 가 val 분포로 보정해 사이드카에 기록
+        # (tau_soft=p90, tau_hard=p97.5). 구버전 사이드카는 tau(=hard)만 있음.
+        #  - soft: 넘으면 세부 표시 억제(대분류 캡)
         #  - hard: 넘으면 완전 reject — 극단 OOD 만
+        # env 로 운영 중 조정 가능. 보정값이 전혀 없으면 과거 기본값(0.30/0.40) —
+        # 실측(2026-10-18)에서 이 기본값은 실사용 사진 56장 중 32장을 오거부했다.
         ood_cfg = self.taxonomy.get("ood") or {}
-        self.ood_tau_soft: float = float(ood_cfg.get("tau_soft", 0.30))
-        self.ood_tau_hard: float = float(ood_cfg.get("tau_hard", 0.40))
+        tau_hard = ood_cfg.get("tau_hard", ood_cfg.get("tau", 0.40))
+        tau_soft = ood_cfg.get("tau_soft", 0.30)
+        self.ood_tau_soft: float = float(
+            config.OOD_TAU_SOFT if config.OOD_TAU_SOFT is not None else tau_soft)
+        self.ood_tau_hard: float = float(
+            config.OOD_TAU_HARD if config.OOD_TAU_HARD is not None else tau_hard)
+        log.info(f"OOD τ soft={self.ood_tau_soft:.3f} hard={self.ood_tau_hard:.3f}")
         ood_path = model_path.parent / "ood.npz"
         if ood_path.exists():
             data = np.load(ood_path, allow_pickle=False)

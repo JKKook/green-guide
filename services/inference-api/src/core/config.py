@@ -128,6 +128,11 @@ ANTHROPIC_API_KEY: str | None = os.getenv("ANTHROPIC_API_KEY")
 HIER_MODEL_PATH_ENV: str | None = os.getenv("GREENGUIDE_API_HIER_MODEL_PATH")
 DINO_WEIGHT: float = float(os.getenv("GREENGUIDE_API_DINO_W", "0"))       # 0 = DINOv2 앙상블 비활성
 CAM_PRIOR_WEIGHT: float = float(os.getenv("GREENGUIDE_API_CAM_W", "0.15"))
+# OOD 거부 임계 재정의 (없으면 taxonomy.json 의 보정값 → 과거 기본값 순)
+OOD_TAU_SOFT: float | None = (
+    float(v) if (v := os.getenv("GREENGUIDE_API_OOD_TAU_SOFT")) else None)
+OOD_TAU_HARD: float | None = (
+    float(v) if (v := os.getenv("GREENGUIDE_API_OOD_TAU_HARD")) else None)
 
 # ── 증거 엔진 (CLIP 정체 / OCR) ──
 CLIP_ENABLED: bool = os.getenv("GREENGUIDE_API_CLIP", "1") != "0"
