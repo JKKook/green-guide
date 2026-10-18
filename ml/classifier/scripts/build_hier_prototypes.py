@@ -13,8 +13,11 @@ greenguide_classifier/ood.py 의 원칙(softmax 는 '최선'만, 임베딩 거�
 """
 from __future__ import annotations
 
+import argparse
+import hashlib
 import json
 from collections import defaultdict
+from pathlib import Path
 
 import _base  # noqa: F401 — sys.path 설정
 import numpy as np
@@ -31,12 +34,11 @@ from greenguide_classifier.infer import load_session
 
 MODELS_DIR = config.MODELS_DIR / "cnn_hier"
 ONNX_PATH = MODELS_DIR / "classifier.onnx"
-OOD_PATH = MODELS_DIR / "ood.npz"
-SIDECAR = MODELS_DIR / "taxonomy.json"
 
 PER_CLASS_CAP = 400        # prototype 표본 상한 (충분 + 빠름)
 VAL_SAMPLE_CAP = 4000      # τ 보정용 val 표본
-TAU_PERCENTILE = 97.5      # in-distribution 97.5% 를 통과시키는 임계
+TAU_PERCENTILE = 97.5      # hard: in-distribution 97.5% 를 통과시키는 임계 (완전 reject)
+TAU_SOFT_PERCENTILE = 90.0  # soft: 넘으면 세부 표시만 억제(대분류 캡)
 SEED = 42
 
 
@@ -55,8 +57,20 @@ def _extract_embeddings(sess: ort.InferenceSession, items: list[dict]) -> np.nda
 
 
 def main() -> None:
+    # 서빙 사본(services/inference-api/models/classifier_hier.onnx)처럼 다른 export 에
+    # 맞춰 재생성할 때 --onnx/--out-dir 지정. 프로토타입은 ONNX 마다 임베딩 공간이 달라
+    # 반드시 같은 파일로 만들어야 한다.
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--onnx", type=Path, default=ONNX_PATH)
+    ap.add_argument("--out-dir", type=Path, default=None,
+                    help="ood.npz·taxonomy.json 을 쓸 디렉터리 (기본: ONNX 가 있는 곳)")
+    args = ap.parse_args()
+    out_dir = args.out_dir or args.onnx.parent
+    ood_path = out_dir / "ood.npz"
+    sidecar = out_dir / "taxonomy.json"
+
     rng = np.random.default_rng(SEED)
-    sess = load_session(ONNX_PATH)
+    sess = load_session(args.onnx)
 
     items = build_hier_items()
     splits = load_or_build_hier_splits(items)
@@ -88,23 +102,29 @@ def main() -> None:
     sims = val_embs @ P.T                                    # cosine sim
     min_dist = 1.0 - sims.max(axis=1)
     tau = float(np.percentile(min_dist, TAU_PERCENTILE))
+    tau_soft = float(np.percentile(min_dist, TAU_SOFT_PERCENTILE))
     print(f"val 최근접 거리: median={np.median(min_dist):.4f}, "
-          f"p97.5={tau:.4f} → τ={tau:.4f}")
+          f"p90={tau_soft:.4f} → τ_soft, p97.5={tau:.4f} → τ_hard")
 
     slugs_sorted = sorted(protos)
     np.savez_compressed(
-        OOD_PATH,
+        ood_path,
         prototypes=np.stack([protos[s] for s in slugs_sorted]),
         slugs=np.array(slugs_sorted),
         tau=np.array([tau]),
     )
-    print(f"→ {OOD_PATH}")
+    print(f"→ {ood_path}")
 
-    # 사이드카에 τ 기록 (서빙이 함께 로드)
-    sc = json.loads(SIDECAR.read_text(encoding="utf-8"))
-    sc["ood"] = {"tau": tau, "percentile": TAU_PERCENTILE, "file": "ood.npz"}
-    SIDECAR.write_text(json.dumps(sc, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"→ {SIDECAR} (ood.tau 갱신)")
+    # 사이드카에 τ 기록 — 서빙(hier_inference)이 tau_soft/tau_hard 를 읽는다.
+    # tau 는 구버전 호환용(= tau_hard).
+    sc = json.loads(sidecar.read_text(encoding="utf-8"))
+    sc["ood"] = {
+        "tau": tau, "tau_hard": tau, "tau_soft": tau_soft,
+        "percentile": TAU_PERCENTILE, "soft_percentile": TAU_SOFT_PERCENTILE,
+        "file": "ood.npz", "onnx_md5": hashlib.md5(args.onnx.read_bytes()).hexdigest(),
+    }
+    sidecar.write_text(json.dumps(sc, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"→ {sidecar} (ood.tau_soft/tau_hard 갱신)")
 
 
 if __name__ == "__main__":
