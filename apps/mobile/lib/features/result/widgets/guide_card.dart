@@ -25,47 +25,13 @@ class GuideCard extends StatelessWidget {
     required this.coarse,
   });
 
-  static const _recyclables = {
-    'paper',
-    'paper_pack',
-    'glass',
-    'metal',
-    'plastic',
-    'vinyl',
-    'styrofoam',
-    'clothes',
-  };
-
-  /// 지역 규정 행 — 재질을 재활용/음식물/일반으로 매핑해 해당 분류의 규정 추출.
-  List<(String, String)> _regionRows(RegionRule r) {
-    final String? method;
-    final String? days;
-    if (coarse == 'food_waste') {
-      method = r.methodFood;
-      days = r.daysFood;
-    } else if (_recyclables.contains(coarse)) {
-      method = r.methodRecycle;
-      days = r.daysRecycle;
-    } else {
-      method = r.methodGeneral;
-      days = r.daysGeneral;
-    }
-    return [
-      if (method != null && method.isNotEmpty) ('배출 방법', method),
-      if (days != null && days.isNotEmpty) ('배출 요일', days),
-      if (r.emitTime != null && r.emitTime!.isNotEmpty) ('배출 시간', r.emitTime!),
-      if (r.noCollectDay != null && r.noCollectDay!.isNotEmpty)
-        ('미수거일', r.noCollectDay!),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
     final t = DsTokens.of(context);
     final rule = regionInfo?.representative;
     final regionRows = rule == null
         ? const <(String, String)>[]
-        : _regionRows(rule);
+        : rule.rowsFor(coarse);
     final hasRegion = regionRows.isNotEmpty;
     final steps = [
       if (info.howTo.isEmpty && info.bin.isNotEmpty) info.bin,
