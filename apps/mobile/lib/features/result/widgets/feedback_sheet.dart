@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import '../../../api/models.dart';
+import '../../../core/ui/keep_all.dart';
 import '../../../data/haptics.dart';
 import '../../../data/waste_info.dart';
 import '../../../theme/app_theme.dart';
@@ -124,7 +125,7 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
                     text: predictedName,
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  const TextSpan(text: '으로 분석했어요 · 올바른 재질을 알려주세요'),
+                  TextSpan(text: keepAll('으로 분석했어요 · 올바른 재질을 알려주세요')),
                 ],
               ),
               style: TextStyle(fontSize: 12.5, color: t.muted2),
@@ -264,9 +265,9 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    _typedUnmapped
+                    keepAll(_typedUnmapped
                         ? '목록에 없는 재질이라 기기 기록에만 저장돼요'
-                        : '서버로 전송되어 AI 재질 분석 학습에 사용돼요',
+                        : '서버로 전송되어 AI 재질 분석 학습에 사용돼요'),
                     style: TextStyle(fontSize: 11.5, color: t.muted),
                   ),
                 ),

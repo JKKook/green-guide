@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/di/app_scope.dart';
+import '../../core/ui/keep_all.dart';
 import '../../data/collection_schedule.dart';
 import '../../data/haptics.dart';
 import '../../data/settings_store.dart';
@@ -265,7 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 10),
                         // 실용 정보 한 줄 — 주택: 오늘 수거 품목 / 아파트: 상시 배출
                         Text(
-                          _subline(housing, todayIdx),
+                          keepAll(_subline(housing, todayIdx)),
                           style: TextStyle(fontSize: 12, color: t.muted),
                         ),
                       ],
@@ -306,7 +307,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      '그린가이드의 모든 것을 검색할 수 있어요',
+                                      // 어절 단위 줄바꿈 — 좁은 화면·큰 글꼴에서
+                                      // "있/어요"처럼 단어 중간이 잘리지 않게
+                                      keepAll('그린가이드의 모든 것을 검색할 수 있어요'),
                                       style: TextStyle(
                                         fontSize: 16,
                                         color: t.muted,

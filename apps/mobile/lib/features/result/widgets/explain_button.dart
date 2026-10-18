@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import '../../../api/api_client.dart';
 import '../../../api/models.dart';
 import '../../../core/di/app_scope.dart';
+import '../../../core/ui/keep_all.dart';
 import '../../../data/haptics.dart';
 import '../../../data/waste_info.dart';
 import '../../../theme/app_theme.dart';
@@ -89,7 +90,7 @@ class _ExplainButtonState extends State<ExplainButton> {
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.info_outline, size: 32),
         title: Text(title),
-        content: Text(message),
+        content: Text(keepAll(message)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -138,9 +139,9 @@ class _ExplainButtonState extends State<ExplainButton> {
                 ),
                 const SizedBox(height: kSpaceS),
                 Text(
-                  '"${widget.info?.displayName ?? widget.prediction.predictedClass}" '
-                  '으로 분류할 때 모델이 가장 집중한 영역입니다 '
-                  '(빨강 = 강하게 봄, 파랑 = 거의 안 봄).',
+                  keepAll('"${widget.info?.displayName ?? widget.prediction.predictedClass}" '
+                      '으로 분류할 때 모델이 가장 집중한 영역입니다 '
+                      '(빨강 = 강하게 봄, 파랑 = 거의 안 봄).'),
                   style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: kSpaceM),
@@ -168,8 +169,8 @@ class _ExplainButtonState extends State<ExplainButton> {
                       const SizedBox(width: kSpaceS),
                       Expanded(
                         child: Text(
-                          '예상한 영역과 다르다면 결과가 틀렸을 가능성이 높아요. '
-                          '아래 피드백 카드에서 정정해주세요.',
+                          keepAll('예상한 영역과 다르다면 결과가 틀렸을 가능성이 높아요. '
+                              '아래 피드백 카드에서 정정해주세요.'),
                           style: TextStyle(
                             fontSize: 11,
                             color: cs.onSurfaceVariant,

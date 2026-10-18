@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../api/api_client.dart';
 import '../../../api/models.dart';
 import '../../../core/di/app_scope.dart';
+import '../../../core/ui/keep_all.dart';
 import '../../../data/haptics.dart';
 import '../../../data/history_repository.dart';
 import '../../../data/waste_info.dart';
@@ -129,7 +130,7 @@ class _FeedbackCardState extends State<FeedbackCard> {
             size: 13, color: t.muted),
         const SizedBox(width: 6),
         Flexible(
-          child: Text(text,
+          child: Text(keepAll(text),
               style: TextStyle(fontSize: 11.5, color: t.muted)),
         ),
       ],
@@ -152,7 +153,7 @@ class _FeedbackCardState extends State<FeedbackCard> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '피드백 감사합니다 · ${infoFor(_sentLabel!)?.displayName ?? _sentLabel} 라벨로 기록',
+                  keepAll('피드백 감사합니다 · ${infoFor(_sentLabel!)?.displayName ?? _sentLabel} 라벨로 기록'),
                   style: const TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w600),
                 ),
@@ -161,7 +162,7 @@ class _FeedbackCardState extends State<FeedbackCard> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 6),
-            Text(_error!, style: TextStyle(color: cs.error, fontSize: 12)),
+            Text(keepAll(_error!), style: TextStyle(color: cs.error, fontSize: 12)),
           ],
           const SizedBox(height: 14),
           _caption(t),
@@ -251,7 +252,7 @@ class _FeedbackCardState extends State<FeedbackCard> {
         if (_error != null) ...[
           const SizedBox(height: 8),
           Text(
-            _error!,
+            keepAll(_error!),
             style: TextStyle(color: cs.error, fontSize: 12),
           ),
         ],

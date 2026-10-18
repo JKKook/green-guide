@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/ui/ds_card.dart';
+import '../../core/ui/keep_all.dart';
 import '../../data/haptics.dart';
 import '../../data/legal_terms.dart';
 import '../../theme/app_theme.dart';
@@ -152,7 +153,7 @@ class TermsDetailScreen extends StatelessWidget {
               tinted: true,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               child: Text(
-                doc.summary,
+                keepAll(doc.summary),
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.55,
@@ -188,7 +189,7 @@ class TermsDetailScreen extends StatelessWidget {
                       ),
                       Expanded(
                         child: Text(
-                          item,
+                          keepAll(item),
                           style: TextStyle(
                               fontSize: 13, height: 1.6, color: bodyColor),
                         ),

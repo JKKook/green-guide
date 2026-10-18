@@ -162,8 +162,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// 버전 7회 탭 → 개발자 옵션(API 서버) 토글 — 일반 사용자에게는 숨김.
+  /// 버전 7회 탭 → 개발자 옵션(API 서버) 토글 — 디버그 빌드에서만.
+  /// 릴리즈(스토어·베타) 빌드에서는 서버 주소·기록 삭제 등 개발용 항목을 열지 않는다.
   Future<void> _onVersionTap() async {
+    if (!kDebugMode) return;
     _versionTaps++;
     if (_versionTaps < 7) {
       // 힌트는 디버그 빌드에서만 — 베타 사용자에게 개발자 옵션을 광고하지 않는다.
