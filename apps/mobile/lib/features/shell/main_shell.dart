@@ -44,6 +44,8 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final t = DsTokens.of(context);
     final barColor = t.surface;
+    // 키보드가 올라오면 docked FAB 가 키보드 위로 떠서 콘텐츠를 가린다 — 숨김.
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
 
     return Scaffold(
       body: IndexedStack(
@@ -67,7 +69,9 @@ class _MainShellState extends State<MainShell> {
         ],
       ),
       // 중앙 촬영 버튼 — 바 위로 반쯤 떠 있는 그라디언트 원 (시안 8a)
-      floatingActionButton: SizedBox(
+      floatingActionButton: keyboardOpen
+          ? null
+          : SizedBox(
         width: 62,
         height: 62,
         child: Material(

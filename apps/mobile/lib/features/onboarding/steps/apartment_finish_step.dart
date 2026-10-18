@@ -49,7 +49,7 @@ class _ApartmentFinishStepState extends State<ApartmentFinishStep> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$place · 아파트 기준으로 알려드려요',
+                  keepAll('$place · 아파트 기준으로 알려드려요'),
                   style: TextStyle(fontSize: 12.5, color: t.muted2),
                 ),
                 const SizedBox(height: 18),
@@ -76,7 +76,7 @@ class _ApartmentFinishStepState extends State<ApartmentFinishStep> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '아파트는 수거 요일 설정이 필요 없어요',
+                              keepAll('아파트는 수거 요일 설정이 필요 없어요'),
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -85,7 +85,7 @@ class _ApartmentFinishStepState extends State<ApartmentFinishStep> {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              '단지 내 분리배출장에 상시 배출할 수 있어 수거 요일·배출 시간대 설정 화면을 건너뛰어요',
+                              keepAll('단지 내 분리배출장에 상시 배출할 수 있어 수거 요일·배출 시간대 설정 화면을 건너뛰어요'),
                               style: TextStyle(
                                 fontSize: 12.5,
                                 height: 1.5,
@@ -115,7 +115,7 @@ class _ApartmentFinishStepState extends State<ApartmentFinishStep> {
                                 style: TextStyle(
                                     fontSize: 14, fontWeight: FontWeight.w700)),
                             const SizedBox(height: 1),
-                            Text('헷갈리는 품목 배출법을 가끔 알려드려요 · 발송은 준비 중',
+                            Text(keepAll('헷갈리는 품목 배출법을 가끔 알려드려요 · 발송은 준비 중'),
                                 style:
                                     TextStyle(fontSize: 11.5, color: t.muted)),
                           ],
@@ -135,7 +135,7 @@ class _ApartmentFinishStepState extends State<ApartmentFinishStep> {
                 const SizedBox(height: 16),
                 Center(
                   child: Text(
-                    '주거 형태는 설정에서 언제든 변경할 수 있어요',
+                    keepAll('주거 형태는 설정에서 언제든 변경할 수 있어요'),
                     style: TextStyle(fontSize: 11.5, color: t.muted),
                   ),
                 ),

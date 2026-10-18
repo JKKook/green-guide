@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../api/models.dart';
+import '../../../core/ui/keep_all.dart';
 import '../../../data/image_quality.dart';
 import '../../../data/waste_info.dart';
 import '../../../theme/app_theme.dart';
@@ -83,8 +84,8 @@ class RegionRescueBanner extends StatelessWidget {
           ),
           const SizedBox(height: kSpaceS),
           Text(
-            '전체 장면으로는 확신이 낮았지만, 사진 속 빗금 영역에서 이 재질이 확인됐어요. '
-            '다르다면 아래 피드백으로 알려주세요.',
+            keepAll('전체 장면으로는 확신이 낮았지만, 사진 속 빗금 영역에서 이 재질이 확인됐어요. '
+                '다르다면 아래 피드백으로 알려주세요.'),
             style: TextStyle(
               fontSize: 12.5,
               height: 1.5,
@@ -140,7 +141,7 @@ class QualityBanner extends StatelessWidget {
                   (m) => Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      '• $m',
+                      keepAll('• $m'),
                       style: const TextStyle(fontSize: 13, height: 1.4),
                     ),
                   ),
@@ -188,20 +189,20 @@ class UncertainBanner extends StatelessWidget {
             ],
           ),
           const SizedBox(height: kSpaceS),
-          const Text(
-            '이 사진은 분류하기 어려워요. 더 정확한 결과를 위해:',
-            style: TextStyle(height: 1.4),
-          ),
-          const SizedBox(height: kSpaceXS),
-          const Text(
-            '• 물체 하나만 화면 가운데에 담아주세요\n'
-            '• 밝은 곳에서 가까이 찍어주세요\n'
-            '• 아래 추측이 틀렸다면 피드백으로 알려주세요',
-            style: TextStyle(fontSize: 13, height: 1.5),
+          Text(
+            keepAll('이 사진은 분류하기 어려워요. 더 정확한 결과를 위해:'),
+            style: const TextStyle(height: 1.4),
           ),
           const SizedBox(height: kSpaceXS),
           Text(
-            '아래는 모델의 가장 가능성 높은 추측입니다 (참고용).',
+            keepAll('• 물체 하나만 화면 가운데에 담아주세요\n'
+                '• 밝은 곳에서 가까이 찍어주세요\n'
+                '• 아래 추측이 틀렸다면 피드백으로 알려주세요'),
+            style: const TextStyle(fontSize: 13, height: 1.5),
+          ),
+          const SizedBox(height: kSpaceXS),
+          Text(
+            keepAll('아래는 모델의 가장 가능성 높은 추측입니다 (참고용).'),
             style: TextStyle(
               fontSize: 12,
               fontStyle: FontStyle.italic,
@@ -327,7 +328,7 @@ class RejectCard extends StatelessWidget {
           ),
           const SizedBox(height: kSpaceM),
           Text(
-            body,
+            keepAll(body),
             style: TextStyle(
               fontSize: 13,
               height: 1.5,

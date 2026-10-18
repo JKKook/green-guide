@@ -70,6 +70,41 @@ class RegionRule {
     noCollectDay: json['no_collect_day'] as String?,
     phone: json['phone'] as String?,
   );
+
+  static const _recyclables = {
+    'paper',
+    'paper_pack',
+    'glass',
+    'metal',
+    'plastic',
+    'vinyl',
+    'styrofoam',
+    'clothes',
+  };
+
+  /// 대분류를 재활용/음식물/일반으로 매핑해 해당 분류의 규정 행(라벨, 값) 추출.
+  /// 결과 화면 가이드 카드와 품목 배출 기준 시트가 같은 행을 쓴다.
+  List<(String, String)> rowsFor(String coarse) {
+    final String? method;
+    final String? days;
+    if (coarse == 'food_waste') {
+      method = methodFood;
+      days = daysFood;
+    } else if (_recyclables.contains(coarse)) {
+      method = methodRecycle;
+      days = daysRecycle;
+    } else {
+      method = methodGeneral;
+      days = daysGeneral;
+    }
+    return [
+      if (method != null && method.isNotEmpty) ('배출 방법', method),
+      if (days != null && days.isNotEmpty) ('배출 요일', days),
+      if (emitTime != null && emitTime!.isNotEmpty) ('배출 시간', emitTime!),
+      if (noCollectDay != null && noCollectDay!.isNotEmpty)
+        ('미수거일', noCollectDay!),
+    ];
+  }
 }
 
 /// /region-info 응답 — 선택 지역의 배출 규정 목록.

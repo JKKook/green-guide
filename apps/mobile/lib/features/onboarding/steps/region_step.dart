@@ -100,7 +100,7 @@ class _RegionStepState extends State<RegionStep> {
                   children: [
                     Expanded(
                       child: Text(
-                        '지역마다 분리배출 기준(조례)이 조금씩 달라요',
+                        keepAll('지역마다 분리배출 기준(조례)이 조금씩 달라요'),
                         style: TextStyle(fontSize: 12.5, color: t.muted2),
                       ),
                     ),
@@ -227,7 +227,7 @@ class _RegionStepState extends State<RegionStep> {
                                 fontSize: 14.5, fontWeight: FontWeight.w700),
                           ),
                           Text(
-                            '조례 기준 안내를 위해 시·군·구까지 골라주세요',
+                            keepAll('조례 기준 안내를 위해 시·군·구까지 골라주세요'),
                             style: TextStyle(fontSize: 11.5, color: t.muted),
                           ),
                         ],
@@ -342,7 +342,7 @@ class _SigunguSheetState extends State<SigunguSheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              '분리배출 기준은 시·군·구 조례로 정해져요 · 동까지는 몰라도 돼요',
+              keepAll('분리배출 기준은 시·군·구 조례로 정해져요 · 동까지는 몰라도 돼요'),
               style: TextStyle(fontSize: 12.5, color: t.muted2),
             ),
             const SizedBox(height: 16),
@@ -445,7 +445,7 @@ class _SigunguSheetState extends State<SigunguSheet> {
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    '${_selected ?? shortSido} 조례 기준으로 배출 방법과 수거 일정을 안내해요',
+                    keepAll('${_selected ?? shortSido} 조례 기준으로 배출 방법과 수거 일정을 안내해요'),
                     style: TextStyle(fontSize: 11.5, color: t.muted),
                   ),
                 ),

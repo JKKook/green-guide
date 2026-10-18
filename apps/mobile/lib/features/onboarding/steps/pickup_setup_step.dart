@@ -81,7 +81,7 @@ class _PickupSetupStepState extends State<PickupSetupStep> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$place · 주택·빌라 기준으로 알려드려요',
+                  keepAll('$place · 주택·빌라 기준으로 알려드려요'),
                   style: TextStyle(fontSize: 12.5, color: t.muted2),
                 ),
                 const SizedBox(height: 18),
@@ -95,7 +95,7 @@ class _PickupSetupStepState extends State<PickupSetupStep> {
                           style: TextStyle(
                               fontSize: 13, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 3),
-                      Text('동네 기본값이에요 · 다르면 직접 바꿔주세요',
+                      Text(keepAll('동네 기본값이에요 · 다르면 직접 바꿔주세요'),
                           style: TextStyle(fontSize: 11.5, color: t.muted)),
                       const SizedBox(height: 12),
                       Row(
@@ -191,7 +191,7 @@ class _PickupSetupStepState extends State<PickupSetupStep> {
                                 style: TextStyle(
                                     fontSize: 14, fontWeight: FontWeight.w700)),
                             const SizedBox(height: 1),
-                            Text('저녁 8시에 알려드려요 · 발송은 준비 중',
+                            Text(keepAll('저녁 8시에 알려드려요 · 발송은 준비 중'),
                                 style:
                                     TextStyle(fontSize: 11.5, color: t.muted)),
                           ],

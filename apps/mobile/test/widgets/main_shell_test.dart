@@ -29,4 +29,23 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('아직 분류 기록이 없어요'), findsOneWidget);
   });
+
+  testWidgets('키보드가 올라오면 중앙 촬영 버튼을 숨긴다 (콘텐츠 가림 방지)', (tester) async {
+    await tester.pumpWidget(wrapApp(const MainShell()));
+    await settleIo(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.bySemanticsLabel('사진으로 분리배출 확인하기'), findsOneWidget);
+
+    // Scaffold 는 FAB 를 퇴장 애니메이션 뒤에 제거하므로 한 프레임 더 흘린다.
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.reset);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.bySemanticsLabel('사진으로 분리배출 확인하기'), findsNothing);
+
+    tester.view.viewInsets = FakeViewPadding.zero;
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.bySemanticsLabel('사진으로 분리배출 확인하기'), findsOneWidget);
+  });
 }

@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/ui/keep_all.dart';
 import '../../../theme/design_tokens.dart';
 
 /// 섹션 라벨 — 시안: 11px w700 accent-800.
@@ -66,7 +67,7 @@ class SettingsRow extends StatelessWidget {
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    subtitle!,
+                    keepAll(subtitle!),
                     style: TextStyle(fontSize: 11, color: tokens.muted2),
                   ),
                 ],

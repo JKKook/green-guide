@@ -139,7 +139,7 @@ class _HousingTypeSheetState extends State<_HousingTypeSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            '주거 형태에 따라 분리배출 방법이 달라져요',
+            keepAll('주거 형태에 따라 분리배출 방법이 달라져요'),
             style: TextStyle(fontSize: 12.5, color: t.muted2),
           ),
           const SizedBox(height: 18),
@@ -164,7 +164,7 @@ class _HousingTypeSheetState extends State<_HousingTypeSheet> {
           const SizedBox(height: 12),
           Center(
             child: Text(
-              '나중에 설정에서 변경할 수 있어요',
+              keepAll('나중에 설정에서 변경할 수 있어요'),
               style: TextStyle(fontSize: 11.5, color: t.muted),
             ),
           ),
