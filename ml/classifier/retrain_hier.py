@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -197,44 +198,57 @@ def main() -> int:
                     help="학습 생략 — 기존 아티팩트로 평가→게이트→승격만")
     ap.add_argument("--publish", action="store_true",
                     help="게이트 통과 시 model_versions 게시 (운영 배포 opt-in)")
+    ap.add_argument("--resume", action="store_true",
+                    help="중단된 학습을 checkpoints/cnn_hier/last.pt 에서 이어감 — "
+                         "피드백·격리·preprocessor·분할 재생성을 건너뛰고 [5] 학습부터")
     args = ap.parse_args()
     py = sys.executable
+    last_ckpt = CKPT_DIR / "last.pt"
+    if args.resume and not last_ckpt.exists():
+        sys.exit(f"ERROR: --resume 인데 {last_ckpt} 가 없음")
 
     version = time.strftime("v%Y%m%d_%H%M%S")
     print(f"=== 계층 재학습 사이클 {version} ===")
 
-    # [1] 피드백
-    rows = fetch_feedback_rows()
-    log.info(f"[1] 피드백 {len(rows)}건")
-    if args.dry_run:
-        from collections import Counter
-        dist = Counter(r["feedback_label"] for r in rows)
-        for k, v in dist.most_common():
-            print(f"    {k:16} {v}")
-        return 0
-    valid = fetch_active_labels()
-    dl, skip, fail = download_to_raw(rows, valid)
-    log.info(f"다운로드 {dl}, 기존 {skip}, 실패 {fail}")
+    rows: list[dict] = []
+    if args.resume:
+        # 데이터·분할이 바뀌면 last.pt 의 상태와 어긋나므로 [1]~[4] 를 그대로 둔다
+        log.info(f"[1~4] --resume: 피드백·격리·preprocessor 생략, {last_ckpt.name} 에서 이어감")
+    else:
+        # [1] 피드백
+        rows = fetch_feedback_rows()
+        log.info(f"[1] 피드백 {len(rows)}건")
+        if args.dry_run:
+            from collections import Counter
+            dist = Counter(r["feedback_label"] for r in rows)
+            for k, v in dist.most_common():
+                print(f"    {k:16} {v}")
+            return 0
+        valid = fetch_active_labels()
+        dl, skip, fail = download_to_raw(rows, valid)
+        log.info(f"다운로드 {dl}, 기존 {skip}, 실패 {fail}")
 
-    # [2] 소수 클래스 격리
-    q = quarantine_tiny_classes()
-    if q:
-        log.info(f"[2] 격리: {q}")
+        # [2] 소수 클래스 격리
+        q = quarantine_tiny_classes()
+        if q:
+            log.info(f"[2] 격리: {q}")
 
     # [3] 백업
     backup = backup_artifacts(ARTIFACTS, BACKUP_ROOT, "cnn_hier")
 
     # [4] preprocessor
-    if not args.skip_preprocessor:
+    if args.resume or args.skip_preprocessor:
+        log.info("[4] preprocessor 생략")
+    else:
         log.info("[4] preprocessor 재실행...")
         run_preprocessor()
-    else:
-        log.info("[4] preprocessor 생략")
 
     try:
         # [5] splits 재생성(frozen 누적) → 학습 → 평가
         if not args.skip_train:
-            if HIER_SPLITS.exists():
+            if args.resume:
+                os.environ["GREENGUIDE_HIER_RESUME"] = "1"   # 분할 파일은 그대로 두고 이어감
+            elif HIER_SPLITS.exists():
                 HIER_SPLITS.unlink()
                 log.info("[5] hier_splits.json 삭제 (frozen 은 hier_frozen_test.json 으로 유지)")
             _run([py, "-m", "greenguide_classifier.hier_train"], "계층 학습")

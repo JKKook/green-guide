@@ -55,8 +55,12 @@ ARCH = "cnn_hier"
 
 BACKBONE = _os.getenv("GREENGUIDE_HIER_BACKBONE", "resnet18")
 LABEL_SMOOTH = float(_os.getenv("GREENGUIDE_HIER_LABEL_SMOOTH", "0.0"))
+# 1 이면 last.pt(매 epoch 저장)에서 이어 학습 — 수면·재부팅으로 끊긴 사이클 재개용.
+# v14 는 세 번(10-10 ×2, 10-18) 모두 중간에 죽어 매번 처음부터 돌았다.
+RESUME = _os.getenv("GREENGUIDE_HIER_RESUME", "0") == "1"
 CKPT_DIR = config.CHECKPOINTS_DIR / ARCH
 LOG_DIR = config.LOGS_DIR / ARCH
+LAST_CKPT_NAME = "last.pt"
 
 
 def get_hier_hyperparams() -> ArchHyperparams:
@@ -197,6 +201,62 @@ def _run_hier_epoch(
     )
 
 
+def save_last_checkpoint(
+    path: Path, *, epoch: int, model: nn.Module, optimizer: torch.optim.Optimizer,
+    history: list[dict], best_score: float, best_epoch: int, patience_counter: int,
+) -> None:
+    """epoch 끝 상태 전체 저장 — 모델·옵티마이저·이력·조기종료 카운터.
+
+    best.pt 와 달리 '가장 좋은' 것이 아니라 '가장 최근' 상태. 임시 파일에 쓰고
+    교체해 저장 도중 죽어도 이전 last.pt 가 남게 한다.
+    """
+    tmp = path.with_suffix(".pt.tmp")
+    torch.save({
+        "arch": ARCH,
+        "backbone": BACKBONE,
+        "label_smooth": LABEL_SMOOTH,
+        "num_fine": NUM_FINE,
+        "epoch": epoch,
+        "model_state": model.state_dict(),
+        "optimizer_state": optimizer.state_dict(),
+        "history": history,
+        "best_score": best_score,
+        "best_epoch": best_epoch,
+        "patience_counter": patience_counter,
+    }, tmp)
+    tmp.replace(path)
+
+
+def load_last_checkpoint(
+    path: Path, model: nn.Module, optimizer: torch.optim.Optimizer, device: torch.device | str,
+) -> dict | None:
+    """last.pt 를 모델·옵티마이저에 복원하고 재개 상태를 돌려준다.
+
+    백본·label smoothing·세부 클래스 수가 지금 설정과 다르면 이어 받을 수 없으므로
+    None (호출부는 처음부터 학습). 파일이 없어도 None.
+    """
+    if not path.exists():
+        return None
+    ckpt = torch.load(path, map_location=device, weights_only=False)
+    mismatch = {
+        k: (ckpt.get(k), v)
+        for k, v in (("backbone", BACKBONE), ("label_smooth", LABEL_SMOOTH), ("num_fine", NUM_FINE))
+        if ckpt.get(k) != v
+    }
+    if mismatch:
+        log.warning(f"[{ARCH}] last.pt 설정 불일치 — 처음부터 학습: {mismatch}")
+        return None
+    model.load_state_dict(ckpt["model_state"])
+    optimizer.load_state_dict(ckpt["optimizer_state"])
+    return {
+        "epoch": int(ckpt["epoch"]),
+        "history": list(ckpt.get("history", [])),
+        "best_score": float(ckpt.get("best_score", -1.0)),
+        "best_epoch": int(ckpt.get("best_epoch", -1)),
+        "patience_counter": int(ckpt.get("patience_counter", 0)),
+    }
+
+
 def train_hier() -> Path:
     config.ensure_directories()
     CKPT_DIR.mkdir(parents=True, exist_ok=True)
@@ -245,8 +305,23 @@ def train_hier() -> Path:
     best_epoch = -1
     patience_counter = 0
     best_ckpt_path = CKPT_DIR / "best.pt"
+    last_ckpt_path = CKPT_DIR / LAST_CKPT_NAME
 
-    for epoch in range(1, hp.num_epochs + 1):
+    start_epoch = 1
+    if RESUME:
+        state = load_last_checkpoint(last_ckpt_path, model, optimizer, device)
+        if state is None:
+            log.info(f"[{ARCH}] 재개 요청됐으나 이어 받을 last.pt 없음 — 처음부터")
+        else:
+            history = state["history"]
+            best_score, best_epoch = state["best_score"], state["best_epoch"]
+            patience_counter = state["patience_counter"]
+            start_epoch = state["epoch"] + 1
+            log.info(f"[{ARCH}] last.pt 에서 재개 — epoch {start_epoch} 부터 "
+                     f"(best epoch={best_epoch}, score={best_score:.4f})")
+            # 데이터 로더 셔플 RNG 는 복원하지 않는다 — epoch 순서가 바뀔 뿐 결과 동등성엔 무해.
+
+    for epoch in range(start_epoch, hp.num_epochs + 1):
         t0 = time.time()
         tr_loss, tr_facc, tr_cacc = _run_hier_epoch(
             model, train_loader, criterion, device, optimizer,
@@ -293,6 +368,15 @@ def train_hier() -> Path:
             if patience_counter >= hp.patience:
                 log.info(f"[{ARCH}] early stopping at epoch {epoch}")
                 break
+
+        # 매 epoch 최근 상태 저장 — 중단돼도 GREENGUIDE_HIER_RESUME=1 로 여기서 이어간다
+        save_last_checkpoint(
+            last_ckpt_path, epoch=epoch, model=model, optimizer=optimizer, history=history,
+            best_score=best_score, best_epoch=best_epoch, patience_counter=patience_counter,
+        )
+
+    # 정상 완료 — 다음 사이클이 옛 상태를 이어 받지 않도록 제거
+    last_ckpt_path.unlink(missing_ok=True)
 
     log_path = LOG_DIR / "training_log.json"
     log_path.write_text(json.dumps({
