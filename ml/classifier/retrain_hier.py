@@ -263,6 +263,13 @@ def main() -> int:
         # [9] 진단 기록
         record_diagnostics(version, evaluation)
 
+        # [9.2] 데이터 품질 지표 — 구성·격리·흐림/노출 리포트, CLIP 독립 심판 라벨 불일치율.
+        # 사이클 간 변화를 보는 상시 지표라 실패해도 사이클은 계속.
+        with fail_open(log, "[9.2] data_report"):
+            _run([py, "scripts/data_report.py"], "데이터 리포트")
+        with fail_open(log, "[9.2] label_noise"):
+            _run([py, "scripts/audit_label_noise.py"], "라벨 노이즈 계측")
+
         # [9.5] 실사용 평가 자동 실행 (SMART_CAPTURE_STRATEGY §4 의 미해결
         # 과제: "매 retrain 직후 자동으로" — frozen 과 realworld 를 함께 기록
         # 해야 개선 레버의 실효를 비교 가능). 실패해도 사이클은 계속.

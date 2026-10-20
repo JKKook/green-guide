@@ -25,6 +25,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 from torch.utils.data import DataLoader
 
 from greenguide_classifier import config
+from greenguide_classifier.data_quality import source_key
 from greenguide_classifier.hier_dataset import (
     HierImageDataset,
     build_hier_items,
@@ -143,6 +144,21 @@ def evaluate_hier() -> dict:
         true_coarse, all_pred_coarse, labels=list(range(len(COARSE_LABELS))),
     ).tolist()
 
+    # ── 출처별 대분류 정확도 — 도메인 편향(선별장·스튜디오 vs 폰·실사용) 추적 ──
+    # loader 가 shuffle=False 라 예측 순서 = test_items 순서.
+    by_source: dict[str, dict] = {}
+    for it, t, p in zip(test_items, true_coarse, all_pred_coarse, strict=False):
+        s = by_source.setdefault(source_key(it["source_path"]), {"n": 0, "hit": 0, "per_coarse": {}})
+        s["n"] += 1
+        s["hit"] += int(t == p)
+        c = s["per_coarse"].setdefault(COARSE_LABELS[t], {"n": 0, "hit": 0})
+        c["n"] += 1
+        c["hit"] += int(t == p)
+    for s in by_source.values():
+        s["coarse_accuracy"] = round(s.pop("hit") / max(s["n"], 1), 4)
+        for c in s["per_coarse"].values():
+            c["recall"] = round(c.pop("hit") / max(c["n"], 1), 4)
+
     result = {
         "arch": ARCH,
         "test_size": len(test_items),
@@ -155,6 +171,7 @@ def evaluate_hier() -> dict:
         "coarse_confusion_matrix": cm,
         "coarse_labels": list(COARSE_LABELS),
         "fine_labels": list(FINE_LABELS),
+        "by_source": by_source,
     }
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -165,6 +182,9 @@ def evaluate_hier() -> dict:
     log.info(f"[{ARCH}] 세부 정확도(fine 아이템 {len(fine_true):,}건): {fine_acc:.4f}")
     ready = [k for k, v in activation.items() if v["ready"]]
     log.info(f"[{ARCH}] 활성화 준비된 세부품목({len(ready)}): {ready}")
+    log.info(f"[{ARCH}] 출처별 대분류 정확도: " + ", ".join(
+        f"{k}={v['coarse_accuracy']:.3f}(n={v['n']:,})"
+        for k, v in sorted(by_source.items(), key=lambda kv: -kv[1]["n"])))
     log.info(f"[{ARCH}] → {out_path}")
     return result
 
