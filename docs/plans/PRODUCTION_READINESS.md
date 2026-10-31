@@ -36,6 +36,7 @@ Play Console 은 프로덕션 신청 조건 3개(비공개 테스트 게시 · �
 | 27 | 모델 | **토큰 없는 경로 채택(10-31 사용자)**: v15(하드 네거티브) → W9 백본 비교(DINOv2·CLIP 동결 특징+헤드 vs ResNet50) → W10 로컬 VLM(ollama Qwen2.5-VL 후보) 의사라벨. Opus 는 평가셋 라벨 기준과 운영 폴백에만. 출시 게이트 = 실사용 평가셋 eval_v1(97, Opus 라벨 + 사용자 중재) 대분류 **≥80%(최소) / 85%(목표)**, electronics 오탐률 ≤3%, 진짜 전자제품 recall ≥0.85, 동일 출처 test −2pp 이내 | AI 라벨 기준 v14 47/97(48%) |
 | 28 | 라벨 | 평가셋 라벨 기준 = Opus AI 라벨, 기존 라벨과 충돌 23 + AI 확신 낮음 2 = 25장만 사용자 중재(https://claude.ai/artifact/QtEpmw2ZxhDX3TvhG1L8hQ, db `adjudications`). 우선순위 user_adjudicated > ai_opus > 기존 | 충돌 19/23 이 앱 피드백 라벨(손·배경→etc 7, 전자기기→외장 재질 6) |
 | 29 | 평가셋 | **eval_v1 동결(10-31)**: `~/Downloads/greenguide-golden/realworld_eval_v1.jsonl` sha256 `b71fd1e8d9a8883f73aabd26703a42366d272e9b5daf18f7109659641b6145e0`, 97행 = ai_opus 72 + user_adjudicated 25(ai 18·prev 2·other 5), split gate 79 · final_holdout 18(sha256(id)[0]%5==0). v14 대분류 45/97(gate 36/79 · holdout 9/18), electronics 판정 44 중 오탐 24(실제 23). 게이트 판정은 gate 79 로, holdout 18 은 최종 1회만 | GG_DATA 04da3ec |
+| 30 | 배포 | **G4 분할(10-31 사용자)**: push 는 G2 전에 선행 — 9 브랜치 `git push -u origin` 완료(api-inference-prod 는 api-electronics-guard 에 포함), PR·병합은 G2 뒤. PR 생성 계정은 JKKook(ethan-outlier 는 READ). W10 로컬 VLM: qwen3-vl:8b 는 ollama 0.23.1 구버전으로 pull 거부(412) → 업그레이드 보류, qwen2.5vl:7b(13.9GB) 결과로 먼저 판정. 7b 라벨링은 v15 학습과 동시 상주 시 스왑 발생(15/16GB) → 14/97 에서 중단, v15 종료 뒤 자동 재개 | 리더 판정, 3b 는 품질상 게이트용 부적합 |
 | 24 | 골든셋 | 규칙 개정: 피드백 있는 사진 제외(사람이 이미 채점) · 중복(sha256·dHash≤6) 제외 · 로컬 `local_feedback/` 195장 포함 → **v3 51장**(후보 205, 중복 154). 피드백 라벨 51장은 리뷰 대신 정답으로 정확도 산출(AI 의심 라벨 18건 표시) | 사용자 10-31 |
 
 ## 2. 작업 묶음
@@ -77,7 +78,7 @@ Play Console 은 프로덕션 신청 조건 3개(비공개 테스트 게시 · �
 | G1 | 라벨 중재 25장 | 지금 | 중재 페이지 | 정답 선택 |
 | G2 | v15 판정 | 11-01 오전 | 실사용 게이트 수치(v14 대비) + 통과/불통과 | 서빙 모델 교체 여부, 불통과 시 2라운드 vs 백본 경로로 이동 |
 | G3 | 로컬 VLM 설치 | GG_VLM 비교표 뒤 | 모델 후보·용량·메모리·속도 | `ollama pull` 승인(약 5~6GB) |
-| G4 | push·PR·병합 | G2 뒤 | 브랜치 10개 순서·충돌 0 확인 | 일괄 승인 |
+| G4 | push·PR·병합 | push 10-31 완료(9), PR·병합 G2 뒤 | 브랜치 10개 순서·충돌 0 확인 | 일괄 승인(push 만 선승인, 결정 30) |
 | G5 | HF 배포 | G4 뒤 | 서버 완화 B + 사이드카 + 시크릿 체크리스트 | 운영 교체 승인 |
 | G6 | beta.3 업로드 | G5 뒤 | AAB·변경 요약·테스트 항목 | Play Console 업로드 클릭 |
 | G7 | 프로덕션 신청 | beta.3 3일 무크래시 + 게이트 통과 | 통과 수치 | 신청 클릭 |
