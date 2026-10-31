@@ -44,6 +44,9 @@ class VlmFallback:
 
     def __init__(self) -> None:
         self.available = False
+        # 키 상태 — /health 노출용 (키 값은 절대 담지 않는다)
+        #   missing: 미설정 / invalid: 401·403 / unverified: 점검 실패(네트워크 등) / ok
+        self.key_status = "missing"
         self._client = None
         key = config.ANTHROPIC_API_KEY
         if not key:
@@ -52,10 +55,32 @@ class VlmFallback:
         try:
             import anthropic
             self._client = anthropic.Anthropic(api_key=key)
-            self.available = True
-            log.info(f"폴백 활성 (model={MODEL}, 일일 상한 {DAILY_CAP})")
         except Exception as exc:  # noqa: BLE001
-            log.info(f"초기화 실패 (비활성): {exc}")
+            self.key_status = "unverified"
+            log.warning(f"VLM 초기화 실패 — 폴백 비활성: {exc}")
+            return
+        self.available = True
+        self._verify_key(anthropic)
+        if self.available:
+            log.info(f"폴백 활성 (model={MODEL}, 일일 상한 {DAILY_CAP}, 키 {self.key_status})")
+
+    def _verify_key(self, anthropic: Any) -> None:
+        """기동 시 1회 GET /v1/models — 무효 키를 조용한 fail-open 으로 두지 않는다.
+
+        2026-08-29 .env 재작성 뒤 키가 401 인 채로 두 달간 폴백이 한 번도 돌지 않았는데
+        실패 로그가 INFO 라 아무도 몰랐다(W6). 401/403 이면 비활성 + WARNING,
+        네트워크 등 판단 불가면 활성 유지(호출 시 재시도) + WARNING.
+        """
+        try:
+            self._client.with_options(timeout=5.0, max_retries=0).models.list(limit=1)
+            self.key_status = "ok"
+        except (anthropic.AuthenticationError, anthropic.PermissionDeniedError) as exc:
+            self.available = False
+            self.key_status = "invalid"
+            log.warning(f"VLM 키 무효 — 폴백 비활성 (HTTP {exc.status_code})")
+        except Exception as exc:  # noqa: BLE001
+            self.key_status = "unverified"
+            log.warning(f"VLM 키 점검 실패(활성 유지, 호출 시 재시도): {str(exc)[:100]}")
 
     # ── 비용 가드 ──────────────────────────────────────────────────────────
     @staticmethod
@@ -193,7 +218,7 @@ class VlmFallback:
                         ensure_ascii=False) + "\n")
             return result
         except Exception as exc:  # noqa: BLE001
-            log.info(f"호출 실패 (fail-open): {str(exc)[:100]}")
+            log.warning(f"VLM 호출 실패 (fail-open): {str(exc)[:100]}")
             return None
 
 

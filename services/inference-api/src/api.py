@@ -50,6 +50,13 @@ async def lifespan(app: FastAPI):
     log.info(f"dinov2 classifier: "
           f"{'ENABLED' if dino.available else 'disabled (model 없음)'}")
 
+    # VLM 폴백 사전 로드 — 기동 시 키 유효성 1회 점검(무효면 WARNING, /health 노출)
+    try:
+        from src.vlm_fallback import get_vlm_fallback  # noqa: PLC0415
+        get_vlm_fallback()
+    except Exception as exc:  # noqa: BLE001
+        log.warning(f"VLM 폴백 사전 로드 실패: {exc}")
+
     # 수집 정리 — 피드백 없는 업로드 7일 후 삭제 (무료 쿼터 지속성).
     # 기동 직후 1회 + 24시간 주기. 실패해도 부팅·서빙 무영향.
     async def _prune_loop() -> None:

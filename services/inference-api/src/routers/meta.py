@@ -41,7 +41,15 @@ def health() -> HealthResponse:
         host = urlparse(u).hostname if u else None
     except Exception:  # noqa: BLE001
         host = None
-    return HealthResponse(supabase_host=host)
+    vlm: dict = {}
+    try:
+        from src import vlm_fallback  # noqa: PLC0415
+        v = vlm_fallback.get_vlm_fallback()
+        vlm = {"vlm_available": v.available, "vlm_model": vlm_fallback.MODEL,
+               "vlm_key_status": v.key_status}
+    except Exception:  # noqa: BLE001
+        pass
+    return HealthResponse(supabase_host=host, **vlm)
 
 
 @router.get("/design/tokens.json", tags=["meta"])

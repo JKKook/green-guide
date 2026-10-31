@@ -23,6 +23,10 @@ class HealthResponse(BaseModel):
     status: str = "ok"
     # 진단용 — 어느 Supabase 프로젝트를 보는지 (호스트는 공개 정보, 키 아님)
     supabase_host: str | None = None
+    # VLM 폴백 상태 — 키 값은 담지 않는다 (missing·invalid·unverified·ok)
+    vlm_available: bool | None = None
+    vlm_model: str | None = None
+    vlm_key_status: str | None = None
 
 
 class LabelsResponse(BaseModel):
