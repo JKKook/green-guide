@@ -175,6 +175,22 @@ def run_server(rows: list[dict], api_root: Path, golden_dir: Path, use_vlm: bool
         return orig_classify(self, *a, **k)
 
     vf.VlmFallback.classify = counting_classify
+    usage: list[dict] = []
+    if use_vlm:  # 실호출 토큰 사용량 계측 (비용 추정용)
+        import anthropic.resources.messages as am  # noqa: PLC0415
+
+        orig_create = am.Messages.create
+
+        def logging_create(self, *a, **k):
+            msg = orig_create(self, *a, **k)
+            u = msg.usage
+            usage.append({"model": msg.model, "stop_reason": msg.stop_reason,
+                          "input": u.input_tokens, "output": u.output_tokens,
+                          "cache_read": u.cache_read_input_tokens or 0,
+                          "cache_write": u.cache_creation_input_tokens or 0})
+            return msg
+
+        am.Messages.create = logging_create
     out = []
     with TestClient(app) as client:
         for row in rows:
@@ -194,6 +210,8 @@ def run_server(rows: list[dict], api_root: Path, golden_dir: Path, use_vlm: bool
             out.append(res)
             print(".", end="", flush=True)
     print()
+    if usage:
+        out[0]["_vlm_usage"] = usage
     return out
 
 
@@ -233,6 +251,7 @@ def main() -> None:
                      "model_dir": str(args.model_dir) if args.model_dir else None,
                      "golden": str(args.golden)}
     rep["raw"] = preds
+    rep["vlm_usage"] = preds[0].get("_vlm_usage", []) if preds else []
     name = args.name or args.mode
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / f"{name}.json").write_text(
