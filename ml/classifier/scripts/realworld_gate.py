@@ -5,15 +5,15 @@ retrain_hier.py [7.5] 에서 export 직후 실행된다(exit 1 = FAIL → 롤백
 재는 게이트라 서빙 부가 단계(OCR·CLIP·VLM·크롭)는 쓰지 않고, 서빙과 같은
 회전 TTA(0/90/270 최고확신) + non_object 마스킹 + 사이드카 대분류 게이트만 적용한다.
 
-셋 (라벨 출처 표기 — 사용자 라벨이 아닌 셋은 결과에 그대로 남김):
-  feedback51 — golden_v2.json 의 사용자 피드백 라벨 행
-  tester93   — 테스터 업로드 93장, GG_CNN 시각 라벨(사용자 라벨 5장 우선)
-  골든 v3 51 — 라벨 없음(피드백 대기)이라 라벨이 생기면 --set 으로 추가
+셋: GG_DATA 통합셋 realworld_eval_set.jsonl(sha 중복 제거)을 source 칸으로 나눠 따로 채점
+  feedback  — 사용자 피드백 라벨 51
+  tester    — 테스터 고유 사진 35, GG_CNN 시각 라벨(label_source=agent_gg_cnn)
+  golden_v3 — 사용자 검토 대기(label=null)라 라벨이 생길 때까지 건너뜀
 기준 (ELECTRONICS_V15_DATA_PLAN §3 + W6 제안, 목표값은 GG_TRAIN 과 합의 대상):
   electronics 오탐률(정답≠electronics 중 electronics 판정) ≤ GATE_ELEC_FP_MAX
   electronics recall ≥ GATE_ELEC_RECALL_MIN (전자제품 정답 ≥ 5장인 셋만)
   대분류 정확도가 직전 PASS 기록 대비 GATE_ACC_MAX_DROP 초과 하락 금지
-라벨 셋 파일이 없으면 FAIL (조용히 통과시키지 않는다). GREENGUIDE_REALWORLD_GATE=0 이면 기록만.
+라벨 셋 파일이 없으면 FAIL, 라벨 행 0 인 셋은 건너뜀 (조용히 통과시키지 않는다). GREENGUIDE_REALWORLD_GATE=0 이면 기록만.
 
 실행: .venv/bin/python scripts/realworld_gate.py [--onnx …] [--set name=path …]
 출력: outputs/logs/cnn_hier/realworld_gate.json (+ PASS 시 realworld_gate_baseline.json 갱신)
@@ -40,10 +40,12 @@ GATE_ELEC_RECALL_MIN = float(os.getenv("GREENGUIDE_GATE_ELEC_RECALL_MIN", "0.85"
 GATE_ACC_MAX_DROP = float(os.getenv("GREENGUIDE_GATE_REALWORLD_ACC_DROP", "0.02"))
 RECALL_MIN_SUPPORT = 5
 
-DEFAULT_SETS = {
-    "feedback51": Path.home() / "Downloads" / "greenguide-golden" / "golden_v2.json",
-    "tester93": config.OUTPUTS_DIR / "logs" / "realworld_golden" / "tester93_golden.json",
-}
+# GG_DATA 통합셋(피드백·테스터·골든 v3, sha 중복 제거) — 셋 이름 = source 칸
+REALWORLD_SET = Path(os.getenv(
+    "GREENGUIDE_REALWORLD_SET",
+    str(Path.home() / "Downloads" / "greenguide-golden" / "realworld_eval_set.jsonl")))
+DEFAULT_SETS = {"feedback": f"{REALWORLD_SET}#feedback", "tester": f"{REALWORLD_SET}#tester",
+                "golden_v3": f"{REALWORLD_SET}#golden_v3"}
 ONNX_PATH = config.MODELS_DIR / "cnn_hier" / "classifier.onnx"
 OUT_PATH = LOG_DIR / "realworld_gate.json"
 BASELINE_PATH = LOG_DIR / "realworld_gate_baseline.json"
@@ -123,13 +125,14 @@ def main() -> int:
     reasons: list[str] = []
     summary: dict[str, dict] = {}
     for name, p in sets.items():
-        path = Path(p)
+        path_s, _, source = str(p).partition("#")
+        path = Path(path_s)
         if not path.exists():
             reasons.append(f"{name}: 라벨 셋 없음 ({path})")
             continue
-        rows = load_rows(path)
+        rows = load_rows(path, source or None)
         if not rows:
-            reasons.append(f"{name}: 라벨 행 0")
+            print(f"[{name}] 라벨 행 0 — 건너뜀 (사용자 검토 대기)")
             continue
         preds = [predict(sess, tax, path.parent / r["file"]) for r in rows]
         rep = score(rows, preds, tax)

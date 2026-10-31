@@ -35,7 +35,22 @@ TAXONOMY = (Path(__file__).resolve().parents[1]
 FOCUS = "electronics"
 
 
-def load_rows(golden: Path) -> list[dict]:
+def load_rows(golden: Path, source: str | None = None) -> list[dict]:
+    """라벨 행. golden_v*.json(items) 또는 GG_DATA 통합셋 .jsonl(한 줄 1장, label=null 제외).
+
+    source: .jsonl 의 source 칸(feedback·tester·golden_v3) 필터.
+    """
+    if golden.suffix == ".jsonl":
+        rows = []
+        for line in golden.read_text(encoding="utf-8").splitlines():
+            r = json.loads(line)
+            if r.get("label") is None or (source and r["source"] != source):
+                continue
+            rows.append({"upload_id": r["id"], "file": r["image_path"],
+                         "feedback": {"label": r["label"], "source": r["label_source"],
+                                      "ambiguous": r.get("ambiguous", False)},
+                         "meta": {}})
+        return rows
     d = json.loads(golden.read_text(encoding="utf-8"))
     return [it for it in d["items"] if (it.get("feedback") or {}).get("label")]
 
@@ -193,11 +208,12 @@ def main() -> None:
     ap.add_argument("--vlm", action="store_true", help="VLM 폴백 실제 호출 허용")
     ap.add_argument("--no-meta", action="store_true",
                     help="촬영 메타(orientation·capture_mode) 미전송 — 골든셋 hier_local 재추론 조건")
+    ap.add_argument("--source", default=None, help=".jsonl 통합셋의 source 필터")
     ap.add_argument("--name", default=None)
     ap.add_argument("--out", type=Path, default=Path("outputs/logs/realworld_golden"))
     args = ap.parse_args()
 
-    rows = load_rows(args.golden)
+    rows = load_rows(args.golden, args.source)
     tax_path = (args.model_dir / "taxonomy.json") if args.model_dir else args.taxonomy
     tax = json.loads(tax_path.read_text(encoding="utf-8"))
     out_dir = args.out.resolve()
