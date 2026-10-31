@@ -126,6 +126,8 @@ def build_v3(out: Path, local_api: str, local_dir: Path, cutoff: str, exclude_id
     · 서버: user_uploads 중 feedback_status='pending', uploaded_at < cutoff 이거나 cutoff 이후라도
             exclude_ids 에 없는 행(테스트 노이즈는 id 로 뺀다). 홀드아웃은 빼지 않고 holdout 표시.
     · 로컬: local_dir/meta.jsonl 의 pending 행 + 실제 파일(<id>.jpg|.webp, meta 의 ext 무시).
+            주의: 로컬 meta 의 pending 은 서버 피드백을 반영하지 않는다(v3 51장 중 39장이 피드백 사진 사본) —
+            피드백 없는 사진만 원하면 build_realworld_eval_set.py 처럼 서버 피드백 행과 sha256/dHash 로 대조해 뺄 것.
     · 중복: sha256 일치 또는 dHash 해밍 ≤ max_hamming 을 union-find 로 묶고 묶음당 1장
             (서버 우선 → 오래된 것).
     · 판정: local_api(COLLECT_UPLOADS=false, ANTHROPIC_API_KEY 비움) /predict-hier·/predict-objects·
