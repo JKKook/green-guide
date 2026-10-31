@@ -44,6 +44,11 @@ dependencies:
   # 앱 정보 (버전·빌드 번호)
   package_info_plus: ^8.0.2
 
+  # 크래시·사용 지표 (Crashlytics + Analytics) — google-services.json 없으면 비활성
+  firebase_core: ^5.1.0
+  firebase_crashlytics: ^6.0.1
+  firebase_analytics: ^13.0.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

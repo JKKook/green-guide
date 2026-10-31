@@ -7,6 +7,13 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Firebase(Crashlytics·Analytics) — google-services.json 은 사용자가 전달한다.
+// 파일이 없으면 플러그인을 적용하지 않아 빌드가 깨지지 않고, 앱은 수집 없이 동작한다.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+}
+
 // 릴리즈 서명 — android/key.properties 의 업로드 키로만 서명한다.
 // key.properties 가 없으면 release 빌드를 실패시킨다(debug 키로 조용히 서명되는 것 방지).
 // (key.properties / *.jks 는 VCS 제외. 내용 예시:
@@ -26,10 +33,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -57,6 +60,13 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
+    }
+}
+
+// Kotlin 2.4 — kotlinOptions.jvmTarget(String) 제거, compilerOptions DSL 로 이관
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 

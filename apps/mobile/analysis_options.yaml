@@ -3,6 +3,9 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
+  # 생성물 제외 — macOS SwiftPM 이 플러그인 소스(Firebase 등)를 build/ 에 내려받아 분석 대상이 된다.
+  exclude:
+    - build/**
   errors:
     unused_import: error
     unused_element: error
