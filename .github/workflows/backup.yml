@@ -1,0 +1,69 @@
+# Supabase DB 일일 백업 — public 스키마 pg_dump → gzip → Actions 아티팩트(30일 보관).
+# 근거: docs/plans/PRODUCTION_READINESS.md 결정 10.
+#
+# 필요한 리포 시크릿: SUPABASE_DB_URL
+#   Supabase Dashboard → Connect → "Session pooler" 연결 문자열(postgresql://postgres.<ref>:<비밀번호>@...pooler.supabase.com:5432/postgres).
+#   Direct 연결(db.<ref>.supabase.co)은 IPv6 전용이라 GitHub 러너에서 접속되지 않는다.
+# 시크릿이 없으면 예약 실행은 건너뛰고(성공 처리), 수동 실행(workflow_dispatch)은 실패로 알린다.
+#
+# 범위: 테이블 데이터·스키마만. Storage 버킷의 사진 파일은 포함되지 않는다.
+# 복원: gunzip -c greenguide-<시각>.sql.gz | psql "<대상 DB URL>"
+name: db-backup
+on:
+  schedule:
+    - cron: "40 18 * * *"   # 매일 03:40 KST (UTC 18:40)
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # 시크릿은 step if 에서 직접 참조할 수 없어 job env 로 올린다(keepalive.yml 과 같은 이유).
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: 시크릿 확인
+        id: check
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::warning::SUPABASE_DB_URL 시크릿이 없어 백업을 건너뜁니다."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then exit 1; fi
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Supabase 는 Postgres 15~17. 러너 기본 클라이언트(16)는 더 새 서버를 덤프하지 못하므로 17 을 설치한다.
+      - name: pg_dump 17 설치
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: 덤프
+        if: steps.check.outputs.skip == 'false'
+        id: dump
+        run: |
+          set -o pipefail
+          out="greenguide-$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" \
+            --schema=public --no-owner --no-privileges \
+            | gzip -9 > "$out"
+          # 빈 덤프(접속 실패 등) 방지: 테이블 정의가 하나도 없으면 실패
+          gunzip -c "$out" | grep -q "CREATE TABLE" || { echo "::error::덤프에 CREATE TABLE 이 없습니다"; exit 1; }
+          ls -l "$out"
+          sha256sum "$out"
+          echo "file=$out" >> "$GITHUB_OUTPUT"
+
+      - name: 아티팩트 업로드
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: ${{ steps.dump.outputs.file }}
+          retention-days: 30
+          if-no-files-found: error
