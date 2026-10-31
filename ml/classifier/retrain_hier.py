@@ -15,6 +15,8 @@ retrain.py(flat)의 계층 버전. flat 루프는 건드리지 않는다 (별도
         (세부는 게이트 대상 아님 — 활성화 판정에서 자동 승격/강등)
       FAIL → 백업 롤백 + exit 1
   [7] PASS → ONNX + OOD 프로토타입 재생성, history 기록
+  [7.5] 실사용 게이트 (scripts/realworld_gate.py — electronics 오탐률·recall·대분류 무회귀)
+        FAIL → 롤백 + exit 1 (GREENGUIDE_REALWORLD_GATE=0 이면 기록만)
   [8] 세부품목 자동 승격/강등 (apply_hier_activation)
   [9] model_diagnostics 기록 (계층 컬럼)
   [10] --publish 시에만 model_versions 게시 (운영 배포는 명시적 opt-in)
@@ -269,6 +271,9 @@ def main() -> int:
         # [7] export + OOD 프로토타입 + history
         _run([py, "-m", "greenguide_classifier.hier_export"], "ONNX export")
         _run([py, "scripts/build_hier_prototypes.py"], "OOD 프로토타입")
+        # [7.5] 실사용 게이트 — 동결 test 는 학습과 같은 출처라 실사용 쏠림(electronics
+        # 오탐)을 못 본다(ELECTRONICS_BIAS_ANALYSIS B절). FAIL(exit 1) → 아래 except 에서 롤백
+        _run([py, "scripts/realworld_gate.py"], "실사용 게이트")
         append_history(version, evaluation, feedback_count=len(rows))
 
         # [8] 자동 승격/강등

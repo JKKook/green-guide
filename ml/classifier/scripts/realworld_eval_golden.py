@@ -25,6 +25,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from collections import Counter
 from pathlib import Path
 
@@ -75,6 +76,10 @@ def score(rows: list[dict], preds: list[dict], tax: dict) -> dict:
             "model_arch": res.get("model_arch"),
             "vlm_triggered": res.get("_vlm_triggered"),
             "ok": tc == pc,
+            # 관대 채점: 정답이 etc/non_object 면 reject 계열(etc·non_object 표시)도 정답
+            "ok_lenient": tc == pc or (tc in ("etc", "non_object")
+                                       and res.get("display_level") == "reject"),
+            "wall_ms": res.get("_wall_ms"),
         })
     n = len(per_row)
     hit = sum(r["ok"] for r in per_row)
@@ -91,9 +96,13 @@ def score(rows: list[dict], preds: list[dict], tax: dict) -> dict:
     errors = [r for r in per_row if not r["ok"]]
     elec_fp = [r for r in errors if r["pred_coarse"] == FOCUS]
     fine_rows = sum(fine_cm.values())
+    ws = sorted(r["wall_ms"] for r in per_row if r["wall_ms"] is not None)
     return {
         "n": n, "coarse_hit": hit, "coarse_acc": round(hit / n, 4) if n else None,
         "errors": len(errors),
+        "coarse_hit_lenient": sum(r["ok_lenient"] for r in per_row),
+        "reject": sum(r["display_level"] == "reject" for r in per_row),
+        "wall_ms_p50": ws[len(ws) // 2] if ws else None,
         "vlm_triggered": sum(bool(r["vlm_triggered"]) for r in per_row),
         "electronics": {
             "predicted": per_class.get(FOCUS, {}).get("predicted", 0),
@@ -159,12 +168,14 @@ def run_server(rows: list[dict], api_root: Path, golden_dir: Path, use_vlm: bool
             data = {k: str(meta[k]) for k in ("orientation", "capture_mode")
                     if send_meta and meta.get(k) is not None}
             before = vlm_calls[0]
+            t0 = time.perf_counter()
             with img.open("rb") as fh:
                 r = client.post("/predict-hier", data=data,
                                 files={"image": (img.name, fh, "image/webp")})
             r.raise_for_status()
             res = r.json()
             res["_vlm_triggered"] = vlm_calls[0] > before
+            res["_wall_ms"] = round((time.perf_counter() - t0) * 1000, 1)
             out.append(res)
             print(".", end="", flush=True)
     print()
@@ -215,7 +226,8 @@ def main() -> None:
     print(f"[{name}] 대분류 {rep['coarse_hit']}/{rep['n']} ({rep['coarse_acc']:.1%}) · "
           f"electronics 예측 {e['predicted']} / 오탐 {e['false_positive']} "
           f"(오분류 중 {e['share_of_errors']}) / recall {e['recall']} (n={e['support']}) · "
-          f"세부 {rep['fine']['hit']}/{rep['fine']['n']} · VLM 중재 발동 {rep['vlm_triggered']}")
+          f"세부 {rep['fine']['hit']}/{rep['fine']['n']} · VLM 중재 발동 {rep['vlm_triggered']} · "
+          f"관대 {rep['coarse_hit_lenient']} · reject {rep['reject']} · p50 {rep['wall_ms_p50']}ms")
     print("오분류 쌍:", rep["error_pairs"])
 
 
