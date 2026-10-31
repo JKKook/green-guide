@@ -248,6 +248,10 @@ def mark_override(evidence: list[dict[str, Any]],
             continue   # 약화된 토큰('철' 등 오탐 여지)은 보조 증거로만
         if float(ev.get("score", 0)) < thr:
             continue
+        # 2글자 라틴 표시(pp·ps)는 잡문자 OCR 오탐이 잦아 더 높은 확신만 교체에 쓴다
+        # (실사용 863d3324: 'pp' 0.644 가 종이 0.90 판정을 plastic 으로 덮음). prior 로는 계속 쓴다
+        if len(ev["token"]) <= 2 and float(ev["score"]) < config.MARK_SHORT_MIN_SCORE:
+            continue
         # 같은 줄에서 '종이팩'과 '종이'가 함께 잡히면 긴 토큰(구체적 표시)이 우선
         rank = (float(ev["score"]), len(ev["token"]))
         if best is None or rank > (float(best["score"]), len(best["token"])):

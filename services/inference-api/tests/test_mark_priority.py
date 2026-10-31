@@ -181,3 +181,11 @@ def test_gallery_keeps_confidence_gate(client: TestClient, sample_image_bytes: b
     body = _post(client, sample_image_bytes, capture_mode="gallery")
     assert stub["ocr_calls"] == 0                       # 확신 0.9 ≥ 0.75 → 스킵 (기존 동작)
     assert body["display_class"] == "metal"
+
+
+def test_short_mark_needs_higher_ocr_score() -> None:
+    """2글자 표시 'pp' 는 0.75 미만이면 교체하지 않는다 (863d3324 종이→plastic 오탐)."""
+    assert mark_override(match_evidence([_t("pp", 0.644)])) is None
+    assert mark_override(match_evidence([_t("pp", 0.9)]))["token"] == "pp"
+    # 긴 표시는 기존 임계(0.6) 그대로
+    assert mark_override(match_evidence([_t("알미늄", 0.65)]))["mapped_class"] == "metal"

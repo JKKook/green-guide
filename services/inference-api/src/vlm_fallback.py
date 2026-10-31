@@ -2,7 +2,8 @@
 
 설계 (사용자 승인 구조):
 - 발동 조건: 계층 게이트 reject 또는 대분류 확신 < FALLBACK_CONF (호출부 판단)
-- 모델: Haiku 4.5 (분류 태스크 충분 + 저비용 — 장당 ~1원)
+- 모델: Claude Opus 5.5 (2026-10-31 사용자 결정 — 이 프로젝트 VLM 최소 등급 Sonnet).
+  thinking 은 끌 수 없어 effort=low + max_tokens 여유로 판정 JSON 이 잘리지 않게 한다
 - 이미지 768px 리사이즈 (비전 토큰 ~800), 프롬프트 캐싱으로 taxonomy 반복분 절감
 - 비용 가드: 일일 호출 상한 (기본 200회, VLM_DAILY_CAP env) — 카운터 파일 영속
 - 키 없으면 자동 비활성 (available=False) — 기존 경로 무영향
@@ -151,7 +152,8 @@ class VlmFallback:
             t0 = time.perf_counter()
             msg = self._client.messages.create(
                 model=MODEL,
-                max_tokens=200,
+                max_tokens=2048,                     # thinking 포함 상한 — 200 이면 JSON 잘림
+                output_config={"effort": "low"},     # 단일 분류 — 깊은 추론 불필요
                 system=[{
                     "type": "text",
                     "text": self._taxonomy_prompt(fine_labels, fine_to_coarse),
@@ -167,6 +169,9 @@ class VlmFallback:
                 }],
             )
             self._bump_calls()
+            if msg.stop_reason != "end_turn":        # refusal·max_tokens → 판정 없음(fail-open)
+                log.info(f"VLM 판정 없음: stop_reason={msg.stop_reason}")
+                return None
             text = "".join(b.text for b in msg.content if b.type == "text").strip()
             result = self._parse_response(text, fine_labels)
             if result is None:

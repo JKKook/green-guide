@@ -193,6 +193,9 @@ class HierWasteClassifier:
             outputs.append("embedding")
         res = self.session.run(outputs, {"image": color_input})
         logits = res[0]
+        # 마스킹 전 non_object 확률 — 재분배 가드용 (W6 ③, config.NONOBJ_RAW_GUARD)
+        raw_non_object = (float(_softmax(logits)[0][self.fine_labels.index("non_object")])
+                          if "non_object" in self.fine_labels else 0.0)
 
         # DINOv2 앙상블 — softmax 확률 가중합 (마스킹 전 단계에서 결합)
         dino_probs: np.ndarray | None = None
@@ -212,7 +215,7 @@ class HierWasteClassifier:
                 dino_probs[:, self.fine_labels.index("non_object")] = 0.0
                 dino_probs = dino_probs / dino_probs.sum(axis=1, keepdims=True)
         if config.ELEC_LOGIT_BIAS and "electronics" in self.fine_labels:
-            # 실사용 electronics 쏠림 보정 (W6 실험 a, 기본 꺼짐)
+            # 실사용 electronics 쏠림 보정 (W6 ④, config.ELEC_LOGIT_BIAS)
             logits = logits.copy()
             logits[:, self.fine_labels.index("electronics")] -= config.ELEC_LOGIT_BIAS
 
@@ -253,6 +256,13 @@ class HierWasteClassifier:
             fine_ok = False
         if ood_reject:
             # 극단 OOD — softmax 확신과 무관하게 완전 reject (hard)
+            coarse_ok = False
+        # W6 ④·③: electronics 전용 대분류 임계(미달 reject → 호출부 VLM 중재) / 마스킹 재분배 대신 reject
+        if (config.ELEC_COARSE_GATE and self.coarse_labels[ci] == "electronics"
+                and coarse_top1 < config.ELEC_COARSE_GATE):
+            coarse_ok = False
+        if (config.NONOBJ_RAW_GUARD and mask_non_object
+                and raw_non_object >= config.NONOBJ_RAW_GUARD):
             coarse_ok = False
         if fine_ok and coarse_ok:
             display_level, display_class = "fine", self.fine_labels[fi]

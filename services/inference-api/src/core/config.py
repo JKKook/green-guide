@@ -143,16 +143,22 @@ OCR_SKIP_CONFIDENCE: float = float(os.getenv("GREENGUIDE_API_OCR_SKIP_CONF", "0.
 # 분리배출 표시 최우선 판정 (스마트촬영): 항상 OCR + 몸체 표시가 읽히면 결과 교체
 MARK_PRIORITY_SMART: bool = os.getenv("GREENGUIDE_API_MARK_PRIORITY", "1") != "0"
 MARK_OVERRIDE_MIN_SCORE: float = float(os.getenv("GREENGUIDE_API_MARK_MIN_SCORE", "0.6"))
+MARK_SHORT_MIN_SCORE: float = float(os.getenv("GREENGUIDE_API_MARK_SHORT_MIN_SCORE", "0.75"))  # 2글자 표시(pp·ps) 교체 임계
 
 # ── VLM 폴백 ──
-VLM_MODEL: str = os.getenv("VLM_MODEL", "claude-haiku-4-5-20251001")
+VLM_MODEL: str = os.getenv("VLM_MODEL", "claude-opus-5-5")  # 사용자 결정 10-31: 최소 Sonnet 등급
 VLM_DAILY_CAP: int = int(os.getenv("VLM_DAILY_CAP", "200"))
 VLM_MIN_CONF: float = float(os.getenv("VLM_MIN_CONF", "0.8"))            # fine 판정 채택 임계
 VLM_ITEM_MIN_CONF: float = float(os.getenv("VLM_ITEM_MIN_CONF", "0.6"))  # 품목 생성 채택 임계
 
-# ── electronics 편향 완화 실험 (W6, 전부 기본 꺼짐) ──
-# 실사용 51장: 오분류 30건 중 16건이 electronics 로 쏠림 — 재학습 없는 완화책 비교용.
-ELEC_LOGIT_BIAS: float = float(os.getenv("GREENGUIDE_API_ELEC_LOGIT_BIAS", "0"))  # electronics 로짓에서 뺄 값
-ELEC_CLIP_PRIOR: bool = os.getenv("GREENGUIDE_API_ELEC_CLIP_PRIOR", "0") == "1"   # 장면 판정이 electronics 면 CLIP 정체 prior 적용
+# ── electronics 편향 완화 (W6 수정, ELECTRONICS_BIAS_ANALYSIS.md E절) ──
+# 실사용 피드백 51(사용자 라벨)·테스터 35(GG_CNN 라벨) 전후 측정으로 값 확정 — 끄려면 0/빈값
+SCENE_AUTOCROP: bool = os.getenv("GREENGUIDE_API_SCENE_AUTOCROP", "1") == "1"       # 장면 경로 u2netp 물체 크롭(실패=전체 프레임)
+NONOBJ_RAW_GUARD: float = float(os.getenv("GREENGUIDE_API_NONOBJ_RAW_GUARD", "0.5"))  # 마스킹 전 non_object ≥ 이 값이면 재분배 대신 reject
+ELEC_LOGIT_BIAS: float = float(os.getenv("GREENGUIDE_API_ELEC_LOGIT_BIAS", "0.5"))   # electronics 로짓 감산 — 테스터 35로 보정(recall 무손실 최대)
+ELEC_COARSE_GATE: float = float(os.getenv("GREENGUIDE_API_ELEC_COARSE_GATE", "0.7"))  # electronics 전용 대분류 임계, 미달=reject→VLM 중재
+ELEC_CLIP_MIN: float = float(os.getenv("GREENGUIDE_API_ELEC_CLIP_MIN", "0.3"))       # 장면 electronics 판정에 CLIP 전자제품 컨셉 < 이 값이면 억제
+# 실험만(기본 꺼짐): 장면 CLIP 부스트 prior — 51장 효과 미미(오탐 16→14) / 클래스별 상시 VLM 중재 — 호출 3→24/51
+ELEC_CLIP_PRIOR: bool = os.getenv("GREENGUIDE_API_ELEC_CLIP_PRIOR", "0") == "1"
 VLM_ARBITRATE_CLASSES: frozenset[str] = frozenset(
-    c for c in os.getenv("GREENGUIDE_API_VLM_ARBITRATE_CLASSES", "").split(",") if c)  # 이 대분류 판정은 항상 VLM 중재
+    c for c in os.getenv("GREENGUIDE_API_VLM_ARBITRATE_CLASSES", "").split(",") if c)

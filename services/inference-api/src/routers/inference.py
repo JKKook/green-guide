@@ -144,6 +144,10 @@ async def predict_hier(
     tap_region: list[float] | None = None
     if tap_x is not None and tap_y is not None:
         cropped_raw, tap_region = crop_at_tap(raw, tap_x, tap_y)
+    elif config.SCENE_AUTOCROP:
+        # W6 ②: 장면도 u2netp 물체 크롭 — 학습(물체 밀착 크롭)과 프레이밍 정렬, 실패 시 원본
+        from src.services.image_io import auto_crop_to_object  # noqa: PLC0415
+        cropped_raw = auto_crop_to_object(raw)
     else:
         cropped_raw = raw
 
@@ -202,11 +206,31 @@ async def predict_hier(
                 evidence.extend(clip_ev)
         except Exception as exc:  # noqa: BLE001
             log.warning(f"clip identity failed: {exc}")
+        if tap_region is not None:
+            try:
+                from src.hier_inference import cam_region_prior  # noqa: PLC0415
+                prior = _mul(prior, cam_region_prior(clf, raw, tap_region))
+            except Exception as exc:  # noqa: BLE001
+                log.warning(f"cam region prior failed: {exc}")
+
+    # W6 ⑤: 장면 electronics 판정인데 CLIP 전자제품 컨셉 확률이 낮으면 억제
+    if (tap_region is None and config.ELEC_CLIP_MIN
+            and result["coarse_class"] == "electronics"):
         try:
-            from src.hier_inference import cam_region_prior  # noqa: PLC0415
-            prior = _mul(prior, cam_region_prior(clf, raw, tap_region))
+            import numpy as np  # noqa: PLC0415
+
+            clip_eng = get_clip_identity()
+            probs = clip_eng.identity_probs(cropped_raw)
+            if probs is not None:
+                elec_p = sum(float(p) for p, s in zip(probs, clip_eng.slugs, strict=True)
+                             if s == "electronics")
+                if elec_p < config.ELEC_CLIP_MIN:
+                    sup = np.ones(len(clf.fine_labels))
+                    sup[clf.fine_labels.index("electronics")] = 1e-3
+                    prior = _mul(prior, sup)
+                    log.info(f"electronics 억제: CLIP 전자제품 {elec_p:.2f} < {config.ELEC_CLIP_MIN}")
         except Exception as exc:  # noqa: BLE001
-            log.warning(f"cam region prior failed: {exc}")
+            log.warning(f"clip electronics check failed: {exc}")
 
     if prior is not None:
         refined = clf.predict(best_tensor, mask_non_object=True, fine_prior=prior,
