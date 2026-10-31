@@ -31,6 +31,8 @@ Play Console 은 프로덕션 신청 조건 3개(비공개 테스트 게시 · �
 | 21 | 모델 | **Haiku 금지, 최소 Sonnet, 재질 판단(VLM 폴백·실측)은 `claude-opus-5-5`** | 사용자 결정 10-31 |
 | 22 | 모델 | 재학습 W7(GG_TRAIN): 재활용품 자연장면 하드 네거티브 ≥3,500 + RandomResizedCrop·배경 증강, OI electronics 품목을 소형 IT 로 축소. 실사용 셋(피드백 51·테스터 93·골든 v3 51)을 **배포 게이트**로 승격 | 분석 E절 가설 1·2·5 |
 | 23 | 서버·앱 | 서빙 완화 6건(W6 GG_CNN): VLM opus · auto_crop 장면 경로 · non_object≥0.5 reject · electronics bias+게이트 0.7+VLM 중재 · CLIP 억제(효과 있을 때만) · OCR 표시 오탐 점검. 앱 W8(GG_APP): 가이드 프레임을 중앙 정사각(짧은 변 84%)으로 축소해 밀착 크롭 | 분석 E절 가설 2·3·4 |
+| 25 | 서버 | **W6 결과(10-31)**: 기본값 B = auto_crop 장면 경로 + non_object≥0.5 reject + electronics bias 0.5·coarse 게이트 0.7 + VLM(opus) 중재 + CLIP 억제 + OCR 2글자 표시 교체 금지. 실사용 피드백 51장 정답 21→28, electronics 오탐 16→4, 진짜 전자제품 recall 5/5 · 테스터 35장 13→24, 오탐 10→0. VLM 발동 17/51·22/35, 장당 $0.0059(opus, 캐시), 상한 200회/일 → 월 최대 $36, 지연 p50 1.0s(미발동)·4.4s(발동) | `realworld_golden/W6_FIXES.md`@af5d48a66d32 |
+| 26 | 사고 | **VLM 폴백 무음 실패**: Anthropic 키가 08-06 이후 만료돼 로컬·운영 폴백이 두 달 가까이 fail-open 으로 꺼져 있었음(마지막 성공 기록 08-06, 실패 로그가 info). 10-31 사용자가 재발급, 기동 시 키 점검 + `/health` `vlm_key_status` + WARNING 승격(`c014303`). 병합 때 Sentry `event_level=WARNING` 또는 해당 메시지 2개 캡처 필요(W3 기본은 breadcrumb) | 리더 실측 10-31 |
 | 24 | 골든셋 | 규칙 개정: 피드백 있는 사진 제외(사람이 이미 채점) · 중복(sha256·dHash≤6) 제외 · 로컬 `local_feedback/` 195장 포함 → **v3 51장**(후보 205, 중복 154). 피드백 라벨 51장은 리뷰 대신 정답으로 정확도 산출(AI 의심 라벨 18건 표시) | 사용자 10-31 |
 
 ## 2. 작업 묶음
