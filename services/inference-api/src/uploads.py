@@ -210,7 +210,10 @@ class UploadRecorder:
             file=image_bytes,
             file_options={"upsert": "true", "content-type": content_type},
         )
-        image_url = self.client.storage.from_(_UPLOAD_BUCKET).get_public_url(storage_path)
+        # 비공개 버킷(결정 9) — 공개 URL 대신 만료 없는 인증 경로(service_role Bearer 로만 열람).
+        # 저장용 참조라 서명 URL(만료)은 부적합. 서버 응답에는 나가지 않는다.
+        image_url = (f"{(config.SUPABASE_URL or '').rstrip('/')}"
+                     f"/storage/v1/object/authenticated/{_UPLOAD_BUCKET}/{storage_path}")
 
         # 2) Postgres INSERT
         row = {

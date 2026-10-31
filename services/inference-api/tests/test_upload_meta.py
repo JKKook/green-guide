@@ -175,6 +175,19 @@ def test_remote_record_retries_without_meta_columns() -> None:
     assert not upload_id.startswith("local-")  # 로컬 폴백 아님
 
 
+def test_remote_record_stores_authenticated_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """비공개 버킷 대비 — image_url 은 공개 URL 이 아닌 인증 경로 (네트워크 호출 없음)."""
+    import src.uploads as up
+    monkeypatch.setattr(up.config, "SUPABASE_URL", "https://proj.supabase.co/")
+    inserts: list[dict] = []
+    _recorder_with(_FakeClient(inserts)).record_prediction(b"img", "image/jpeg", dict(PRED))
+    row = inserts[0]
+    assert row["image_url"] == (
+        "https://proj.supabase.co/storage/v1/object/authenticated/user-uploads/"
+        + row["storage_path"])
+    assert "/object/public/" not in row["image_url"]
+
+
 def test_local_record_includes_meta(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     import json
 
