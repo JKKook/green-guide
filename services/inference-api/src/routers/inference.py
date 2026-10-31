@@ -25,7 +25,11 @@ from src.services.image_io import (
     read_validate_with_orientation,
 )
 from src.services.recording import record_safely
-from src.services.regions_service import analyze_regions, evidence_conflicts
+from src.services.regions_service import (
+    analyze_regions,
+    displayable_evidence,
+    evidence_conflicts,
+)
 
 log = get_logger(__name__)
 router = APIRouter()
@@ -293,6 +297,8 @@ async def predict_hier(
                     })
         except Exception as exc:  # noqa: BLE001
             log.warning(f"vlm fallback failed: {exc}")
+    evidence = displayable_evidence(
+        evidence, result["coarse_class"], clf.taxonomy["fine_to_coarse"])
     if evidence:
         result["evidence"] = [
             {**{k: ev[k] for k in ("type", "token", "matched_text",
@@ -553,7 +559,10 @@ async def predict_with_regions(
     tap_x: float | None = Form(default=None, ge=0.0, le=1.0),
     tap_y: float | None = Form(default=None, ge=0.0, le=1.0),
 ) -> PredictionWithRegionsResponse:
-    """`/predict` + 다중재질 영역 분석 (Cascade + CAM-argmax + u2netp + 손 제외).
+    """계층 분류 + 다중재질 영역 분석 (Cascade + CAM-argmax + u2netp + 손 제외).
+
+    응답 스키마는 구 `/predict` 형식 유지(앱 하위호환). 분류는 2026-10-31 부터
+    계층 모델 — 본 판정(/predict-hier)과 같은 체계 (PRODUCTION_READINESS 결정 7).
 
     파이프라인:
       Stage 1 (binary): waste 아니면 → non_object 응답 (regions 분석 skip)
@@ -561,7 +570,7 @@ async def predict_with_regions(
                         후 셀별 argmax 로 재질 영역 추출. /predict-with-cam 과
                         같은 원본 입력 사용 — 둘의 영역 표시가 일치하도록.
     """
-    raw_orig = await read_and_validate_image(image)
+    raw_orig, exif_tag = await read_validate_with_orientation(image)
 
     # Stage 1: binary waste/non-waste 판정
     reason = stage1_gate(raw_orig)
@@ -575,7 +584,7 @@ async def predict_with_regions(
             overlay_base64=None, regions=[], grid_h=0, grid_w=0,
         )
 
-    out = analyze_regions(raw_orig, tap_x, tap_y)
+    out = analyze_regions(raw_orig, tap_x, tap_y, exif_tag)
 
     # 업로드 기록 없음 — /predict-hier 가 같은 사진을 이미 저장·피드백 대상으로
     # 삼는다(중복 저장 방지, 2026-08-29).
