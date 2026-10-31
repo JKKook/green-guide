@@ -105,6 +105,171 @@ def fill_hier(golden: Path, local_api: str, out_file: Path) -> int:
     return 0 if doc["hier_filled"] == len(doc["items"]) else 1
 
 
+def _dhash(data: bytes) -> int:
+    """8×8 difference hash (9×8 그레이 축소 후 가로 이웃 비교 64비트). PIL 은 arm64 venv 에서."""
+    import io
+
+    from PIL import Image, ImageOps
+    im = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("L").resize((9, 8), Image.LANCZOS)
+    px = list(im.getdata())
+    bits = 0
+    for y in range(8):
+        for x in range(8):
+            bits = (bits << 1) | (px[y * 9 + x] > px[y * 9 + x + 1])
+    return bits
+
+
+def build_v3(out: Path, local_api: str, local_dir: Path, cutoff: str, exclude_ids: set[str],
+             max_hamming: int = 6) -> int:
+    """골든셋 v3 — 피드백 없는(pending) 사진만, 서버+로컬 합집합, 중복 제거, 로컬 서버로 3종 판정.
+
+    · 서버: user_uploads 중 feedback_status='pending', uploaded_at < cutoff 이거나 cutoff 이후라도
+            exclude_ids 에 없는 행(테스트 노이즈는 id 로 뺀다). 홀드아웃은 빼지 않고 holdout 표시.
+    · 로컬: local_dir/meta.jsonl 의 pending 행 + 실제 파일(<id>.jpg|.webp, meta 의 ext 무시).
+    · 중복: sha256 일치 또는 dHash 해밍 ≤ max_hamming 을 union-find 로 묶고 묶음당 1장
+            (서버 우선 → 오래된 것).
+    · 판정: local_api(COLLECT_UPLOADS=false, ANTHROPIC_API_KEY 비움) /predict-hier·/predict-objects·
+            /predict-with-regions. 프로덕션 호출 없음.
+    """
+    requests.get(f"{local_api}/health", timeout=30).raise_for_status()
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env") or load_dotenv(Path.cwd() / ".env")
+    sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+    rows = sb.table("user_uploads").select("*").order("uploaded_at").execute().data
+    server = [r for r in rows if r.get("feedback_status") == "pending" and r["id"] not in exclude_ids]
+    excluded_test = [r["id"] for r in rows if r["id"] in exclude_ids]
+    after_cutoff = [r["id"] for r in server if r["uploaded_at"] >= cutoff]
+
+    cands = []
+    for r in server:
+        sp = r["storage_path"]
+        ext = sp.rsplit(".", 1)[-1].lower()
+        cands.append({"src": "server", "row": r, "id": r["id"], "at": r["uploaded_at"], "ext": ext,
+                      "data": sb.storage.from_(BUCKET).download(sp)})
+    n_server = len(cands)
+    for line in (local_dir / "meta.jsonl").read_text().splitlines():
+        m = json.loads(line)
+        if m.get("feedback_status") != "pending":
+            continue
+        f = next(p for p in (local_dir / f"{m['id']}{e}" for e in (".jpg", ".webp", ".jpeg", ".png")) if p.exists())
+        cands.append({"src": "local", "row": m, "id": m["id"], "at": m["uploaded_at"],
+                      "ext": f.suffix.lstrip(".").lower(), "data": f.read_bytes()})
+    n_local = len(cands) - n_server
+
+    for c in cands:
+        c["sha256"] = hashlib.sha256(c["data"]).hexdigest()
+        c["dhash"] = _dhash(c["data"])
+
+    parent = list(range(len(cands)))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(len(cands)):
+        for j in range(i + 1, len(cands)):
+            a, b = cands[i], cands[j]
+            if a["sha256"] == b["sha256"] or bin(a["dhash"] ^ b["dhash"]).count("1") <= max_hamming:
+                parent[find(i)] = find(j)
+    groups: dict[int, list[dict]] = {}
+    for i, c in enumerate(cands):
+        groups.setdefault(find(i), []).append(c)
+
+    keep, dup_groups = [], []
+    for members in groups.values():
+        members.sort(key=lambda c: (c["src"] != "server", c["at"]))
+        k = members[0]
+        if len(members) > 1:
+            gid = f"g{len(dup_groups) + 1:03d}"
+            k["dup_group"] = gid
+            dup_groups.append({
+                "id": gid, "keep": k["id"],
+                "removed": [{"id": c["id"], "source": c["src"],
+                             "match": "sha256" if c["sha256"] == k["sha256"] else
+                             f"dhash:{bin(c['dhash'] ^ k['dhash']).count('1')}"} for c in members[1:]],
+            })
+        keep.append(k)
+    keep.sort(key=lambda c: c["at"])
+
+    (out / "images_v3").mkdir(parents=True, exist_ok=True)
+    (out / "overlays_v3").mkdir(parents=True, exist_ok=True)
+    items = []
+    for i, c in enumerate(keep, 1):
+        r, data = c["row"], c["data"]
+        mime = "image/webp" if c["ext"] == "webp" else "image/jpeg"
+        img_path = out / "images_v3" / f"{c['id']}.{c['ext']}"
+        img_path.write_bytes(data)
+
+        res = post_image(local_api, "/predict-hier", img_path.name, data, mime)
+        if res.get("upload_id"):
+            raise SystemExit("로컬 서버가 업로드를 기록함 — GREENGUIDE_API_COLLECT_UPLOADS=false 로 다시 띄울 것")
+        hl = res if "error" in res else {k: res.get(k) for k in HIER_KEYS}
+        if "error" not in hl:
+            hl["confidence"] = res["fine_confidence"] if res["display_level"] == "fine" else res["coarse_confidence"]
+        objects = post_image(local_api, "/predict-objects", img_path.name, data, mime)
+        regions = post_image(local_api, "/predict-with-regions", img_path.name, data, mime)
+        overlay = regions.pop("overlay_base64", None)
+        if overlay and "," in overlay:
+            (out / "overlays_v3" / f"{c['id']}.jpg").write_bytes(base64.b64decode(overlay.split(",", 1)[1]))
+        regions.pop("all_probabilities", None)
+
+        restored = (r.get("model_arch") or "") == "restored_from_local_cache"
+        items.append({
+            "upload_id": c["id"],
+            "source": c["src"],
+            "holdout": is_holdout(c["id"]) if c["src"] == "server" else False,
+            "dup_group": c.get("dup_group"),
+            "uploaded_at": c["at"],
+            "file": f"images_v3/{img_path.name}",
+            "overlay": f"overlays_v3/{c['id']}.jpg" if overlay else None,
+            "sha256": c["sha256"],
+            "dhash": f"{c['dhash']:016x}",
+            "hier_source": "restored_label" if restored else (
+                "upload_time_prediction" if c["src"] == "server" else "local_cache_prediction"),
+            "hier": None if restored else {
+                "display_class": r.get("predicted_class"),
+                "confidence": r.get("predicted_confidence"),
+                "coarse_probabilities": r.get("all_probabilities"),
+                "model_arch": r.get("model_arch"),
+                "inference_ms": r.get("inference_ms"),
+            },
+            "hier_local": hl,
+            "objects": objects,
+            "regions": regions,
+            "feedback": None,
+            "meta": {k: r.get(k) for k in META_COLS},
+            "review": {"photo_coarse": None, "photo_fine": None, "objects_ok": None, "note": None},
+        })
+        print(f"[{i}/{len(keep)}] {c['src']} {c['id']} hier={hl.get('display_class', 'err')} "
+              f"objects={objects.get('count', 'err')} regions={regions.get('predicted_class', 'err')}", flush=True)
+
+    ok = [x for x in items if "error" not in x["hier_local"] and "error" not in x["objects"]
+          and "error" not in x["regions"]]
+    doc = {
+        "version": 3,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "local_api": local_api,
+        "rule": "feedback_status=pending only; server+local union; sha256/dHash(≤%d) dedup, server first then oldest"
+                % max_hamming,
+        "server_total_rows": len(rows),
+        "server_pending": n_server,
+        "server_excluded_test_ids": excluded_test,
+        "server_kept_after_cutoff": after_cutoff,
+        "local_pending": n_local,
+        "dup_removed": len(cands) - len(keep),
+        "dup_groups": dup_groups,
+        "count": len(items),
+        "judged_ok": len(ok),
+        "holdout_marked": sum(1 for x in items if x["holdout"]),
+        "items": items,
+    }
+    (out / "golden_v3.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1))
+    print(f"server={n_server} local={n_local} dup_removed={doc['dup_removed']} final={len(items)} "
+          f"judged_ok={len(ok)} → {out / 'golden_v3.json'}")
+    return 0 if len(ok) == len(items) else 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path)
@@ -114,7 +279,16 @@ def main() -> int:
                     help="기존 golden.json 에 로컬 /predict-hier 판정을 채워 --out-file 로 저장")
     ap.add_argument("--local-api", default="http://127.0.0.1:8765")
     ap.add_argument("--out-file", type=Path)
+    ap.add_argument("--v3", action="store_true", help="골든셋 v3 (pending 만·서버+로컬·중복 제거·로컬 판정)")
+    ap.add_argument("--local-dir", type=Path, default=Path(__file__).resolve().parents[1] / "local_feedback")
+    ap.add_argument("--cutoff", default="2026-10-31", help="이 시각 이후 서버 행은 결과에 따로 표시")
+    ap.add_argument("--exclude-ids", default="", help="테스트 노이즈 upload_id (쉼표 구분)")
     args = ap.parse_args()
+    if args.v3:
+        if not args.out:
+            ap.error("--out 필요")
+        return build_v3(args.out.expanduser(), args.local_api, args.local_dir.expanduser(), args.cutoff,
+                        {x for x in args.exclude_ids.split(",") if x})
     if args.fill_hier:
         out_file = args.out_file or args.fill_hier.with_name("golden_v2.json")
         return fill_hier(args.fill_hier.expanduser(), args.local_api, out_file.expanduser())
