@@ -3,7 +3,7 @@
 
 기준(--ref) 세 형식:
   ai_eval_all.json   Opus 라벨 리스트(id·ai_coarse·ai_fine)
-  *.jsonl            최종 평가셋(id·label = 대분류) — 사용자 중재 반영본
+  *.jsonl            동결 평가셋 eval_v1(id·label·label_fine·split) — --split gate 로 게이트분만
   manifest.csv       하드 네거티브(file·clip_top) — CLIP 라우팅 라벨과의 불일치 비율
 예측(--pred): vlm_local_label.py 출력 JSONL.
 
@@ -37,15 +37,16 @@ def to_coarse(slug: str | None) -> str | None:
     return FINE_TO_COARSE.get(slug)
 
 
-def load_ref(path: Path) -> dict[str, dict]:
-    """id → {coarse, fine?}."""
+def load_ref(path: Path, split: str | None = None) -> dict[str, dict]:
+    """id → {coarse, fine?}. split 이 있으면 jsonl 의 split 칸이 같은 행만."""
     if path.suffix == ".csv":
         with path.open(newline="") as f:
             return {r["file"]: {"coarse": to_coarse(r["clip_top"]), "fine": None}
                     for r in csv.DictReader(f)}
     if path.suffix == ".jsonl":
         rows = [json.loads(ln) for ln in path.read_text().splitlines() if ln.strip()]
-        return {r["id"]: {"coarse": to_coarse(r["label"]), "fine": r.get("fine")} for r in rows}
+        return {r["id"]: {"coarse": to_coarse(r["label"]), "fine": r.get("label_fine")}
+                for r in rows if split is None or r.get("split") == split}
     return {r["id"]: {"coarse": r["ai_coarse"], "fine": r.get("ai_fine")}
             for r in json.loads(path.read_text())}
 
@@ -117,13 +118,14 @@ def main() -> None:
     p.add_argument("--ref", type=Path, required=True)
     p.add_argument("--pred", type=Path, required=True)
     p.add_argument("--gate", action="store_true", help="채택 게이트 판정 출력")
+    p.add_argument("--split", help="jsonl 기준의 split 칸 필터 (gate | final_holdout)")
     p.add_argument("--out", type=Path)
     a = p.parse_args()
 
-    res = evaluate(load_ref(a.ref), load_pred(a.pred))
+    res = evaluate(load_ref(a.ref, a.split), load_pred(a.pred))
     if a.gate:
         res["gate"] = gate(res)[1]
-    out = a.out or a.pred.parent / f"eval_{a.ref.stem}.json"
+    out = a.out or a.pred.parent / f"eval_{a.ref.stem}{'_' + a.split if a.split else ''}.json"
     out.write_text(json.dumps(res, ensure_ascii=False, indent=2))
     c = res["coarse"]
     print(f"대분류 일치 {c['agree']}/{c['n']} ({c['rate']}) · 세부 {res['fine']['rate']} · "

@@ -39,6 +39,7 @@ from PIL import Image, ImageOps
 DEFAULT_HOST = "http://127.0.0.1:11434"
 MAX_SIDE = 768          # 긴 변 축소 — 7B 비전 토큰 수·지연을 줄인다
 RETRIES = 3
+NUM_CTX = 4096          # 프롬프트+이미지 ~1k 토큰. 기본(128k)이면 KV 캐시로 7B 가 18GB 를 점유
 
 SLUG_HINTS: dict[str, str] = {
     "paper_other": "paper: printed paper, receipts, books, paper bags, paper packaging",
@@ -141,11 +142,13 @@ def parse_answer(text: str) -> dict:
             "confidence": round(min(max(conf, 0.0), 1.0), 3), "what": str(d.get("what", ""))}
 
 
-def ask(host: str, model: str, image_b64: str, timeout: float) -> tuple[dict, dict]:
+def ask(host: str, model: str, image_b64: str, timeout: float,
+        num_thread: int | None = None) -> tuple[dict, dict]:
     """ollama /api/chat 1회. (파싱 결과, 계측) 반환."""
     body = {
         "model": model, "stream": False, "format": FORMAT_SCHEMA, "keep_alive": "30m",
-        "options": {"temperature": 0, "num_predict": 200},
+        "options": {"temperature": 0, "num_predict": 200, "num_ctx": NUM_CTX,
+                    **({"num_thread": num_thread} if num_thread else {})},
         "messages": [{"role": "user", "content": PROMPT, "images": [image_b64]}],
     }
     r = requests.post(f"{host}/api/chat", json=body, timeout=timeout)
@@ -157,13 +160,13 @@ def ask(host: str, model: str, image_b64: str, timeout: float) -> tuple[dict, di
 
 
 def label_one(host: str, model: str, path: Path, timeout: float,
-              retries: int = RETRIES, ask_fn=ask) -> dict:
+              retries: int = RETRIES, ask_fn=ask, num_thread: int | None = None) -> dict:
     """재시도 포함 1장 라벨. 실패하면 error 키가 있는 행."""
     t0 = time.perf_counter()
     last = ""
     for attempt in range(1, retries + 1):
         try:
-            ans, meta = ask_fn(host, model, encode_image(path), timeout)
+            ans, meta = ask_fn(host, model, encode_image(path), timeout, num_thread)
             return {**ans, "attempts": attempt, "latency_s": round(time.perf_counter() - t0, 2),
                     "ollama": meta}
         except (requests.RequestException, ValueError, KeyError) as e:
@@ -204,6 +207,7 @@ def main() -> None:
     p.add_argument("--root", type=Path, help="manifest file 열의 기준 디렉터리")
     p.add_argument("--out", type=Path)
     p.add_argument("--timeout", type=float, default=180.0)
+    p.add_argument("--num-thread", type=int, help="ollama CPU 스레드 상한 (학습과 경합 시 낮춤)")
     a = p.parse_args()
 
     items = load_items(a.input, a.manifest, a.root)
@@ -229,7 +233,7 @@ def main() -> None:
             if not pth.exists():
                 rec = {"error": "file missing", "attempts": 0, "latency_s": 0.0}
             else:
-                rec = label_one(a.host, a.model, pth, a.timeout)
+                rec = label_one(a.host, a.model, pth, a.timeout, num_thread=a.num_thread)
             rec = {"id": iid, "model": a.model, "prompt_sha": PROMPT_SHA, **rec}
             n_err += "error" in rec
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")

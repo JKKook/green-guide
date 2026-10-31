@@ -31,7 +31,7 @@ def test_label_one_retries_then_succeeds(tmp_path, monkeypatch):
     monkeypatch.setattr(lb.time, "sleep", lambda s: None)
     calls = []
 
-    def fake(host, model, b64, timeout):
+    def fake(host, model, b64, timeout, num_thread=None):
         calls.append(1)
         if len(calls) == 1:
             raise ValueError("bad json")
@@ -82,3 +82,12 @@ def test_load_ref_formats(tmp_path):
     c = tmp_path / "m.csv"
     c.write_text("file,clip_top\ntaco_glass/a.jpg,glass_clear\n")
     assert ev.load_ref(c)["taco_glass/a.jpg"]["coarse"] == "glass"
+
+
+def test_load_ref_jsonl_split(tmp_path):
+    j = tmp_path / "v1.jsonl"
+    j.write_text("\n".join(json.dumps(r) for r in [
+        {"id": "a", "label": "glass", "label_fine": "glass_etc", "split": "gate"},
+        {"id": "b", "label": "metal", "label_fine": "metal", "split": "final_holdout"}]))
+    assert ev.load_ref(j, "gate") == {"a": {"coarse": "glass", "fine": "glass_etc"}}
+    assert len(ev.load_ref(j)) == 2
