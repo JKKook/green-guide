@@ -15,7 +15,7 @@ Play Console 은 프로덕션 신청 조건 3개(비공개 테스트 게시 · �
 | 5 | 서버 | "형태 인식: 사람" 칩 = 표시 임계를 판정 임계 0.30 으로 정렬 + 본 판정과 대분류가 다르거나 `non_object` 매핑인 identity 칩은 내리지 않음 | `clip_identity.py:142`(0.25) vs `:38`(0.30) vs 충돌 0.60 — 판정에 안 쓴 신호가 표시만 됨 |
 | 6 | 앱 | 결과화면 경합 = 하이브리드: 첫 로드는 hier·regions·objects 세 응답을 모아 한 번에 판정(만장일치 규칙 유지) + 사용자 조작(탭·되돌리기·선택·재시도)마다 세대 번호, 이전 세대 응답 폐기 | 단일 worker 라 어차피 직렬 — 추가 지연 0~3초 실측. "최고 확신 선택"은 세 응답이 같은 질문이 아니라 기각 |
 | 7 | 서버 | `/predict-with-regions` 를 구 27클래스 CNN 에서 계층 모델로 교체. 응답 스키마는 유지(앱 변경 최소) | 본 판정과 빗금 라벨이 다른 모델·다른 체계 |
-| 8 | 서버 | OOD 보정값(tau_soft/hard)을 사이드카에 고정 커밋해 HF 모델 저장소에 반영 + 기동 시 보정값 없으면 기본값으로 가지 말고 경고 로그·Sentry 알림 | HF `v20260805_152341/taxonomy.json` 에 `ood` 없음 → 재배포 시 실사용 57% 거부 재현 위험 |
+| 8 | 서버 | OOD 보정값 누락 가드: 기동 시(lifespan 사전 로드) `check_ood_calibration()` — 없으면 기본값 복귀 대신 **τ 끔(fail-open) + 경고 + `ood_calibrated=False`**, Sentry 알림. publish 스크립트에 `ood` 누락 금지 가드(classifier scope) | HF `v20260805_152341/taxonomy.json` 에 `ood` 없음. **보정 10-31**: 실제 서빙 사본 `serving/`(v14, 10-21) 에는 τ soft 0.558·hard 0.674 가 있고 `/model/latest` 는 구 flat 레지스트리라 계층 서빙과 무관 — 고정 커밋은 이미 된 상태, 폴백 경로 가드만 남음 |
 | 9 | DB | Supabase 단일 프로젝트 유지 + RLS 추가(`model_versions`·`region_waste_rules`) + `user-uploads` 버킷 비공개(서명 URL) + 013 적용 확인 | 1인 운영·무료 티어 |
 | 10 | DB | 일일 `pg_dump` — GitHub Actions, 아티팩트 30일. DB 비밀번호는 사용자가 Secret 등록 | 백업 장치 0 |
 | 11 | 서버 | 관리 API(`/reload-classes`·`/admin/reload-model`) 고정 토큰 헤더 + CORS 제한 + 추론 엔드포인트 속도 제한 | 무인증·CORS `*`+credentials |
