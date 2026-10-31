@@ -1,7 +1,8 @@
 """실사용 평가셋 동결 — Opus 라벨 + 사용자 중재를 반영해 realworld_eval_v1.jsonl 로 고정한다.
 
 라벨 우선순위: 사용자 중재(user_adjudicated) > Opus AI 라벨(ai_opus) > 기존.
-  · 중재 행: pick=ai → AI 라벨, pick=prev → 기존 라벨, pick=other → other_label(대분류 또는 세분류 slug)
+  · 중재 행: pick=ai → AI 라벨, pick=prev → 기존 라벨, pick=other → other_label(대분류 또는 세분류 slug;
+            대분류만 오면 label_fine 은 같은 이름 세분류 → <대분류>_other 순으로 보충). note 는 adjudication_note 로
   · 중재 안 된 행: AI 라벨(= 기존과 대분류 일치가 전제) → label_source="ai_opus"
   · AI 대분류가 기존과 다른데 중재가 없는 행이 하나라도 있으면 실패(조용히 덮지 않는다)
   · 바뀐 행은 label_prev·label_prev_source 에 기존 값 보존
@@ -95,12 +96,14 @@ def main() -> int:
                 label, fine = prev_label, prev_fine
             else:
                 label, fine = split_label(a["other_label"])
+                if fine is None:  # 대분류 slug 만 온 경우: 같은 이름 세분류 → <대분류>_other 순으로 보충
+                    fine = label if label in f2c else (f"{label}_other" if f"{label}_other" in f2c else None)
             src, conf = "user_adjudicated", "user"
         else:
             label, fine, src, conf = x["ai_coarse"], x.get("ai_fine"), "ai_opus", x.get("ai_confidence")
         n = dict(r)
         n.update(label=label, label_fine=fine, label_source=src, label_confidence=conf,
-                 adjudication=a.get("pick") if a else None,
+                 adjudication=a.get("pick") if a else None, adjudication_note=a.get("note") if a else None,
                  split="final_holdout" if is_final_holdout(r["id"]) else "gate")
         n.pop("label_raw", None)
         if label != prev_label:
