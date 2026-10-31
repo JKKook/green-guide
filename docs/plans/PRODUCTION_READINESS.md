@@ -33,6 +33,8 @@ Play Console 은 프로덕션 신청 조건 3개(비공개 테스트 게시 · �
 | 23 | 서버·앱 | 서빙 완화 6건(W6 GG_CNN): VLM opus · auto_crop 장면 경로 · non_object≥0.5 reject · electronics bias+게이트 0.7+VLM 중재 · CLIP 억제(효과 있을 때만) · OCR 표시 오탐 점검. 앱 W8(GG_APP): 가이드 프레임을 중앙 정사각(짧은 변 84%)으로 축소해 밀착 크롭 | 분석 E절 가설 2·3·4 |
 | 25 | 서버 | **W6 결과(10-31)**: 기본값 B = auto_crop 장면 경로 + non_object≥0.5 reject + electronics bias 0.5·coarse 게이트 0.7 + VLM(opus) 중재 + CLIP 억제 + OCR 2글자 표시 교체 금지. 실사용 피드백 51장 정답 21→28, electronics 오탐 16→4, 진짜 전자제품 recall 5/5 · 테스터 35장 13→24, 오탐 10→0. VLM 발동 17/51·22/35, 장당 $0.0059(opus, 캐시), 상한 200회/일 → 월 최대 $36, 지연 p50 1.0s(미발동)·4.4s(발동) | `realworld_golden/W6_FIXES.md`@af5d48a66d32 |
 | 26 | 사고 | **VLM 폴백 무음 실패**: Anthropic 키가 08-06 이후 만료돼 로컬·운영 폴백이 두 달 가까이 fail-open 으로 꺼져 있었음(마지막 성공 기록 08-06, 실패 로그가 info). 10-31 사용자가 재발급, 기동 시 키 점검 + `/health` `vlm_key_status` + WARNING 승격(`c014303`). 병합 때 Sentry `event_level=WARNING` 또는 해당 메시지 2개 캡처 필요(W3 기본은 breadcrumb) | 리더 실측 10-31 |
+| 27 | 모델 | **토큰 없는 경로 채택(10-31 사용자)**: v15(하드 네거티브) → W9 백본 비교(DINOv2·CLIP 동결 특징+헤드 vs ResNet50) → W10 로컬 VLM(ollama Qwen2.5-VL 후보) 의사라벨. Opus 는 평가셋 라벨 기준과 운영 폴백에만. 출시 게이트 = 실사용 평가셋 eval_v1(97, Opus 라벨 + 사용자 중재) 대분류 **≥80%(최소) / 85%(목표)**, electronics 오탐률 ≤3%, 진짜 전자제품 recall ≥0.85, 동일 출처 test −2pp 이내 | AI 라벨 기준 v14 47/97(48%) |
+| 28 | 라벨 | 평가셋 라벨 기준 = Opus AI 라벨, 기존 라벨과 충돌 23 + AI 확신 낮음 2 = 25장만 사용자 중재(https://claude.ai/artifact/QtEpmw2ZxhDX3TvhG1L8hQ, db `adjudications`). 우선순위 user_adjudicated > ai_opus > 기존 | 충돌 19/23 이 앱 피드백 라벨(손·배경→etc 7, 전자기기→외장 재질 6) |
 | 24 | 골든셋 | 규칙 개정: 피드백 있는 사진 제외(사람이 이미 채점) · 중복(sha256·dHash≤6) 제외 · 로컬 `local_feedback/` 195장 포함 → **v3 51장**(후보 205, 중복 154). 피드백 라벨 51장은 리뷰 대신 정답으로 정확도 산출(AI 의심 라벨 18건 표시) | 사용자 10-31 |
 
 ## 2. 작업 묶음
@@ -66,6 +68,18 @@ Play Console 은 프로덕션 신청 조건 3개(비공개 테스트 게시 · �
 병합 순서(안): repo 문서 → app → api-ops-hardening → api-inference-prod(같은 폴더, 파일 분리 확인됨) → classifier → api-w4(014 은 병합만, 적용은 게이트) → repo-w4. 병합 뒤 develop→main 병합·`v1.0.0-beta.3` 태그·HF subtree push·AAB 빌드.
 
 **골든셋 리뷰(결정 4) 게시**: https://claude.ai/artifact/SnWvgh9edGqhsfWLvsXuT2 — 58장, 사용자 판단은 페이지 db `reviews/<upload_id>`. AI 검토(에이전트 2, 사진 직접 판독) 결과: 대분류 일치 39/58. **불일치 19건 중 12건이 플라스틱 용기류(물티슈 팩·PET 병·스프레이·약통·립 튜브·에어로졸 캔)를 `electronics` 로 판정** — 결정 3 재검토 때 1순위. non_object 오판 2(바닥·주먹). 사용자 피드백 라벨 의문 11건(마우스→plastic, 전자기기→metal, 영수증→cardboard 등) — 골든셋 정답으로 쓰기 전 사용자 재확인.
+
+## 2-1. 사용자 판단 게이트 (10-31 리더 지정)
+
+| # | 게이트 | 시점 | 리더가 올리는 것 | 사용자가 정하는 것 |
+| --- | --- | --- | --- | --- |
+| G1 | 라벨 중재 25장 | 지금 | 중재 페이지 | 정답 선택 |
+| G2 | v15 판정 | 11-01 오전 | 실사용 게이트 수치(v14 대비) + 통과/불통과 | 서빙 모델 교체 여부, 불통과 시 2라운드 vs 백본 경로로 이동 |
+| G3 | 로컬 VLM 설치 | GG_VLM 비교표 뒤 | 모델 후보·용량·메모리·속도 | `ollama pull` 승인(약 5~6GB) |
+| G4 | push·PR·병합 | G2 뒤 | 브랜치 10개 순서·충돌 0 확인 | 일괄 승인 |
+| G5 | HF 배포 | G4 뒤 | 서버 완화 B + 사이드카 + 시크릿 체크리스트 | 운영 교체 승인 |
+| G6 | beta.3 업로드 | G5 뒤 | AAB·변경 요약·테스트 항목 | Play Console 업로드 클릭 |
+| G7 | 프로덕션 신청 | beta.3 3일 무크래시 + 게이트 통과 | 통과 수치 | 신청 클릭 |
 
 ## 3. 사용자 작업
 - Firebase 프로젝트 생성 → `google-services.json` 전달
