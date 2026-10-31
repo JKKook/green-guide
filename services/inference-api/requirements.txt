@@ -26,3 +26,7 @@ anthropic==0.117.0
 
 # 서빙 모델 다운로드 (Dockerfile · scripts/fetch_models.py)
 huggingface_hub>=0.24
+
+# 운영 — 예외·지연 모니터링(DSN 없으면 비활성), 추론 엔드포인트 속도 제한(slowapi 하부 엔진)
+sentry-sdk==2.73.0
+limits==4.0.1

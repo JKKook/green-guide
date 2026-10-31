@@ -1,10 +1,15 @@
 """FastAPI app 정의."""
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from limits import parse as parse_rate
+from limits.storage import MemoryStorage
+from limits.strategies import MovingWindowRateLimiter
 
 from src.classes import ClassRegistry
 from src.core import config
@@ -16,6 +21,31 @@ from src.routers import admin, inference, learning, meta
 from src.uploads import get_recorder
 
 log = get_logger(__name__)
+
+
+def _init_sentry() -> bool:
+    """GREENGUIDE_SENTRY_DSN 있으면 Sentry 활성 (FastAPI·Starlette·logging 통합은 자동).
+    SENTRY_WARNING_LOGGERS 의 WARNING 도 이벤트로 올린다 (기본 logging 통합은 ERROR 만)."""
+    if not config.SENTRY_DSN:
+        log.info("sentry: disabled (GREENGUIDE_SENTRY_DSN 없음)")
+        return False
+    import sentry_sdk  # noqa: PLC0415
+    from sentry_sdk.integrations.logging import EventHandler  # noqa: PLC0415
+
+    sentry_sdk.init(
+        dsn=config.SENTRY_DSN,
+        environment=config.SENTRY_ENVIRONMENT,
+        release=f"greenguide-api@{config.API_VERSION}",
+        traces_sample_rate=config.SENTRY_TRACES_SAMPLE_RATE,
+        send_default_pii=False,
+    )
+    for name in config.SENTRY_WARNING_LOGGERS:
+        logging.getLogger(name).addHandler(EventHandler(level=logging.WARNING))
+    log.info(f"sentry: ENABLED (env={config.SENTRY_ENVIRONMENT})")
+    return True
+
+
+_init_sentry()
 
 
 @asynccontextmanager
@@ -49,6 +79,13 @@ async def lifespan(app: FastAPI):
     dino = get_dinov2_classifier()
     log.info(f"dinov2 classifier: "
           f"{'ENABLED' if dino.available else 'disabled (model 없음)'}")
+    # 계층 모델 사전 로드 — 생성자가 check_ood_calibration() 을 부르므로 OOD 보정값 누락
+    # 경고가 첫 요청이 아닌 기동 시점에 뜬다 (logger src.hier_inference → Sentry 로도 나감)
+    try:
+        from src.hier_inference import get_hier_classifier  # noqa: PLC0415
+        get_hier_classifier()
+    except Exception as exc:  # noqa: BLE001
+        log.warning(f"hier classifier 사전 로드 실패(요청 시 재시도): {exc}")
 
     # 수집 정리 — 피드백 없는 업로드 7일 후 삭제 (무료 쿼터 지속성).
     # 기동 직후 1회 + 24시간 주기. 실패해도 부팅·서빙 무영향.
@@ -79,11 +116,35 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# 추론 엔드포인트 IP 기준 속도 제한 — 라우터(W2 영역)를 건드리지 않도록 경로 접두어 미들웨어.
+# 메모리 저장소 = 프로세스(worker) 단위 계수. 현 배포는 worker 1.
+_rate_item = parse_rate(config.RATE_LIMIT_INFERENCE) if config.RATE_LIMIT_INFERENCE else None
+_rate_limiter = MovingWindowRateLimiter(MemoryStorage())
+
+
+@app.middleware("http")
+async def _rate_limit_inference(request: Request, call_next):
+    if (
+        _rate_item is not None
+        and request.method == "POST"
+        and request.url.path.startswith(config.RATE_LIMITED_PATHS)
+    ):
+        ip = request.client.host if request.client else "unknown"
+        if not _rate_limiter.hit(_rate_item, "inference", ip):
+            return JSONResponse(
+                status_code=429,
+                content={"detail": f"rate limit exceeded: {config.RATE_LIMIT_INFERENCE}"},
+                headers={"Retry-After": str(_rate_item.get_expiry())},
+            )
+    return await call_next(request)
+
+
+# 앱은 CORS 무관 — 허용 출처는 명시 목록만(기본 빈 목록), 자격증명 미허용.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(config.CORS_ORIGINS),
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 register_exception_handlers(app)

@@ -1,13 +1,26 @@
 """관리 — 클래스 레지스트리·모델 리로드."""
 from __future__ import annotations
 
-from fastapi import APIRouter
+import secrets
+
+from fastapi import APIRouter, Depends, Header, HTTPException
 
 from src.classes import ClassRegistry
+from src.core import config
 from src.inference import get_active_meta, get_classifier, reset_classifier
 from src.schemas import ReloadModelResponse
 
-router = APIRouter()
+
+def require_admin_token(x_admin_token: str | None = Header(default=None)) -> None:
+    """X-Admin-Token 이 GREENGUIDE_ADMIN_TOKEN 과 일치해야 통과. 서버 토큰 미설정 시 전부 거부."""
+    expected = config.ADMIN_TOKEN
+    if not expected or not x_admin_token or not secrets.compare_digest(
+        x_admin_token.encode(), expected.encode(),
+    ):
+        raise HTTPException(status_code=401, detail="admin token required")
+
+
+router = APIRouter(dependencies=[Depends(require_admin_token)])
 
 
 @router.post("/reload-classes", tags=["admin"])

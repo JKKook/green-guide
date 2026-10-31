@@ -99,7 +99,26 @@ COLLECT_USER_UPLOADS: bool = (
 # 서버
 API_TITLE: str = "GreenGuide Waste Classifier API"
 API_VERSION: str = "0.1.0"
-CORS_ORIGINS: tuple[str, ...] = ("*",)  # 개발 단계 — 배포 시 좁힐 것
+# 앱(Flutter)은 브라우저가 아니라 CORS 무관 — 기본은 빈 목록(교차 출처 전면 차단).
+# 웹 클라이언트가 생기면 GREENGUIDE_CORS_ORIGINS="https://a.example,https://b.example"
+CORS_ORIGINS: tuple[str, ...] = tuple(
+    o.strip() for o in os.getenv("GREENGUIDE_CORS_ORIGINS", "").split(",") if o.strip()
+)
+
+# 관리 API(/reload-classes·/admin/reload-model) — X-Admin-Token 헤더와 일치해야 허용.
+# 미설정이면 관리 API 전부 401 (무인증 개방 금지).
+ADMIN_TOKEN: str | None = os.getenv("GREENGUIDE_ADMIN_TOKEN") or None
+
+# 추론 엔드포인트 IP 기준 속도 제한 (limits 표기: "30/minute"). 빈 값이면 비활성.
+RATE_LIMIT_INFERENCE: str = os.getenv("GREENGUIDE_RATE_LIMIT", "30/minute")
+RATE_LIMITED_PATHS: tuple[str, ...] = ("/predict", "/segment")  # 접두어 일치
+
+# Sentry — DSN 없으면 비활성.
+SENTRY_DSN: str | None = os.getenv("GREENGUIDE_SENTRY_DSN") or None
+SENTRY_ENVIRONMENT: str = os.getenv("GREENGUIDE_SENTRY_ENV", "production")
+SENTRY_TRACES_SAMPLE_RATE: float = float(os.getenv("GREENGUIDE_SENTRY_TRACES", "0.1"))
+# 이 logger 들의 WARNING 도 Sentry 이벤트로 (기본은 ERROR 만) — OOD 보정값 누락 경고 등
+SENTRY_WARNING_LOGGERS: tuple[str, ...] = ("src.hier_inference",)
 
 # 추론 시 input/output 이름 (export.py 와 일치해야 함)
 ONNX_INPUT_NAME_MLP: str = "vector"

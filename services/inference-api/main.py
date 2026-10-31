@@ -32,6 +32,9 @@ def main() -> None:
         port=args.port,
         reload=args.reload,
         workers=args.workers if not args.reload else 1,
+        # HF Space 등 리버스 프록시 뒤 — X-Forwarded-For 로 실제 클라이언트 IP 복원(속도 제한 키)
+        proxy_headers=True,
+        forwarded_allow_ips=os.environ.get("GREENGUIDE_FORWARDED_ALLOW_IPS", "*"),
     )
 
 
