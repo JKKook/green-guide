@@ -7,7 +7,7 @@
   2) services/inference-api/.env 의 SUPABASE_URL / SUPABASE_KEY 를 새 프로젝트 값으로 교체
 
 이 스크립트가 하는 일:
-  [1] 버킷 생성: user-uploads(공개), models(공개), raw-images(비공개)
+  [1] 버킷 생성: user-uploads(비공개 — 결정 9), models(공개), raw-images(비공개)
   [2] 로컬 캐시된 피드백 51장 업로드 + user_uploads 행 복원
       (라벨 = raw/<label>/user_<id>.jpg 디렉토리명, feedback_status=corrected)
   [3] 지역 배출 규정 재적재 (load_region_rules 재사용 — 공공 API에서 933행)
@@ -55,7 +55,7 @@ def main() -> None:
                          "migrations/_bootstrap_new_project.sql 실행 후 재시도") from exc
 
     # ── [1] 버킷 ──────────────────────────────────────────────────────────
-    for name, public in (("user-uploads", True), ("models", True), ("raw-images", False)):
+    for name, public in (("user-uploads", False), ("models", True), ("raw-images", False)):
         try:
             sb.storage.create_bucket(name, options={"public": public})
             print(f"[1] 버킷 생성: {name} (public={public})")
@@ -79,7 +79,9 @@ def main() -> None:
             sb.storage.from_("user-uploads").upload(
                 path=storage_path, file=f.read_bytes(),
                 file_options={"upsert": "true", "content-type": ct})
-            image_url = sb.storage.from_("user-uploads").get_public_url(storage_path)
+            # 비공개 버킷 — uploads.py 와 같은 만료 없는 인증 경로(service_role Bearer 로만 열람)
+            image_url = (f"{url.rstrip('/')}/storage/v1/object/authenticated/"
+                         f"user-uploads/{storage_path}")
             sb.table("user_uploads").upsert({
                 "id": upload_id,
                 "image_url": image_url,
