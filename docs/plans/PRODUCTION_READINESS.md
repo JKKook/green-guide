@@ -35,6 +35,7 @@ Play Console 은 프로덕션 신청 조건 3개(비공개 테스트 게시 · �
 | 26 | 사고 | **VLM 폴백 무음 실패**: Anthropic 키가 08-06 이후 만료돼 로컬·운영 폴백이 두 달 가까이 fail-open 으로 꺼져 있었음(마지막 성공 기록 08-06, 실패 로그가 info). 10-31 사용자가 재발급, 기동 시 키 점검 + `/health` `vlm_key_status` + WARNING 승격(`c014303`). 병합 때 Sentry `event_level=WARNING` 또는 해당 메시지 2개 캡처 필요(W3 기본은 breadcrumb) | 리더 실측 10-31 |
 | 27 | 모델 | **토큰 없는 경로 채택(10-31 사용자)**: v15(하드 네거티브) → W9 백본 비교(DINOv2·CLIP 동결 특징+헤드 vs ResNet50) → W10 로컬 VLM(ollama Qwen2.5-VL 후보) 의사라벨. Opus 는 평가셋 라벨 기준과 운영 폴백에만. 출시 게이트 = 실사용 평가셋 eval_v1(97, Opus 라벨 + 사용자 중재) 대분류 **≥80%(최소) / 85%(목표)**, electronics 오탐률 ≤3%, 진짜 전자제품 recall ≥0.85, 동일 출처 test −2pp 이내 | AI 라벨 기준 v14 47/97(48%) |
 | 28 | 라벨 | 평가셋 라벨 기준 = Opus AI 라벨, 기존 라벨과 충돌 23 + AI 확신 낮음 2 = 25장만 사용자 중재(https://claude.ai/artifact/QtEpmw2ZxhDX3TvhG1L8hQ, db `adjudications`). 우선순위 user_adjudicated > ai_opus > 기존 | 충돌 19/23 이 앱 피드백 라벨(손·배경→etc 7, 전자기기→외장 재질 6) |
+| 29 | 평가셋 | **eval_v1 동결(10-31)**: `~/Downloads/greenguide-golden/realworld_eval_v1.jsonl` sha256 `b71fd1e8d9a8883f73aabd26703a42366d272e9b5daf18f7109659641b6145e0`, 97행 = ai_opus 72 + user_adjudicated 25(ai 18·prev 2·other 5), split gate 79 · final_holdout 18(sha256(id)[0]%5==0). v14 대분류 45/97(gate 36/79 · holdout 9/18), electronics 판정 44 중 오탐 24(실제 23). 게이트 판정은 gate 79 로, holdout 18 은 최종 1회만 | GG_DATA 04da3ec |
 | 24 | 골든셋 | 규칙 개정: 피드백 있는 사진 제외(사람이 이미 채점) · 중복(sha256·dHash≤6) 제외 · 로컬 `local_feedback/` 195장 포함 → **v3 51장**(후보 205, 중복 154). 피드백 라벨 51장은 리뷰 대신 정답으로 정확도 산출(AI 의심 라벨 18건 표시) | 사용자 10-31 |
 
 ## 2. 작업 묶음
