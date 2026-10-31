@@ -26,6 +26,8 @@
 | 개인 정보(이름·이메일·전화) | 아니요 | — | — | — | — | 계정 없음, `legal_terms.dart:96` |
 | 금융·건강·연락처·메시지·파일 | 아니요 | — | — | — | — | 권한 없음(`AndroidManifest.xml:3-11`) |
 
+**W1 반영(10-31)**: Firebase Crashlytics·Analytics 배선 완료(`e2beaa3`). 광고 ID 는 `AD_ID`·`ACCESS_ADSERVICES_AD_ID` 권한을 매니페스트에서 `tools:node="remove"` 로 제거 → Play "광고 ID 사용 아니요" 선언과 일치, Analytics 는 앱 인스턴스 ID 만. 고지문 초안에 처리 위탁자로 **Google LLC(Firebase — 비정상 종료 로그·진단·앱 인스턴스 ID)** 추가됨. 콘솔 입력 시 위 표의 "(W1 뒤)" 3행을 포함한다.
+
 **"공유" 판정 메모**: Hugging Face·Supabase 는 서비스 제공자(처리 위탁)라 Play 기준 "공유"가 아니다. Anthropic 도 처리 위탁이지만 사진 원본이 운영자 통제 밖 제3자 API 로 나가므로 보수적으로 "공유 — 예"로 적고, 법무 검토에서 "서비스 제공자" 예외 적용 여부를 확인한다. 약관 §4(`legal_terms.dart:109`)와 표현을 맞춘다.
 
 ## 3. 고지문 개정 요점 (W1 GG_CNN_2 초안과 맞출 것)

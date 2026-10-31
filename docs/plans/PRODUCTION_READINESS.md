@@ -42,7 +42,23 @@ Play Console 은 프로덕션 신청 조건 3개(비공개 테스트 게시 · �
 
 버킷 비공개(014) 적용 순서(W4 보고, 10-31): ① 서버 `uploads.py` 공개 URL → authenticated 경로(W3, `e9a8626`) ② `bootstrap_new_supabase.py` 버킷 생성 비공개·URL 동일(W3) ③ 학습 스크립트 6곳 `image_url` 직접 내려받기 → `storage.download(storage_path)`(W2 classifier 브랜치) ④ 014 적용 → anon 쓰기 거부·공개 URL 403 검증. 역순이면 그 사이 학습 스크립트가 깨진다(서버 추론은 무영향). 백업 Secret 은 Session pooler 연결 문자열(Direct 는 IPv6 전용).
 
-진행 기록(10-31): 커밋 규약 변경 — 팀원은 작업에 필요한 커밋을 묻지 않고 한다. PR 생성 금지, push 는 리더 통지 뒤 일괄. 로컬 커밋: W3 `0c1c1cf`·`e9a8626`, W2 `0dbeacd`·classifier `cea0714`, W4 `1e8242c`·`b145f5e`·repo `8144900`.
+진행 기록(10-31): 커밋 규약 변경 — 팀원은 작업에 필요한 커밋을 묻지 않고 한다. PR 생성 금지, push 는 리더 통지 뒤 일괄.
+
+**W1~W4 전부 로컬 커밋 완료(10-31, push 0 · PR 0).** 팀원 세션 4개 종료.
+
+| 브랜치 | 커밋 | 검증 |
+| --- | --- | --- |
+| `feature/app-prod-readiness` (W1) | `87e5b93` 경합 하이브리드 · `d0a688e` 서명 가드 · `e2beaa3` Firebase+COARSE+고지 초안 | analyze 0 · test 104(경합 테스트 7, develop 코드로는 7 실패) · 무키 release 실패 확인. 범위 밖: Kotlin 2.2.20→2.4.0, AD_ID·ADSERVICES 권한 `tools:node="remove"` |
+| `feature/api-inference-prod` (W2) | `0dbeacd` 칩 정렬·regions 계층 모델·OOD 가드 | pytest 80 · 스모크 3/3 일치 |
+| `feature/classifier-publish-ood-guard` (W2) | `cea0714` publish 가드+curl 토큰 · `cda0bd6` 학습 스크립트 4곳 storage download | classifier pytest 53 |
+| `feature/api-ops-hardening` (W3) | `0c1c1cf` 토큰·CORS·429·Sentry · `e9a8626` uploads.py authenticated URL · `ba8b716` bootstrap 비공개 | pytest 81(.env 연결 시) · 토큰 401/200 · 429 |
+| `feature/api-w4-rls-migration` (W4) | `1e8242c` 014 RLS·버킷 · `b145f5e` 골든셋·혼동쌍 스크립트 · `3c53e85` 로컬 재추론 | 로컬 PG16 적용·롤백 통과 |
+| `feature/repo-w4-backup-workflow` (W4) | `8144900` backup.yml | actionlint 통과, 실실행은 Secret 뒤 |
+| `feature/repo-production-readiness` (W5) | 정본·Data Safety 초안·진행 기록 | — |
+
+병합 순서(안): repo 문서 → app → api-ops-hardening → api-inference-prod(같은 폴더, 파일 분리 확인됨) → classifier → api-w4(014 은 병합만, 적용은 게이트) → repo-w4. 병합 뒤 develop→main 병합·`v1.0.0-beta.3` 태그·HF subtree push·AAB 빌드.
+
+**골든셋 리뷰(결정 4) 게시**: https://claude.ai/artifact/SnWvgh9edGqhsfWLvsXuT2 — 58장, 사용자 판단은 페이지 db `reviews/<upload_id>`. AI 검토(에이전트 2, 사진 직접 판독) 결과: 대분류 일치 39/58. **불일치 19건 중 12건이 플라스틱 용기류(물티슈 팩·PET 병·스프레이·약통·립 튜브·에어로졸 캔)를 `electronics` 로 판정** — 결정 3 재검토 때 1순위. non_object 오판 2(바닥·주먹). 사용자 피드백 라벨 의문 11건(마우스→plastic, 전자기기→metal, 영수증→cardboard 등) — 골든셋 정답으로 쓰기 전 사용자 재확인.
 
 ## 3. 사용자 작업
 - Firebase 프로젝트 생성 → `google-services.json` 전달
