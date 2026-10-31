@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../../data/image_prep.dart';
 import '../../../theme/app_theme.dart';
 
 /// 반투명 원형/사각 버튼 (다크 카메라 UI).
@@ -90,6 +91,59 @@ class CaptureCorner extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 가이드 틀 — 중앙 정사각([guideFrame]) 바깥을 어둡게 덮고 코너 브래킷을 그린다.
+/// 업로드 크롭([computeGuideCropRect])과 같은 사각형이라 보이는 틀 = 보내는 영역.
+class GuideFrameOverlay extends StatelessWidget {
+  const GuideFrameOverlay({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final g = guideFrame(box.maxWidth, box.maxHeight);
+          final rect = Rect.fromLTWH(g.left, g.top, g.side, g.side);
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: CustomPaint(painter: _GuideScrimPainter(rect)),
+              ),
+              for (final (top, left) in const [
+                (true, true),
+                (true, false),
+                (false, true),
+                (false, false),
+              ])
+                Positioned(
+                  left: left ? rect.left : rect.right - 34,
+                  top: top ? rect.top : rect.bottom - 34,
+                  child: CaptureCorner(top: top, left: left),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _GuideScrimPainter extends CustomPainter {
+  final Rect hole;
+  _GuideScrimPainter(this.hole);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(Offset.zero & size)
+      ..addRRect(RRect.fromRectAndRadius(hole, const Radius.circular(10)));
+    canvas.drawPath(path, Paint()..color = const Color(0x73000000));
+  }
+
+  @override
+  bool shouldRepaint(_GuideScrimPainter old) => old.hole != hole;
 }
 
 class CameraErrorOverlay extends StatelessWidget {

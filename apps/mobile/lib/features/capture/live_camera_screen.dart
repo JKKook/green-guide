@@ -21,8 +21,6 @@ import 'widgets/camera_overlays.dart';
 
 const Duration _kCountdown = Duration(seconds: 5);
 
-/// 코너 브래킷의 뷰파인더 가장자리 패딩 — 가이드 프레임 크롭의 inset.
-const double _kGuideInset = 14;
 const Duration _kStableGrace = Duration(seconds: 3);
 
 class LiveCameraScreen extends StatefulWidget {
@@ -182,14 +180,13 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
       }
       if (!mounted) return;
 
-      // 가이드 프레임(코너 브래킷 안쪽)을 실제 크롭 영역으로 사용 — 학습 데이터가
-      // bbox 밀착 크롭이라 분포가 정렬된다(제안 E). 업로드량도 긴 변 1600px 로 축소.
+      // 가이드 틀(중앙 정사각)을 실제 크롭 영역으로 사용 — 학습 데이터가
+      // bbox 밀착 크롭이라 분포가 정렬된다(제안 E·W8). 업로드량도 긴 변 1600px 로 축소.
       final view = _viewfinderSize;
       final prep = await prepareForUpload(
         File(shot.path),
         guideViewW: view?.width,
         guideViewH: view?.height,
-        guideInset: _kGuideInset,
       );
       if (!mounted) return;
 
@@ -431,20 +428,8 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                                 color: kNeutral100,
                               ),
                             ),
-                          // 코너 브래킷
-                          for (final (a, top, left) in const [
-                            (Alignment.topLeft, true, true),
-                            (Alignment.topRight, true, false),
-                            (Alignment.bottomLeft, false, true),
-                            (Alignment.bottomRight, false, false),
-                          ])
-                            Align(
-                              alignment: a,
-                              child: Padding(
-                                padding: const EdgeInsets.all(14),
-                                child: CaptureCorner(top: top, left: left),
-                              ),
-                            ),
+                          // 가이드 틀 — 업로드 크롭 영역과 동일
+                          const GuideFrameOverlay(),
                           // 카운트다운 + 힌트
                           if (ready && !_capturing)
                             IgnorePointer(
@@ -481,7 +466,7 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                                     child: Text(
                                       _armed
                                           ? '흔들림을 줄여주세요 — 곧 촬영해요'
-                                          : '품목을 프레임 중앙에 담아주세요',
+                                          : '물건을 틀 안에 꽉 차게 담아주세요',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,

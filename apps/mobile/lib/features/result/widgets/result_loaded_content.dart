@@ -199,6 +199,10 @@ class ResultLoadedContent extends StatelessWidget {
               tapNorm: tapNorm,
             ),
           ),
+          if (isElectronicsPlasticConfusion(prediction)) ...[
+            const SizedBox(height: 8),
+            const RetakeCloserTip(),
+          ],
           if (sceneNote != null) ...[
             const SizedBox(height: 8),
             Row(

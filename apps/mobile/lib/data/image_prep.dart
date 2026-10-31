@@ -5,8 +5,10 @@
 /// 이미 쓰던 크기(긴 변 1600px)로 맞춰 업로드량을 줄인다.
 /// 디코딩·인코딩은 백그라운드 isolate 에서 수행(메인 스레드 프리즈 방지).
 ///
-/// 가이드 프레임 크롭(제안 E): 뷰파인더의 코너 브래킷 안쪽만 잘라 올리면
-/// 학습 데이터(bbox 밀착 크롭)와 분포가 정렬된다. 크롭 좌표는 원본
+/// 가이드 프레임 크롭(제안 E, W8): 뷰파인더 중앙의 정사각 가이드 틀
+/// (짧은 변 × [kGuideFrameFraction]) 안쪽만 잘라 올린다. 학습 데이터는 물체가
+/// 프레임을 채우는 bbox 밀착 크롭이라, 세로 전체 프레임(9:16)을 224² 로
+/// 찌그러뜨려 넣던 이전 방식보다 분포가 정렬된다. 크롭 좌표는 원본
 /// (EXIF 회전 반영 후) 픽셀 기준으로 함께 보고한다.
 library;
 
@@ -42,15 +44,13 @@ class PreparedUpload {
 /// 실패하면 원본 파일을 그대로 돌려준다 — 업로드 자체는 계속 가능해야 한다.
 ///
 /// [guideViewW]/[guideViewH]: 뷰파인더 표시 크기(논리 px). 주어지면 BoxFit.cover
-/// 역변환으로 화면에 보이던 영역에서 [guideInset](코너 브래킷 패딩)만큼 안쪽을
-/// 잘라낸다.
+/// 역변환으로 화면의 가이드 틀([guideFrame])에 해당하는 원본 영역을 잘라낸다.
 Future<PreparedUpload> prepareForUpload(
   File src, {
   int maxSide = 1600,
   int quality = 88,
   double? guideViewW,
   double? guideViewH,
-  double guideInset = 0,
 }) async {
   try {
     final dir = await getTemporaryDirectory();
@@ -65,7 +65,6 @@ Future<PreparedUpload> prepareForUpload(
       'quality': quality,
       'viewW': guideViewW,
       'viewH': guideViewH,
-      'inset': guideInset,
     });
     return PreparedUpload(
       file: out['path'] == null ? src : File(out['path'] as String),
@@ -100,7 +99,6 @@ Map<String, dynamic> _prepare(Map<String, dynamic> args) {
       imgH: baked.height,
       viewW: viewW,
       viewH: viewH,
-      inset: args['inset'] as double,
     );
     if (rect != null) {
       baked = img.copyCrop(
@@ -130,34 +128,44 @@ Map<String, dynamic> _prepare(Map<String, dynamic> args) {
   return {'path': out.path, 'orientation': orientation, 'cropBox': cropBox};
 }
 
+/// 가이드 틀 한 변 = 뷰파인더 짧은 변 × 이 비율 (화면 중앙 정사각).
+/// 1.0 이면 세로 화면에서 좌우 끝까지 — 여백이 없어 물체를 틀에 "꽉 차게"
+/// 맞추기 어렵고, 너무 작으면 원본 해상도·안정감이 떨어져 0.84 로 둔다.
+const double kGuideFrameFraction = 0.84;
+
+/// 뷰파인더(논리 px) 안의 가이드 틀 — UI 브래킷과 업로드 크롭이 같이 쓴다.
+({double left, double top, double side}) guideFrame(
+  double viewW,
+  double viewH,
+) {
+  final side = math.min(viewW, viewH) * kGuideFrameFraction;
+  return (left: (viewW - side) / 2, top: (viewH - side) / 2, side: side);
+}
+
 /// 가이드 프레임 크롭 영역 계산 (순수 함수 — 테스트용 공개).
 ///
-/// 프리뷰는 뷰파인더에 BoxFit.cover 로 그려지므로, 화면에 보이는 원본 영역은
-/// (viewW,viewH)/scale 크기의 중앙 사각형이다. 거기서 [inset]/scale 만큼
-/// 안쪽(코너 브래킷 내부)이 가이드 영역.
+/// 프리뷰는 뷰파인더에 BoxFit.cover 로 그려지므로, 화면 좌표 (vx,vy) 는 원본
+/// ((imgW − viewW/scale)/2 + vx/scale, …) 에 대응한다. 가이드 틀([guideFrame])을
+/// 이 역변환으로 옮긴 정사각형이 크롭 영역.
 ///
-/// 크롭이 사실상 원본 전체(오차 2px)거나 32px 미만으로 작아지면 null.
+/// 32px 미만으로 작아지면 null.
 ({int x, int y, int w, int h})? computeGuideCropRect({
   required int imgW,
   required int imgH,
   required double viewW,
   required double viewH,
-  double inset = 0,
 }) {
   if (imgW <= 0 || imgH <= 0 || viewW <= 0 || viewH <= 0) return null;
   final scale = math.max(viewW / imgW, viewH / imgH);
-  final visW = viewW / scale;
-  final visH = viewH / scale;
-  final insetImg = inset / scale;
-  var x = (imgW - visW) / 2 + insetImg;
-  var y = (imgH - visH) / 2 + insetImg;
-  var w = visW - 2 * insetImg;
-  var h = visH - 2 * insetImg;
+  final g = guideFrame(viewW, viewH);
+  var x = (imgW - viewW / scale) / 2 + g.left / scale;
+  var y = (imgH - viewH / scale) / 2 + g.top / scale;
+  var w = g.side / scale;
+  var h = g.side / scale;
   x = x.clamp(0, imgW.toDouble());
   y = y.clamp(0, imgH.toDouble());
   if (x + w > imgW) w = imgW - x;
   if (y + h > imgH) h = imgH - y;
   if (w < 32 || h < 32) return null;
-  if (x < 2 && y < 2 && w > imgW - 4 && h > imgH - 4) return null;
   return (x: x.round(), y: y.round(), w: w.round(), h: h.round());
 }

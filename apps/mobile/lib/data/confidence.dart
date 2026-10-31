@@ -124,3 +124,18 @@ bool isRejectPrediction(Prediction p) =>
     assessConfidence(p).shouldReject ||
     p.predictedClass == 'non_object' ||
     (p.hier?.isReject ?? false);
+
+/// 대분류 전자제품↔플라스틱 혼동 — 계층 응답이 coarse 에서 멈췄고 대분류 상위 2개가
+/// 정확히 이 쌍일 때. 작은 물체 + 넓은 밝은 배경 구성에서 잦아(ELECTRONICS_BIAS
+/// C절) "틀 안에 가깝게" 재촬영 안내를 붙인다.
+bool isElectronicsPlasticConfusion(Prediction p) {
+  final hier = p.hier;
+  if (hier == null || hier.displayLevel != 'coarse') return false;
+  final top2 =
+      (p.allProbabilities.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value)))
+          .take(2)
+          .map((e) => e.key)
+          .toSet();
+  return top2.length == 2 && top2.containsAll(const {'electronics', 'plastic'});
+}
