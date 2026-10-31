@@ -71,6 +71,14 @@ def main() -> None:
             sys.exit(f"필수 아티팩트 없음: {p}")
 
     tax = json.loads(SIDECAR.read_text(encoding="utf-8"))
+    # OOD 보정값 누락 금지 — 없이 게시하면 서버는 OOD 단계를 끈 채 서빙한다
+    # (PRODUCTION_READINESS 결정 8; 과거 ood 없는 v20260805 게시본 사례).
+    # build_hier_prototypes.py 가 사이드카에 tau_soft·tau_hard 를 기록한다.
+    missing = [k for k in ("tau_soft", "tau_hard")
+               if not isinstance((tax.get("ood") or {}).get(k), (int, float))]
+    if missing:
+        sys.exit(f"사이드카 ood 보정값 없음 ({', '.join(missing)}): {SIDECAR} — "
+                 "build_hier_prototypes.py 로 보정 후 다시 게시")
     ev = json.loads(EVAL.read_text(encoding="utf-8"))
     version = time.strftime("%Y%m%d_%H%M%S")
     tax_hash = hashlib.sha256(
