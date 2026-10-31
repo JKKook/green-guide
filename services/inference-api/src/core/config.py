@@ -149,3 +149,10 @@ VLM_MODEL: str = os.getenv("VLM_MODEL", "claude-haiku-4-5-20251001")
 VLM_DAILY_CAP: int = int(os.getenv("VLM_DAILY_CAP", "200"))
 VLM_MIN_CONF: float = float(os.getenv("VLM_MIN_CONF", "0.8"))            # fine 판정 채택 임계
 VLM_ITEM_MIN_CONF: float = float(os.getenv("VLM_ITEM_MIN_CONF", "0.6"))  # 품목 생성 채택 임계
+
+# ── electronics 편향 완화 실험 (W6, 전부 기본 꺼짐) ──
+# 실사용 51장: 오분류 30건 중 16건이 electronics 로 쏠림 — 재학습 없는 완화책 비교용.
+ELEC_LOGIT_BIAS: float = float(os.getenv("GREENGUIDE_API_ELEC_LOGIT_BIAS", "0"))  # electronics 로짓에서 뺄 값
+ELEC_CLIP_PRIOR: bool = os.getenv("GREENGUIDE_API_ELEC_CLIP_PRIOR", "0") == "1"   # 장면 판정이 electronics 면 CLIP 정체 prior 적용
+VLM_ARBITRATE_CLASSES: frozenset[str] = frozenset(
+    c for c in os.getenv("GREENGUIDE_API_VLM_ARBITRATE_CLASSES", "").split(",") if c)  # 이 대분류 판정은 항상 VLM 중재

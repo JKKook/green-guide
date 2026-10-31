@@ -188,7 +188,10 @@ async def predict_hier(
                 evidence, clf.fine_labels, clf.taxonomy["fine_to_coarse"]))
         except Exception as exc:  # noqa: BLE001
             log.warning(f"semantic evidence failed: {exc}")
-    if tap_region is not None:
+    # W6 실험 b: 장면 판정이 electronics 면 탭이 아니어도 CLIP 정체 prior 적용 (기본 꺼짐)
+    elec_clip = (tap_region is None and config.ELEC_CLIP_PRIOR
+                 and result["coarse_class"] == "electronics")
+    if tap_region is not None or elec_clip:
         try:
             clip_eng = get_clip_identity()
             probs = clip_eng.identity_probs(cropped_raw)
@@ -239,8 +242,11 @@ async def predict_hier(
     if evidence_conflict:
         log.info(f"증거-불일치 중재 발동: CNN={result['coarse_class']}")
     # 표시로 판정된 결과는 VLM 중재 대상에서 제외 (법정 표시가 최우선)
+    # W6 실험 c: 지정 대분류 판정은 확신도와 무관하게 중재 (기본 빈 집합)
+    class_arbitrate = result["coarse_class"] in config.VLM_ARBITRATE_CLASSES
     if mark is None and (result["display_level"] == "reject"
-            or result["coarse_confidence"] < 0.55 or evidence_conflict):
+            or result["coarse_confidence"] < 0.55 or evidence_conflict
+            or class_arbitrate):
         try:
             from src.vlm_fallback import get_vlm_fallback  # noqa: PLC0415
             v = get_vlm_fallback().classify(

@@ -211,6 +211,10 @@ class HierWasteClassifier:
                 dino_probs = dino_probs.copy()
                 dino_probs[:, self.fine_labels.index("non_object")] = 0.0
                 dino_probs = dino_probs / dino_probs.sum(axis=1, keepdims=True)
+        if config.ELEC_LOGIT_BIAS and "electronics" in self.fine_labels:
+            # 실사용 electronics 쏠림 보정 (W6 실험 a, 기본 꺼짐)
+            logits = logits.copy()
+            logits[:, self.fine_labels.index("electronics")] -= config.ELEC_LOGIT_BIAS
 
         # OOD 거리 — 최근접 prototype cosine distance (2단 판정)
         ood_distance: float | None = None
