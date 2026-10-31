@@ -59,12 +59,67 @@ def post_image(base: str, endpoint: str, name: str, data: bytes, mime: str) -> d
     return {"error": "unreachable"}
 
 
+HIER_KEYS = ("display_level", "display_class", "coarse_class", "coarse_confidence",
+             "fine_class", "fine_confidence", "fine_margin", "fine_top5",
+             "coarse_probabilities", "ood_distance", "ood_reject", "model_arch", "inference_ms")
+
+
+def fill_hier(golden: Path, local_api: str, out_file: Path) -> int:
+    """기존 golden.json 의 모든 행에 로컬 서버 /predict-hier 판정을 채운다 (v2).
+
+    local_api 는 GREENGUIDE_API_COLLECT_UPLOADS=false 로 띄운 로컬 서버여야 한다
+    (프로덕션 /predict-hier 는 업로드를 기록해 user_uploads 를 오염시킨다).
+    · 모든 행: hier_local = 로컬 재판정 전체 필드
+    · 복원분(hier 없음): hier = hier_local 요약, hier_source = "local_reinference"
+    · 실판정 행: hier(업로드 당시)는 그대로 두고 hier_source 유지
+    """
+    health = requests.get(f"{local_api}/health", timeout=30)
+    health.raise_for_status()
+    doc = json.loads(golden.read_text())
+    root = golden.parent
+    for i, it in enumerate(doc["items"], 1):
+        p = root / it["file"]
+        mime = "image/webp" if p.suffix == ".webp" else "image/jpeg"
+        res = post_image(local_api, "/predict-hier", p.name, p.read_bytes(), mime)
+        if "error" in res:
+            print(f"[{i}] {it['upload_id']} ERROR {res['error']}", flush=True)
+            it["hier_local"] = res
+            continue
+        if res.get("upload_id"):
+            raise SystemExit("로컬 서버가 업로드를 기록함 — GREENGUIDE_API_COLLECT_UPLOADS=false 로 다시 띄울 것")
+        hl = {k: res.get(k) for k in HIER_KEYS}
+        hl["confidence"] = res["fine_confidence"] if res["display_level"] == "fine" else res["coarse_confidence"]
+        it["hier_local"] = hl
+        if it.get("hier") is None:
+            it["hier"] = {k: hl[k] for k in ("display_class", "display_level", "coarse_class", "fine_class",
+                                             "confidence", "coarse_confidence", "fine_confidence",
+                                             "coarse_probabilities", "model_arch", "inference_ms")}
+            it["hier_source"] = "local_reinference"
+        print(f"[{i}/{len(doc['items'])}] {it['upload_id']} {hl['display_level']} {hl['display_class']} "
+              f"({hl['confidence']:.2f})", flush=True)
+    doc["version"] = 2
+    doc["hier_local_api"] = local_api
+    doc["hier_filled"] = sum(1 for x in doc["items"] if x.get("hier") and "error" not in (x.get("hier_local") or {}))
+    out_file.write_text(json.dumps(doc, ensure_ascii=False, indent=1))
+    print(f"hier 채움 {doc['hier_filled']}/{len(doc['items'])} → {out_file}")
+    return 0 if doc["hier_filled"] == len(doc["items"]) else 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--out", type=Path)
     ap.add_argument("--n", type=int, default=100)
     ap.add_argument("--api", default=API_BASE)
+    ap.add_argument("--fill-hier", type=Path, metavar="GOLDEN_JSON",
+                    help="기존 golden.json 에 로컬 /predict-hier 판정을 채워 --out-file 로 저장")
+    ap.add_argument("--local-api", default="http://127.0.0.1:8765")
+    ap.add_argument("--out-file", type=Path)
     args = ap.parse_args()
+    if args.fill_hier:
+        out_file = args.out_file or args.fill_hier.with_name("golden_v2.json")
+        return fill_hier(args.fill_hier.expanduser(), args.local_api, out_file.expanduser())
+    if not args.out:
+        ap.error("--out 필요")
 
     load_dotenv(Path(__file__).resolve().parents[1] / ".env") or load_dotenv(Path.cwd() / ".env")
     sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
