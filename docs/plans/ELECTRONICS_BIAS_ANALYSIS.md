@@ -38,6 +38,8 @@
 
 → 재활용품(plastic·metal·pet)은 AI-Hub 분류기 박스의 **어두운 배경**(21~65), OI electronics 만 **밝은 자연 장면**(99~107). 실사용 사진(106/53)은 OI electronics 분포와 겹치고 플라스틱·금속 학습 분포와는 전혀 겹치지 않는다.
 
+> **보정(10-31, GG_TRAIN 실측)**: v14 train 의 비전자 클래스도 OI 자연장면을 이미 가진다(metal 2,309 · glass 2,092 · paper 662 · vinyl 656 ≈ 6,800장). **plastic/pet 만 418장으로 빈약** — 골든 오답 12/19 가 플라스틱 용기류인 것과 일치. 따라서 위 "OI electronics 만 밝은 자연 장면" 은 "플라스틱·페트에는 밝은 자연 장면이 거의 없다" 로 읽어야 하고, W7 하드 네거티브 쿼터는 플라스틱 용기·화장품·병·비닐에 집중한다.
+
 ## B. test_acc 의 정체와 실사용 평가 기록
 - test = 같은 폴더의 stratified 랜덤 분할 + 동결(`hier_dataset.py:122-135`, `hier_frozen_test.json` 18,206장 중 electronics_boost 1,635). electronics test 2,032 = 전부 aihub140/oi2/oi3 → **동일 분포**. `by_source` 에 realworld n=5 뿐.
 - v14 test electronics P 0.992 / R 0.978. 혼동행렬 electronics 열(타→electronics): paper 5·metal 3·trash 2·glass 1·plastic 1·non_object 4 — 테스트에서는 과대예측이 **보이지 않음**(어두운 배경 재활용품은 electronics 로 안 감).
