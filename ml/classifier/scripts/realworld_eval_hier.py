@@ -19,8 +19,8 @@ from collections import Counter
 
 import _base  # noqa: F401 — sys.path 설정
 import numpy as np
-import requests
 from greenguide_common import imaging
+from greenguide_common.supabase import get_client
 from greenguide_common.taxonomy import (
     COARSE_TO_INDEX,
     FINE_IDX_TO_COARSE_IDX,
@@ -34,6 +34,7 @@ from PIL import Image
 from greenguide_classifier import config
 from greenguide_classifier.hier_train import LOG_DIR
 from greenguide_classifier.infer import load_session, softmax
+from greenguide_classifier.uploads import fetch_upload_bytes
 from retrain import fetch_feedback_rows
 
 ONNX_PATH = config.MODELS_DIR / "cnn_hier" / "classifier.onnx"
@@ -64,6 +65,7 @@ def _truth_supervision(label: str) -> tuple[str, str] | None:
 def main() -> None:
     sess = load_session(ONNX_PATH)
     rows = fetch_feedback_rows()
+    cli = get_client()
     print(f"피드백 ground truth: {len(rows)}건")
 
     n_eval = 0
@@ -83,7 +85,7 @@ def main() -> None:
             continue
         kind, slug = sup
         try:
-            raw = requests.get(row["image_url"], timeout=30).content
+            raw = fetch_upload_bytes(cli, row)
             x = _preprocess(raw)
         except Exception:  # noqa: BLE001
             skipped += 1
