@@ -466,7 +466,10 @@ class _LiveCameraScreenState extends State<LiveCameraScreen>
                                     child: Text(
                                       _armed
                                           ? '흔들림을 줄여주세요 — 곧 촬영해요'
-                                          : '물건을 틀 안에 꽉 차게 담아주세요',
+                                          // 2초마다 번갈아 — 분리배출 표시는 서버 최우선 판정 근거
+                                          : (_elapsed.inSeconds ~/ 2).isEven
+                                              ? '물건을 틀 안에 꽉 차게 담아주세요'
+                                              : '분리배출 표시가 보이면 더 정확해요',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
