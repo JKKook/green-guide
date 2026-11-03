@@ -19,11 +19,15 @@
   .venv/bin/python scripts/vlm_local_label.py --model qwen2.5vl:7b \
       --input ~/Downloads/greenguide-golden/realworld_eval_set.jsonl
   .venv/bin/python scripts/vlm_local_label.py --dry-run --input ...   # 모델 호출 없이 계획·프롬프트
+2단(분류 체계 v2 — 세부 27·상태·표시 마크): 1단 v2 결과를 --stage1 로 넘긴다.
+  .venv/bin/python scripts/vlm_local_label.py --input <eval.jsonl> \
+      --stage1 <v2 prompt_sha 의 labels.jsonl>   # → labels_2stage.jsonl
 """
 from __future__ import annotations
 
 import base64
 import csv
+import functools
 import hashlib
 import io
 import json
@@ -124,79 +128,45 @@ STATES = ("clean", "dirty", "broken", "composite")
 MARKS = ("none", "paper", "carton", "sterile_carton", "can", "glass", "pet", "plastic",
          "vinyl", "styrofoam")
 
-SLUG_HINTS_V3: dict[str, str] = {
-    **SLUG_HINTS,
-    "paper_other": ("paper: printed paper, books, paper bags, paper packaging, pizza/chicken "
-                    "boxes, used tissues, receipts, coated paper, wallpaper"),
-    "metal_can": "beverage/food cans, tins, aerosol and butane gas cans",
-    "metal_scrap": "metal scrap and objects: pots, pans, utensils, wire, tools, metal parts",
-    "plastic_other": ("other plastic containers, tubs, caps, cosmetic tubes, spray bottles, "
-                      "supplement/medicine bottles (amber-tinted plastic is still plastic), "
-                      "toothbrushes, rubber gloves, ballpoint pens, delivery/instant-noodle "
-                      "plastic containers"),
-    "food_waste": ("edible food leftovers: rice, noodles, side dishes, soft fruit peels "
-                   "(watermelon, banana, tangerine), vegetable leaves, fish flesh, shrimp shells, "
-                   "coffee grounds, food in or on a container, foil or basket"),
-    "food_inedible": ("hard or inedible food remains for general trash: clam/oyster/abalone "
-                      "shells, crab/lobster shells, chicken/pork/beef bones, big fish bones, hard "
-                      "pits (peach, plum, mango, persimmon), eggshells, nut shells, onion/garlic/"
-                      "corn husks, corn cobs, green onion roots, tea bags, herbal medicine dregs"),
-    "electronics": ("any device with electronics regardless of its outer material: mouse, "
-                    "keyboard, earbuds/case, phone, laptop, hub, smartwatch, quartz watch, small "
-                    "appliances, circuit boards"),
-    "battery": "loose dry-cell batteries and power banks",
-    "trash_other": "non-recyclable items for general trash: masks, rubber slippers, stickers",
-    "light_bulb": "light bulbs, fluorescent lamps (also when broken)",
-    "etc": ("a real object outside these categories: toys, figures, models, keychains (even "
-            "device-shaped ones), bags, baskets, furniture, decor, ceramics, heat-resistant "
-            "glassware, mirrors, plate glass, ice packs"),
+# ── 2단 구성(11-03 리더 판정, v3 단일 질의는 재질 회귀로 폐기): 1단 = 위 v2 프롬프트 그대로 재질,
+# 2단 = 1단 결과를 주고 metal·food_waste 세부 분할 + 상태(예/아니오 3문항)·표시 마크를 따로 묻는다.
+SUBFINE: dict[str, tuple[tuple[str, str], str]] = {
+    "metal": (("metal_can", "metal_scrap"),
+              "Is it a can (beverage/food can, tin, aerosol or butane gas can) -> metal_can, or "
+              "other metal (pot, pan, utensil, wire, tool, metal part, foil) -> metal_scrap?"),
+    "food_waste": (("food_waste", "food_inedible"),
+                   "Is it edible or soft food waste (rice, noodles, side dishes, soft fruit peels, "
+                   "vegetable leaves, fish flesh) -> food_waste, or hard inedible remains (clam/"
+                   "oyster/crab shells, bones, hard fruit pits, eggshells, nut shells, onion/garlic/"
+                   "corn husks, corn cobs, tea bags) -> food_inedible?"),
 }
-assert set(SLUG_HINTS_V3) - {"metal"} == set(FINE_V3) == set(FINE_TO_COARSE_V3)
-
-PROMPT_V3 = (
-    "You are an expert in Korean household waste separation. Look at the single MAIN "
-    "object in the photo (if several objects, the one covering the largest area).\n"
-    "1) fine: exactly one slug from this list:\n"
-    + "\n".join(f"- {s}: {SLUG_HINTS_V3[s]}" for s in FINE_V3)
-    + "\n2) state: exactly one of\n"
-    "- clean: empty and not soiled (leftover contents that can be emptied are still clean)\n"
-    "- dirty: soiled with food, oil or dirt that cannot simply be rinsed off\n"
-    "- broken: cracked, shattered or torn into pieces\n"
-    "- composite: made of mixed materials that cannot be separated, or a special material "
-    "(thermal receipt, coated paper, foil-lined paper, ceramics, mirror, ice pack, toothbrush)\n"
-    "3) mark: the Korean recycling mark printed on the item if you can read it "
-    "(paper, carton, sterile_carton, can, glass, pet, plastic, vinyl, styrofoam), else none.\n"
-    "\nRules:\n"
-    "1. Devices with electronics are 'electronics' even if the casing is plastic or metal; "
-    "a power bank is 'battery'.\n"
-    "2. If the photo mainly shows a person, a body part, a screen image or plain background, "
-    "answer 'non_object'.\n"
-    "3. A real object that fits no material category is 'etc'.\n"
-    "4. If edible food is visible, answer 'food_waste' even when it sits in a metal, foil or "
-    "plastic container; hard shells, bones, pits and husks are 'food_inedible'.\n"
-    "5. Glossy printed packs (wet wipes, snacks) are plastic film -> vinyl, not paper. "
-    "Judge glass only if the material is clearly glass. Broken bottle glass stays a glass "
-    "slug with state broken.\n"
-    "6. Oily pizza/chicken boxes, food-stained paper and used tissues are paper_other with "
-    "state dirty. Food-soiled delivery or instant-noodle containers keep their material with "
-    "state dirty.\n"
-    "7. confidence is your probability (0.0-1.0) that fine is correct.\n"
-    'Output JSON only: {"what": "<short item description>", "fine": "<slug>", '
-    '"state": "<state>", "mark": "<mark>", "confidence": <0.0-1.0>}'
+SUBFINE_PROMPT = ("The main object in this photo was identified as: {what} ({fine}). {q}\n"
+                  'Output JSON only: {{"fine": "<one of {opts}>"}}')
+STATE_PROMPT = (
+    "The main object in this photo was identified as: {what} (material: {coarse}).\n"
+    "Look closely at THIS object and answer:\n"
+    "- evidence: one short sentence on visible stains, food residue, oil, cracks, tears or "
+    "mixed materials ('none seen' if nothing)\n"
+    "- dirty: true if soiled with food, sauce, oil or dirt, or already used (used tissue, greasy "
+    "box, food-stained container). Leftover contents that can simply be poured out do not count.\n"
+    "- broken: true if cracked, shattered, crushed into pieces or torn\n"
+    "- composite: true if made of different materials bonded together that cannot be separated "
+    "by hand, or a special non-recyclable material (thermal receipt, coated or foil-lined paper, "
+    "ceramics, mirror, ice pack, toothbrush, rubber glove, ballpoint pen)\n"
+    "- mark: the Korean recycling mark printed on it if clearly readable (paper, carton, "
+    "sterile_carton, can, glass, pet, plastic, vinyl, styrofoam), else none\n"
+    'Output JSON only: {{"evidence": "...", "dirty": true|false, "broken": true|false, '
+    '"composite": true|false, "mark": "<mark>"}}'
 )
-PROMPT_V3_SHA = hashlib.sha256(PROMPT_V3.encode()).hexdigest()[:12]
-
-FORMAT_SCHEMA_V3 = {
+STATE_SCHEMA = {
     "type": "object",
-    "properties": {
-        "what": {"type": "string"},
-        "fine": {"type": "string", "enum": list(FINE_V3)},
-        "state": {"type": "string", "enum": list(STATES)},
-        "mark": {"type": "string", "enum": list(MARKS)},
-        "confidence": {"type": "number"},
-    },
-    "required": ["what", "fine", "state", "mark", "confidence"],
+    "properties": {"evidence": {"type": "string"}, "dirty": {"type": "boolean"},
+                   "broken": {"type": "boolean"}, "composite": {"type": "boolean"},
+                   "mark": {"type": "string", "enum": list(MARKS)}},
+    "required": ["evidence", "dirty", "broken", "composite", "mark"],
 }
+STAGE2_SHA = hashlib.sha256((PROMPT_SHA + SUBFINE_PROMPT + STATE_PROMPT
+                             + json.dumps(SUBFINE)).encode()).hexdigest()[:12]
 
 
 def load_items(input_path: Path | None, manifest: Path | None,
@@ -243,32 +213,15 @@ def _conf(d: dict) -> float:
     return round(min(max(conf, 0.0), 1.0), 3)
 
 
-def parse_answer_v3(text: str) -> dict:
-    """v3 응답 → {fine, coarse, state, mark, mark_visible, confidence, what}."""
-    d = json.loads(text)
-    fine, state, mark = d.get("fine"), d.get("state"), d.get("mark", "none")
-    if fine not in FINE_TO_COARSE_V3:
-        raise ValueError(f"모르는 slug: {fine!r}")
-    if state not in STATES:
-        raise ValueError(f"모르는 state: {state!r}")
-    if mark not in MARKS:
-        raise ValueError(f"모르는 mark: {mark!r}")
-    return {"fine": fine, "coarse": FINE_TO_COARSE_V3[fine], "state": state, "mark": mark,
-            "mark_visible": mark != "none", "confidence": _conf(d),
-            "what": str(d.get("what", ""))}
+def state_of(dirty: bool, broken: bool, composite: bool) -> str:
+    """예/아니오 3문항 → 상태 1값. 우선순위 broken > composite > dirty > clean."""
+    return ("broken" if broken else "composite" if composite else "dirty" if dirty
+            else "clean")
 
 
-# 버전 → (프롬프트, sha, JSON 스키마, 파서). v2 = 현행 기준(11-03 확정), v3 = 분류 체계 v2.
-PROMPTS = {
-    "v2": (PROMPT, PROMPT_SHA, FORMAT_SCHEMA, parse_answer),
-    "v3": (PROMPT_V3, PROMPT_V3_SHA, FORMAT_SCHEMA_V3, parse_answer_v3),
-}
-
-
-def ask(host: str, model: str, image_b64: str, timeout: float,
-        num_thread: int | None = None, version: str = "v2") -> tuple[dict, dict]:
-    """ollama /api/chat 1회. (파싱 결과, 계측) 반환."""
-    prompt, _, schema, parse = PROMPTS[version]
+def _chat(host: str, model: str, image_b64: str, prompt: str, schema: dict, timeout: float,
+          num_thread: int | None = None) -> tuple[dict, dict]:
+    """ollama /api/chat 1회 → (응답 JSON, 계측)."""
     body = {
         "model": model, "stream": False, "format": schema, "keep_alive": "30m",
         "options": {"temperature": 0, "num_predict": 200, "num_ctx": NUM_CTX,
@@ -280,19 +233,48 @@ def ask(host: str, model: str, image_b64: str, timeout: float,
     j = r.json()
     meta = {k: j.get(k) for k in ("total_duration", "load_duration", "prompt_eval_count",
                                   "eval_count", "eval_duration")}
-    return parse(j["message"]["content"]), meta
+    return json.loads(j["message"]["content"]), meta
+
+
+def ask(host: str, model: str, image_b64: str, timeout: float,
+        num_thread: int | None = None) -> tuple[dict, dict]:
+    """1단(v2 재질) 1회. (파싱 결과, 계측) 반환."""
+    d, meta = _chat(host, model, image_b64, PROMPT, FORMAT_SCHEMA, timeout, num_thread)
+    return parse_answer(json.dumps(d)), meta
+
+
+def ask_stage2(host: str, model: str, image_b64: str, timeout: float,
+               num_thread: int | None = None, *, row: dict, chat_fn=_chat) -> tuple[dict, dict]:
+    """2단: 1단 행(what·fine·coarse)을 주고 세부 분할(metal·food_waste) + 상태·마크."""
+    fine, meta = row["fine"], {}
+    if row["fine"] in SUBFINE:
+        opts, q = SUBFINE[row["fine"]]
+        d, meta["subfine"] = chat_fn(host, model, image_b64, SUBFINE_PROMPT.format(
+            what=row["what"], fine=row["fine"], q=q, opts=" | ".join(opts)),
+            {"type": "object", "properties": {"fine": {"type": "string", "enum": list(opts)}},
+             "required": ["fine"]}, timeout, num_thread)
+        if d.get("fine") not in opts:
+            raise ValueError(f"모르는 세부: {d.get('fine')!r}")
+        fine = d["fine"]
+    d, meta["state"] = chat_fn(host, model, image_b64, STATE_PROMPT.format(
+        what=row["what"], coarse=row["coarse"]), STATE_SCHEMA, timeout, num_thread)
+    flags = {k: d.get(k) for k in ("dirty", "broken", "composite")}
+    if not all(isinstance(v, bool) for v in flags.values()) or d.get("mark") not in MARKS:
+        raise ValueError(f"상태 응답 형식 위반: {d!r}")
+    return {"fine_v2": row["fine"], "fine": fine, "coarse": FINE_TO_COARSE_V3[fine],
+            **flags, "state": state_of(**flags), "mark": d["mark"],
+            "mark_visible": d["mark"] != "none", "evidence": str(d.get("evidence", "")),
+            "what": row["what"], "confidence": row["confidence"]}, meta
 
 
 def label_one(host: str, model: str, path: Path, timeout: float,
-              retries: int = RETRIES, ask_fn=ask, num_thread: int | None = None,
-              version: str = "v2") -> dict:
+              retries: int = RETRIES, ask_fn=ask, num_thread: int | None = None) -> dict:
     """재시도 포함 1장 라벨. 실패하면 error 키가 있는 행."""
     t0 = time.perf_counter()
     last = ""
     for attempt in range(1, retries + 1):
         try:
-            ans, meta = ask_fn(host, model, encode_image(path), timeout, num_thread,
-                               version=version)
+            ans, meta = ask_fn(host, model, encode_image(path), timeout, num_thread)
             return {**ans, "attempts": attempt, "latency_s": round(time.perf_counter() - t0, 2),
                     "ollama": meta}
         except (requests.RequestException, ValueError, KeyError) as e:
@@ -310,6 +292,16 @@ def load_cache(out: Path, model: str, sha: str = PROMPT_SHA) -> set[str]:
         if r.get("model") == model and r.get("prompt_sha") == sha and "error" not in r:
             done.add(r["id"])
     return done
+
+
+def load_stage1(path: Path, model: str) -> dict[str, dict]:
+    """1단 v2 labels.jsonl → id → 행 (같은 model·v2 prompt_sha 성공 행, 마지막이 이김)."""
+    rows = {}
+    for ln in path.read_text().splitlines():
+        r = json.loads(ln)
+        if r.get("model") == model and r.get("prompt_sha") == PROMPT_SHA and "error" not in r:
+            rows[r["id"]] = r
+    return rows
 
 
 def ollama_ps(host: str, model: str) -> dict | None:
@@ -333,26 +325,30 @@ def main() -> None:
     p.add_argument("--root", type=Path, help="manifest file 열의 기준 디렉터리")
     p.add_argument("--out", type=Path)
     p.add_argument("--timeout", type=float, default=180.0)
-    p.add_argument("--prompt", choices=tuple(PROMPTS), default="v2",
-                   help="v2 = 현행 25 slug, v3 = 분류 체계 v2(세부 27 + 상태 + 마크)")
+    p.add_argument("--stage1", type=Path,
+                   help="2단 모드: 1단(v2) labels.jsonl 을 받아 세부 분할·상태·마크를 붙인다")
     p.add_argument("--num-thread", type=int, help="ollama CPU 스레드 상한 (학습과 경합 시 낮춤)")
     a = p.parse_args()
 
     items = load_items(a.input, a.manifest, a.root)
+    stage1 = load_stage1(a.stage1, a.model) if a.stage1 else None
+    if stage1 is not None:
+        items = [(i, pth) for i, pth in items if i in stage1]
+    sha = STAGE2_SHA if stage1 is not None else PROMPT_SHA
     out = a.out or (_base.PROJECT_ROOT / "outputs" / "logs" / "vlm_local"
-                    / a.model.replace(":", "_").replace("/", "_") / "labels.jsonl")
-    prompt, sha = PROMPTS[a.prompt][:2]
+                    / a.model.replace(":", "_").replace("/", "_")
+                    / ("labels_2stage.jsonl" if stage1 is not None else "labels.jsonl"))
     done = load_cache(out, a.model, sha)
     todo = [(i, pth) for i, pth in items if i not in done]
     if a.cap:
         todo = todo[: a.cap]
     missing = [str(pth) for _, pth in todo if not pth.exists()]
-    print(f"[plan] model={a.model} prompt={a.prompt} prompt_sha={sha} items={len(items)} "
+    print(f"[plan] model={a.model} stage={2 if stage1 else 1} prompt_sha={sha} items={len(items)} "
           f"cached={len(done)} todo={len(todo)} missing_files={len(missing)} out={out}")
     if missing:
         print("  missing 예:", missing[:3])
     if a.dry_run:
-        print("─── prompt ───\n" + prompt)
+        print("─── prompt ───\n" + (STATE_PROMPT if stage1 is not None else PROMPT))
         return
 
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -362,9 +358,10 @@ def main() -> None:
             if not pth.exists():
                 rec = {"error": "file missing", "attempts": 0, "latency_s": 0.0}
             else:
-                rec = label_one(a.host, a.model, pth, a.timeout, num_thread=a.num_thread,
-                                version=a.prompt)
-            rec = {"id": iid, "model": a.model, "prompt": a.prompt, "prompt_sha": sha, **rec}
+                fn = ask if stage1 is None else functools.partial(ask_stage2, row=stage1[iid])
+                rec = label_one(a.host, a.model, pth, a.timeout, ask_fn=fn,
+                                num_thread=a.num_thread)
+            rec = {"id": iid, "model": a.model, "prompt_sha": sha, **rec}
             n_err += "error" in rec
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
             f.flush()
