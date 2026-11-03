@@ -31,7 +31,7 @@ def test_label_one_retries_then_succeeds(tmp_path, monkeypatch):
     monkeypatch.setattr(lb.time, "sleep", lambda s: None)
     calls = []
 
-    def fake(host, model, b64, timeout, num_thread=None):
+    def fake(host, model, b64, timeout, num_thread=None, version="v2"):
         calls.append(1)
         if len(calls) == 1:
             raise ValueError("bad json")
@@ -97,3 +97,23 @@ def test_half_of_is_stable_split():
     ids = [f"id{i}" for i in range(200)]
     halves = [ev.half_of(i) for i in ids]
     assert set(halves) == {"A", "B"} and halves == [ev.half_of(i) for i in ids]
+
+
+def test_parse_answer_v3_state_mark_and_new_slugs():
+    r = lb.parse_answer_v3('{"what": "clam shells", "fine": "food_inedible", "state": "dirty", '
+                           '"mark": "none", "confidence": 0.8}')
+    assert r["coarse"] == "food_waste" and r["state"] == "dirty" and not r["mark_visible"]
+    r = lb.parse_answer_v3('{"fine": "metal_can", "state": "clean", "mark": "can", '
+                           '"confidence": 0.9}')
+    assert r["coarse"] == "metal" and r["mark_visible"]
+    with pytest.raises(ValueError):
+        lb.parse_answer_v3('{"fine": "metal", "state": "clean", "mark": "none"}')
+    with pytest.raises(ValueError):
+        lb.parse_answer_v3('{"fine": "pet", "state": "wet", "mark": "none"}')
+
+
+def test_prompt_v3_lists_every_slug_and_differs_from_v2():
+    assert "metal" not in lb.FINE_V3 and len(lb.FINE_V3) == 27
+    for s in lb.FINE_V3:
+        assert f"- {s}:" in lb.PROMPT_V3
+    assert lb.PROMPT_V3_SHA != lb.PROMPT_SHA
