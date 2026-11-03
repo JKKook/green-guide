@@ -4,7 +4,7 @@
 입력: 현행 학습 아이템(hier_dataset.build_hier_items — legacy manifest + fine-staging), 그대로 읽기만 한다.
 근거(파일명·원본 라벨):
 - aihub385_<cond>__ (crop_71385.py CODE_MAP): clean→clean, dirty→dirty, dirty_multi→dirty,
-  multi(다중포장재)→clean(분리 가능 포장, rule 에 표시). metal_boost 의 aihub385 는 c_3 캔류 → metal_can.
+  multi(다중포장재)→상태 미상(분리 가능 포장 — composite 도 clean 도 아님, rule 에 표시). metal_boost 의 aihub385 는 c_3 캔류 → metal_can.
 - taco_<annotation id> (collect_taco.py): annotations.json 원 카테고리로 metal_can/metal_scrap, Broken glass→broken.
   학습셋에 없는(소형 스킵) Broken glass 는 --recrop 으로 staging 밖에 다시 자른다.
 - oi_tin_can / oi2_fork·spoon·knife (collect_openimages*.py), oi4hn_* 는 crops4_hardneg/manifest.csv 의 oi_label.
@@ -30,7 +30,7 @@ from greenguide_classifier import config
 from greenguide_classifier.hier_dataset import build_hier_items
 
 AIHUB_STATE = {"clean": ("clean", "aihub_cond_clean"), "dirty": ("dirty", "aihub_cond_dirty"),
-               "dirty_multi": ("dirty", "aihub_cond_dirty_multi"), "multi": ("clean", "aihub_cond_multi_separable")}
+               "dirty_multi": ("dirty", "aihub_cond_dirty_multi"), "multi": ("", "aihub_cond_multi_separable")}  # 리더 판정 11-03: 분리 가능 포장 → 상태 미상(상태 손실 제외)
 TACO_CAN = {"Drink can", "Food Can", "Aerosol", "Pop tab"}
 TACO_SCRAP = {"Metal bottle cap", "Metal lid", "Scrap metal", "Aluminium foil"}
 OI_CAN = {"tin_can", "tin_can2", "beer", "beer2"}
@@ -69,6 +69,8 @@ def classify(it: dict, taco: dict[int, str], oi4: dict[str, str]) -> dict:
             fine = "metal_can" if cat in TACO_CAN else "metal_scrap" if cat in TACO_SCRAP else ""
         if cat == "Broken glass":
             state = "broken"
+        elif cat == "Aluminium foil":
+            state = "clean"  # 순수 알루미늄 호일 = metal_scrap/clean (리더 판정 11-03, 은박 코팅 종이와 구분)
     elif m := re.match(r"oi4hn_(.+?)_\d+\.jpg$", name):
         src = "oi4"
         lab = oi4.get(name, m.group(1))
@@ -153,11 +155,11 @@ def main() -> None:
                "metal_fine": {k: v for k, v in by_fine.items() if k.startswith("metal/")},
                "food_fine": {k: v for k, v in by_fine.items() if k.startswith("food_waste/")},
                "undecided_required_fine": dict(undecided),
-               "multi_as_clean": sum("aihub_cond_multi_separable" in r["rule"] for r in rows),
+               "multi_state_unknown": sum("aihub_cond_multi_separable" in r["rule"] for r in rows),
                "by_coarse_fine": dict(sorted(by_fine.items())), "by_coarse_state": dict(sorted(by_state.items()))}
     (a.out / "summary_v2.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps({k: summary[k] for k in ("n", "state_total", "metal_fine", "food_fine",
-                                               "undecided_required_fine", "multi_as_clean")}, ensure_ascii=False))
+                                               "undecided_required_fine", "multi_state_unknown")}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
