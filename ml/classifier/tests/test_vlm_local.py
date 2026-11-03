@@ -91,3 +91,9 @@ def test_load_ref_jsonl_split(tmp_path):
         {"id": "b", "label": "metal", "label_fine": "metal", "split": "final_holdout"}]))
     assert ev.load_ref(j, "gate") == {"a": {"coarse": "glass", "fine": "glass_etc"}}
     assert len(ev.load_ref(j)) == 2
+
+
+def test_half_of_is_stable_split():
+    ids = [f"id{i}" for i in range(200)]
+    halves = [ev.half_of(i) for i in ids]
+    assert set(halves) == {"A", "B"} and halves == [ev.half_of(i) for i in ids]

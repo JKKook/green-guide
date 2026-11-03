@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import statistics
 from collections import Counter, defaultdict
@@ -35,6 +36,11 @@ def to_coarse(slug: str | None) -> str | None:
     if slug in COARSE_LABELS:
         return slug
     return FINE_TO_COARSE.get(slug)
+
+
+def half_of(item_id: str) -> str:
+    """과적합 교차 확인용 고정 반분 — sha256(id) 짝수 A, 홀수 B."""
+    return "A" if int(hashlib.sha256(item_id.encode()).hexdigest(), 16) % 2 == 0 else "B"
 
 
 def load_ref(path: Path, split: str | None = None) -> dict[str, dict]:
@@ -119,13 +125,17 @@ def main() -> None:
     p.add_argument("--pred", type=Path, required=True)
     p.add_argument("--gate", action="store_true", help="채택 게이트 판정 출력")
     p.add_argument("--split", help="jsonl 기준의 split 칸 필터 (gate | final_holdout)")
+    p.add_argument("--half", choices=("A", "B"), help="sha256(id) 반분 필터(교차 확인)")
     p.add_argument("--out", type=Path)
     a = p.parse_args()
 
-    res = evaluate(load_ref(a.ref, a.split), load_pred(a.pred))
+    ref = load_ref(a.ref, a.split)
+    if a.half:
+        ref = {i: v for i, v in ref.items() if half_of(i) == a.half}
+    res = evaluate(ref, load_pred(a.pred))
     if a.gate:
         res["gate"] = gate(res)[1]
-    out = a.out or a.pred.parent / f"eval_{a.ref.stem}{'_' + a.split if a.split else ''}.json"
+    out = a.out or a.pred.parent / f"eval_{a.ref.stem}{'_' + a.split if a.split else ''}{'_' + a.half if a.half else ''}.json"
     out.write_text(json.dumps(res, ensure_ascii=False, indent=2))
     c = res["coarse"]
     print(f"대분류 일치 {c['agree']}/{c['n']} ({c['rate']}) · 세부 {res['fine']['rate']} · "

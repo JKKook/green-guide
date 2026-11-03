@@ -53,14 +53,17 @@ SLUG_HINTS: dict[str, str] = {
     "glass_etc": "other glass (cosmetic/perfume bottles, glassware)",
     "metal": "cans, tins, aerosol cans, metal scrap, metal utensils",
     "pet": "clear PET beverage bottle",
-    "plastic_other": "other plastic containers, tubs, caps, cosmetic tubes, spray bottles",
-    "vinyl_clean": "clean plastic film, bags, wrappers",
+    "plastic_other": ("other plastic containers, tubs, caps, cosmetic tubes, spray bottles, "
+                      "supplement/medicine bottles (amber-tinted plastic is still plastic)"),
+    "vinyl_clean": ("clean plastic film, bags, wrappers, pouches, wet-wipe packs, snack and "
+                    "food packaging film (printed graphics do not make it paper)"),
     "vinyl_dirty": "food-soiled plastic film/wrappers",
     "styrofoam_white": "clean white styrofoam",
     "styrofoam_color": "colored styrofoam",
     "styrofoam_dirty": "soiled styrofoam (food trays)",
     "clothes": "clothing, textiles, blankets",
-    "food_waste": "food leftovers, fruit peels",
+    "food_waste": ("food leftovers, fruit peels, vegetables, food sitting in or on a container, "
+                   "foil or basket"),
     "electronics": ("any device with electronics or a built-in battery regardless of its "
                     "outer material: mouse, keyboard, earbuds/case, phone, laptop, hub, "
                     "smartwatch, quartz watch, power bank, small appliances, circuit boards"),
@@ -68,8 +71,8 @@ SLUG_HINTS: dict[str, str] = {
     "trash_other": ("non-recyclable composite items for general trash: masks, rubber "
                     "slippers, stickers, tissues"),
     "light_bulb": "light bulbs, fluorescent lamps",
-    "etc": ("a real object outside these categories: toys, figures, models, bags, "
-            "baskets, furniture, decor"),
+    "etc": ("a real object outside these categories: toys, figures, models, keychains "
+            "(even device-shaped ones), bags, baskets, furniture, decor"),
     "non_object": ("no waste object: human body/face/hands, screens showing photos or "
                    "web pages, walls, floors, backgrounds, vehicles, noise images"),
 }
@@ -85,7 +88,11 @@ PROMPT = (
     "2. If the photo mainly shows a person, a body part, a screen image or plain background, "
     "answer 'non_object'.\n"
     "3. A real object that fits no material category is 'etc'.\n"
-    "4. confidence is your probability (0.0-1.0) that the slug is correct.\n"
+    "4. If food is visible, answer 'food_waste' even when it sits in a metal, foil or "
+    "plastic container.\n"
+    "5. Glossy printed packs (wet wipes, snacks) are plastic film -> vinyl, not paper. "
+    "Judge glass only if the material is clearly glass.\n"
+    "6. confidence is your probability (0.0-1.0) that the slug is correct.\n"
     'Output JSON only: {"what": "<short item description>", "slug": "<slug>", '
     '"confidence": <0.0-1.0>}'
 )
