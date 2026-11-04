@@ -127,3 +127,14 @@ def test_state_priority_and_v3_fine_set():
     assert "metal" not in lb.FINE_V3 and len(lb.FINE_V3) == 27
     assert set(lb.FINE_V3) == set(lb.FINE_TO_COARSE_V3)
     assert lb.STAGE2_SHA != lb.PROMPT_SHA
+
+
+def test_eval_state_dirty_precision_recall():
+    ref = {"1": {"coarse": "paper", "state": "dirty"}, "2": {"coarse": "paper", "state": "dirty"},
+           "3": {"coarse": "glass", "state": "clean"}, "4": {"coarse": "metal"}}
+    pred = {"1": {"state": "dirty"}, "2": {"state": "clean"}, "3": {"state": "dirty"},
+            "4": {"state": "clean"}}
+    r = ev.eval_state(ref, pred)
+    assert r["acc"]["agree"] == 1 and r["all_clean"]["agree"] == 1
+    assert (r["dirty"]["precision"], r["dirty"]["recall"]) == (0.5, 0.5)
+    assert ev.eval_state(ref, {"1": {"coarse": "paper"}}) is None

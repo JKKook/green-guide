@@ -51,7 +51,8 @@ def load_ref(path: Path, split: str | None = None) -> dict[str, dict]:
                     for r in csv.DictReader(f)}
     if path.suffix == ".jsonl":
         rows = [json.loads(ln) for ln in path.read_text().splitlines() if ln.strip()]
-        return {r["id"]: {"coarse": to_coarse(r["label"]), "fine": r.get("label_fine")}
+        return {r["id"]: {"coarse": to_coarse(r["label"]), "fine": r.get("label_fine"),
+                          **({"state": r["state"]} if r.get("state") else {})}
                 for r in rows if split is None or r.get("split") == split}
     return {r["id"]: {"coarse": r["ai_coarse"], "fine": r.get("ai_fine")}
             for r in json.loads(path.read_text())}
@@ -71,6 +72,22 @@ def _acc(pairs: list[tuple[str, str]]) -> dict:
     n = len(pairs)
     k = sum(a == b for a, b in pairs)
     return {"n": n, "agree": k, "rate": round(k / n, 4) if n else None}
+
+
+def eval_state(ref: dict[str, dict], pred: dict[str, dict]) -> dict | None:
+    """상태 일치·'전부 clean' 기준선·dirty 정밀도/재현율 (기준·예측 둘 다 state 가 있는 행)."""
+    ids = [i for i in ref if "state" in ref[i] and "state" in pred.get(i, {})]
+    if not ids:
+        return None
+    pairs = [(ref[i]["state"], pred[i]["state"]) for i in ids]
+    tp = sum(r == p == "dirty" for r, p in pairs)
+    n_pred = sum(p == "dirty" for _, p in pairs)
+    n_true = sum(r == "dirty" for r, _ in pairs)
+    return {"acc": _acc(pairs), "all_clean": _acc([(r, "clean") for r, _ in pairs]),
+            "dirty": {"tp": tp, "pred": n_pred, "true": n_true,
+                      "precision": round(tp / n_pred, 4) if n_pred else None,
+                      "recall": round(tp / n_true, 4) if n_true else None},
+            "confusions": Counter(f"{r}→{p}" for r, p in pairs if r != p).most_common(10)}
 
 
 def evaluate(ref: dict[str, dict], pred: dict[str, dict]) -> dict:
@@ -107,6 +124,7 @@ def evaluate(ref: dict[str, dict], pred: dict[str, dict]) -> dict:
                        "p50": round(statistics.median(lat), 2),
                        "p90": round(sorted(lat)[int(0.9 * (len(lat) - 1))], 2)}
                       if lat else None),
+        "state": eval_state(ref, pred),
     }
 
 
@@ -147,6 +165,8 @@ def main() -> None:
         print(f"  {k:12s} {v['agree']}/{v['n']}")
     print("혼동 상위:", res["top_confusions"])
     print("electronics:", res["electronics"])
+    if res["state"]:
+        print("state:", res["state"])
     if a.gate:
         print("게이트:", res["gate"])
     print("→", out)
