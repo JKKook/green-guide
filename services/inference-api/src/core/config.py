@@ -150,6 +150,13 @@ VLM_MODEL: str = os.getenv("VLM_MODEL", "claude-opus-5-5")  # 사용자 결정 1
 VLM_DAILY_CAP: int = int(os.getenv("VLM_DAILY_CAP", "200"))
 VLM_MIN_CONF: float = float(os.getenv("VLM_MIN_CONF", "0.8"))            # fine 판정 채택 임계
 VLM_ITEM_MIN_CONF: float = float(os.getenv("VLM_ITEM_MIN_CONF", "0.6"))  # 품목 생성 채택 임계
+# 중재 발동 임계 — 대분류 확신도가 이 값 미만이면 VLM 호출(reject·증거 불일치는 항상).
+# >1 이면 표시 판정 외 전 장 중재
+VLM_TRIGGER_CONF: float = float(os.getenv("GREENGUIDE_API_VLM_TRIGGER_CONF", "0.55"))
+# 중재 R1(기본 꺼짐): VLM 재질 대분류가 CNN 1위와 같으면 확신 무관 채택 (11-04 gate A 분석)
+VLM_AGREE_ACCEPT: bool = os.getenv("GREENGUIDE_API_VLM_AGREE_ACCEPT", "0") == "1"
+# 1회차 프롬프트 재질 규칙(기본 꺼짐): slug 칸에 배출 방법(trash) 대신 재질 (TAXONOMY_V2 §3)
+VLM_MATERIAL_RULE: bool = os.getenv("GREENGUIDE_VLM_MATERIAL_RULE", "0") == "1"
 # 분류 체계 v2 축(fine_v2·state·mark) 질의 방식
 #   off(v1, 기본) | single(한 프롬프트) | two_stage(재질 v1 원문 + 축 별도 호출)
 # GG_VLM 실측(qwen): single 재질 66→54/79 회귀, two_stage 66 유지

@@ -118,11 +118,29 @@ class VlmFallback:
             "3. 폐기물이 아예 없으면(손·배경만) slug=non_object\n"
             "4. 품목 판정 시 상태 조건이 안내를 바꾸면 condition 에 한 줄 "
             "(예: 도자기 화분이면 불연 마대, 플라스틱이면 재활용)\n"
+            + (VlmFallback._material_rule() if config.VLM_MATERIAL_RULE else "")
             + (VlmFallback._v2_prompt() if VlmFallback._mode() == "single" else
                "5. 반드시 JSON 만 출력: "
                '{"slug": "<fine 슬러그|null>", "item_name": "<품목명|null>", '
                '"stream": "<스트림 슬러그|null>", "condition": "<조건|null>", '
                '"confidence": 0.0~1.0, "reason": "<한 줄>"}')
+        )
+
+    @staticmethod
+    def _material_rule() -> str:
+        """규칙 4-1 — slug 는 재질이지 배출 방법이 아니다 (TAXONOMY_V2 §3).
+
+        11-04 gate A: 영수증·물티슈 팩을 trash 로 답해 맞는 CNN 재질을 뒤집은 3장 대응.
+        배출(종량제)은 재질 × 상태 규칙표가 정하므로 재질 칸에 미리 반영하지 않는다.
+        """
+        return (
+            "4-1. slug 는 물체의 재질입니다. 배출 방법이 종량제라도 맞는 재질 대분류가 "
+            "목록에 있으면 그 재질을 고릅니다(배출은 따로 계산합니다): "
+            "영수증(감열지)·코팅지·은박 코팅 종이·벽지 → paper 계열, "
+            "칫솔·고무장갑·볼펜 → plastic 계열, 물티슈·과자 등의 비닐 포장 → vinyl 계열"
+            "(내용물이 아니라 포장 자체를 판정). "
+            "맞는 재질 대분류가 없는 것(마스크·슬리퍼·장난감 등)은 "
+            "trash 계열을 유지합니다.\n"
         )
 
     @staticmethod

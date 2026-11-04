@@ -272,7 +272,7 @@ async def predict_hier(
     class_arbitrate = result["coarse_class"] in config.VLM_ARBITRATE_CLASSES
     vlm_v2: dict[str, Any] = {}   # 분류 체계 v2 축(fine_v2·state·mark) — VLM 채택 시에만
     if mark is None and (result["display_level"] == "reject"
-            or result["coarse_confidence"] < 0.55 or evidence_conflict
+            or result["coarse_confidence"] < config.VLM_TRIGGER_CONF or evidence_conflict
             or class_arbitrate):
         try:
             from src.vlm_fallback import get_vlm_fallback  # noqa: PLC0415
@@ -288,6 +288,11 @@ async def predict_hier(
                 min_conf = 0.5
             else:
                 min_conf = config.VLM_MIN_CONF
+                # R1: CNN 1위와 같은 재질 대분류면 두 판정이 서로 받쳐 준다 — 확신 무관 채택
+                if (config.VLM_AGREE_ACCEPT and v is not None
+                        and clf.taxonomy["fine_to_coarse"].get(v["slug"], v["slug"])
+                        == result["coarse_class"]):
+                    min_conf = 0.0
             if v is not None and v["confidence"] >= min_conf:
                 slug = v["slug"]
                 if slug is None:

@@ -483,3 +483,35 @@ def test_endpoint_no_toy_key_unchanged(monkeypatch, client, sample_image_bytes) 
     _hier_stub_t(monkeypatch, _hier(coarse_confidence=0.3), _vlm_hit())
     body = _post_hier(client, sample_image_bytes)
     assert body["coarse_class"] == "plastic" and body["disposal"]["category"] == "plastic"
+
+
+# ── 중재 R1·1회차 재질 규칙 (11-04 gate A 오답 분석, 둘 다 기본 꺼짐) ─────────────
+
+def _low_vlm(slug: str) -> dict[str, object]:
+    return _vlm_hit(slug=slug, confidence=0.6)   # VLM_MIN_CONF 0.8 미달
+
+
+@pytest.mark.parametrize(("on", "slug", "adopted"), [
+    (True, "plastic_other", True),    # CNN 1위와 같은 재질 → 확신 무관 채택
+    (False, "plastic_other", False),  # 플래그 꺼짐 → 기존 0.8 임계
+    (True, "trash_other", False),     # 재질이 다르면 R1 미적용
+])
+def test_agree_accept(monkeypatch, client, sample_image_bytes, on: bool, slug: str,
+                      adopted: bool) -> None:
+    monkeypatch.setattr(config, "VLM_AGREE_ACCEPT", on)
+    _hier_stub_t(monkeypatch, _hier(display_level="reject", display_class="etc",
+                                    coarse_class="plastic", coarse_confidence=0.5,
+                                    fine_class=None), _low_vlm(slug))
+    body = _post_hier(client, sample_image_bytes)
+    assert (body["display_class"] == slug) is adopted
+    assert body["display_level"] == ("fine" if adopted else "reject")
+
+
+@pytest.mark.parametrize("on", [True, False])
+def test_material_rule_prompt(monkeypatch, on: bool) -> None:
+    monkeypatch.setattr(config, "VLM_MATERIAL_RULE", on)
+    p = VlmFallback._taxonomy_prompt(FINE, F2C)
+    assert ("4-1. slug 는 물체의 재질" in p) is on
+    assert "반드시 JSON 만 출력" in p   # 출력 규칙은 그대로
+    if on:
+        assert "영수증" in p and "장난감" in p
