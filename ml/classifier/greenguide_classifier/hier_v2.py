@@ -59,8 +59,12 @@ BROKEN_OVERSAMPLE = float(os.getenv("GREENGUIDE_HIER_V2_BROKEN_X", "20"))
 MAX_STEPS = int(os.getenv("GREENGUIDE_HIER_V2_MAX_STEPS", "0"))      # 스모크: epoch 당 최대 배치
 EPOCHS = int(os.getenv("GREENGUIDE_HIER_V2_EPOCHS", "0"))            # 0 = config 값
 MANIFEST = Path(os.getenv("GREENGUIDE_HIER_V2_MANIFEST", "outputs/v2_manifest/manifest_v2.csv"))
-CKPT_DIR = Path(os.getenv("GREENGUIDE_HIER_V2_CKPT_DIR", str(config.CHECKPOINTS_DIR / ARCH)))
-MODELS_DIR = config.MODELS_DIR / ARCH
+RUN = os.getenv("GREENGUIDE_HIER_V2_RUN", ARCH)                     # 산출 폴더 이름(회차별, 예 cnn_hier_v2r2)
+SELECT = os.getenv("GREENGUIDE_HIER_V2_SELECT", "acc")   # best 선정: acc(대분류+0.2·세부) | material_loss(val 세부+대분류 손실 최소, 상태 제외)
+KEEP_EPOCHS = os.getenv("GREENGUIDE_HIER_V2_KEEP_EPOCHS", "0") == "1"  # 매 에폭 가중치 보관(epoch_NN.pt)
+CKPT_DIR = Path(os.getenv("GREENGUIDE_HIER_V2_CKPT_DIR", str(config.CHECKPOINTS_DIR / RUN)))
+MODELS_DIR = config.MODELS_DIR / RUN
+SPLITS = Path(os.getenv("GREENGUIDE_HIER_V2_SPLITS", str(HIER_SPLITS_PATH)))  # 사진 ID 그룹 분할(v2.2) 등 교체용
 
 
 def build_items(manifest: Path = MANIFEST) -> list[dict[str, Any]]:
@@ -78,7 +82,7 @@ def build_items(manifest: Path = MANIFEST) -> list[dict[str, Any]]:
 
 
 def split_items(items: list[dict]) -> dict[str, list[int]]:
-    data = json.loads(HIER_SPLITS_PATH.read_text(encoding="utf-8"))
+    data = json.loads(SPLITS.read_text(encoding="utf-8"))
     where = {p: s for s in ("train", "val", "test") for p in data[s]}
     out: dict[str, list[int]] = {"train": [], "val": [], "test": []}
     new = skipped = 0
@@ -171,6 +175,7 @@ class V2Loss(nn.Module):
             ci = sup_idx[cm]
             losses[cm] = -self.coarse_log_probs(logits[cm]).gather(1, ci.unsqueeze(1)).squeeze(1) * self.coarse_w[ci]
         loss = losses.mean()
+        self.last_material = float(loss.detach())   # 재질(세부+대분류 롤업) 손실 — best 선정용(상태 제외)
         sm = state_idx >= 0
         if sm.any():
             loss = loss + STATE_LOSS_W * F.cross_entropy(slog[sm], state_idx[sm], weight=self.state_w)
@@ -197,7 +202,7 @@ def class_weights(train: list[dict]) -> tuple[torch.Tensor, torch.Tensor, torch.
 def run_epoch(model, loader, crit, device, opt=None, desc="") -> dict:
     model.train(opt is not None)
     f2c = torch.tensor(F2C, device=device)
-    tot = n = fc_ok = fc_n = cc_ok = 0
+    tot = mat = n = fc_ok = fc_n = cc_ok = 0
     st = Counter()   # dirty tp/fp/fn, 상태 정답 수
     with torch.enable_grad() if opt else torch.no_grad():
         for step, batch in enumerate(loader):
@@ -212,6 +217,7 @@ def run_epoch(model, loader, crit, device, opt=None, desc="") -> dict:
                 opt.step()
             b = x.size(0)
             tot += loss.item() * b
+            mat += crit.last_material * b
             n += b
             pf = out[0].argmax(1)
             fm = is_fine.bool()
@@ -227,7 +233,7 @@ def run_epoch(model, loader, crit, device, opt=None, desc="") -> dict:
             st["tp"] += int(((ps == d) & (sidx == d)).sum())
             st["fp"] += int(((ps == d) & sm & (sidx != d)).sum())
             st["fn"] += int(((ps != d) & (sidx == d)).sum())
-    return {"loss": tot / max(n, 1), "fine_acc": fc_ok / max(fc_n, 1), "coarse_acc": cc_ok / max(n, 1),
+    return {"loss": tot / max(n, 1), "material_loss": mat / max(n, 1), "fine_acc": fc_ok / max(fc_n, 1), "coarse_acc": cc_ok / max(n, 1),
             "state_acc": st["ok"] / max(st["n"], 1),
             "dirty_recall": st["tp"] / max(st["tp"] + st["fn"], 1),
             "dirty_precision": st["tp"] / max(st["tp"] + st["fp"], 1)}
@@ -236,7 +242,7 @@ def run_epoch(model, loader, crit, device, opt=None, desc="") -> dict:
 def _meta() -> dict:
     return {"arch": ARCH, "backbone": BACKBONE, "label_smooth": LABEL_SMOOTH, "fine_labels": list(FINE_V2),
             "states": list(STATES), "state_loss_w": STATE_LOSS_W, "broken_x": BROKEN_OVERSAMPLE,
-            "manifest": str(MANIFEST)}
+            "manifest": str(MANIFEST), "select": SELECT, "splits": str(SPLITS)}
 
 
 def train() -> Path:
@@ -266,11 +272,11 @@ def train() -> Path:
     opt = torch.optim.Adam(model.parameters(), lr=hp.learning_rate, weight_decay=hp.weight_decay)
 
     last, best = CKPT_DIR / "last.pt", CKPT_DIR / "best.pt"
-    hist, best_score, best_epoch, patience, start = [], -1.0, -1, 0, 1
+    hist, best_score, best_epoch, patience, start = [], float("-inf"), -1, 0, 1
     if RESUME and last.exists():
         ck = torch.load(last, map_location=device, weights_only=False)
-        if {k: ck.get(k) for k in ("backbone", "fine_labels", "states")} == \
-                {k: _meta()[k] for k in ("backbone", "fine_labels", "states")}:
+        if {k: ck.get(k, "acc" if k == "select" else None) for k in ("backbone", "fine_labels", "states", "select")} == \
+                {k: _meta()[k] for k in ("backbone", "fine_labels", "states", "select")}:
             model.load_state_dict(ck["model_state"])
             opt.load_state_dict(ck["optimizer_state"])
             hist, best_score, best_epoch = ck["history"], ck["best_score"], ck["best_epoch"]
@@ -283,7 +289,7 @@ def train() -> Path:
         t0 = time.time()
         a = run_epoch(model, tl, crit, device, opt)
         v = run_epoch(model, vl, crit, device)
-        score = v["coarse_acc"] + 0.2 * v["fine_acc"]
+        score = -v["material_loss"] if SELECT == "material_loss" else v["coarse_acc"] + 0.2 * v["fine_acc"]
         hist.append({"epoch": ep, "train": a, "val": v, "sec": round(time.time() - t0, 1)})
         log.info(f"[{ARCH} epoch {ep}] train {a} | val {v} | {time.time() - t0:.0f}s")
         if score > best_score:
@@ -291,6 +297,8 @@ def train() -> Path:
             torch.save(_meta() | {"epoch": ep, "model_state": model.state_dict(), "val": v}, best)
         else:
             patience += 1
+        if KEEP_EPOCHS:
+            torch.save(_meta() | {"epoch": ep, "model_state": model.state_dict(), "val": v}, CKPT_DIR / f"epoch_{ep:02d}.pt")
         tmp = last.with_suffix(".pt.tmp")
         torch.save(_meta() | {"epoch": ep, "model_state": model.state_dict(), "optimizer_state": opt.state_dict(),
                               "history": hist, "best_score": best_score, "best_epoch": best_epoch,
