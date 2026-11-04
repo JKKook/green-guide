@@ -33,6 +33,25 @@ def summary(rep: dict) -> dict:
             "reject": rep["reject"], "vlm_triggered": rep.get("vlm_triggered")}
 
 
+def v2_axes(truth: dict[str, dict], ids: list[str], raws: list[dict]) -> dict | None:
+    """분류 체계 v2 축(state·fine_v2) — 셋에 정답이 있고 응답에 칸이 있을 때만. 가드 아님, 기록용."""
+    if not any("state" in t for t in truth.values()) or not any("state" in r for r in raws):
+        return None
+    st_n = st_hit = st_pred = fv_n = fv_hit = 0
+    for uid, r in zip(ids, raws, strict=True):
+        t = truth[uid]
+        if t.get("state"):
+            st_n += 1
+            if r.get("state"):
+                st_pred += 1
+                st_hit += r["state"] == t["state"]
+        if t.get("label") in ("metal", "food_waste") and t.get("label_fine"):
+            fv_n += 1
+            fv_hit += r.get("fine_v2") == t["label_fine"]
+    return {"state_hit": f"{st_hit}/{st_n}", "state_answered": f"{st_pred}/{st_n}",
+            "fine_v2_hit": f"{fv_hit}/{fv_n}"}
+
+
 def vlm_cost(usage: list[dict]) -> dict:
     tok = Counter()
     for u in usage:
@@ -54,6 +73,7 @@ def main() -> None:
     a = ap.parse_args()
 
     rows = load_rows(a.set)
+    truth = {json.loads(line)["id"]: json.loads(line) for line in a.set.read_text(encoding="utf-8").splitlines()}
     tax = json.loads((a.onnx.parent / "taxonomy.json").read_text(encoding="utf-8"))
     sess = ort.InferenceSession(str(a.onnx), providers=["CPUExecutionProvider"])
     first = score(rows, [predict(sess, tax, a.set.parent / r["file"]) for r in rows], tax)
@@ -63,7 +83,10 @@ def main() -> None:
     for kv in a.run:
         name, path = kv.split("=", 1)
         res = json.loads(Path(path).read_text(encoding="utf-8"))
-        rep = score(rows, res["raw"], tax)
+        # 셋에서 행이 빠졌을 수 있다(eval_v2 평가 제외) — 실행 당시 행 순서의 upload_id 로 맞춘다
+        by_id = {r["upload_id"]: raw for r, raw in zip(res["rows"], res["raw"], strict=True)}
+        raws = [by_id[r["upload_id"]] for r in rows]
+        rep = score(rows, raws, tax)
         rep["vlm_triggered"] = res.get("vlm_triggered")
         cur = {r["upload_id"]: r for r in rep["rows"]}
         diff = {"improved": [], "worsened": []}
@@ -75,7 +98,8 @@ def main() -> None:
                      "serving": r["pred_coarse"], "vlm": bool(r["vlm_triggered"])})
         s = summary(rep) | {"improved": len(diff["improved"]), "worsened": len(diff["worsened"]),
                             "vlm_cost": vlm_cost(res.get("vlm_usage") or []),
-                            "wall_ms_p50": rep["wall_ms_p50"]}
+                            "wall_ms_p50": rep["wall_ms_p50"],
+                            "v2_axes": v2_axes(truth, [r["upload_id"] for r in rows], raws)}
         out["runs"][name] = s | diff
         print(f"[{name}] {s}")
     if a.out:
