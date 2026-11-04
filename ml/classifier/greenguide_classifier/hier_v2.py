@@ -61,6 +61,7 @@ EPOCHS = int(os.getenv("GREENGUIDE_HIER_V2_EPOCHS", "0"))            # 0 = confi
 MANIFEST = Path(os.getenv("GREENGUIDE_HIER_V2_MANIFEST", "outputs/v2_manifest/manifest_v2.csv"))
 RUN = os.getenv("GREENGUIDE_HIER_V2_RUN", ARCH)                     # 산출 폴더 이름(회차별, 예 cnn_hier_v2r2)
 SELECT = os.getenv("GREENGUIDE_HIER_V2_SELECT", "acc")   # best 선정: acc(대분류+0.2·세부) | material_loss(val 세부+대분류 손실 최소, 상태 제외)
+SAMPLER = os.getenv("GREENGUIDE_HIER_V2_SAMPLER", "weighted")  # weighted(파손 ×BROKEN_X 복원 추출) | shuffle(v14 와 같음)
 KEEP_EPOCHS = os.getenv("GREENGUIDE_HIER_V2_KEEP_EPOCHS", "0") == "1"  # 매 에폭 가중치 보관(epoch_NN.pt)
 CKPT_DIR = Path(os.getenv("GREENGUIDE_HIER_V2_CKPT_DIR", str(config.CHECKPOINTS_DIR / RUN)))
 MODELS_DIR = config.MODELS_DIR / RUN
@@ -242,7 +243,8 @@ def run_epoch(model, loader, crit, device, opt=None, desc="") -> dict:
 def _meta() -> dict:
     return {"arch": ARCH, "backbone": BACKBONE, "label_smooth": LABEL_SMOOTH, "fine_labels": list(FINE_V2),
             "states": list(STATES), "state_loss_w": STATE_LOSS_W, "broken_x": BROKEN_OVERSAMPLE,
-            "manifest": str(MANIFEST), "select": SELECT, "splits": str(SPLITS)}
+            "manifest": str(MANIFEST), "select": SELECT, "splits": str(SPLITS),
+            "sampler": SAMPLER}
 
 
 def train() -> Path:
@@ -257,9 +259,12 @@ def train() -> Path:
     tr, va = [items[i] for i in sp["train"]], [items[i] for i in sp["val"]]
     log.info(f"[{ARCH}] fine={NUM_FINE} states={STATES} 상태 라벨(train): "
              f"{dict(Counter(STATES[i['state_idx']] if i['state_idx'] >= 0 else '미상' for i in tr))}")
-    sw = [BROKEN_OVERSAMPLE if it["state_idx"] == STATES.index("broken") else 1.0 for it in tr]
-    sampler = WeightedRandomSampler(sw, num_samples=len(tr), replacement=True)
-    tl = DataLoader(V2Dataset(tr, augment=True), batch_size=hp.batch_size, sampler=sampler,
+    if SAMPLER == "shuffle":
+        sampler, shuffle = None, True
+    else:
+        sw = [BROKEN_OVERSAMPLE if it["state_idx"] == STATES.index("broken") else 1.0 for it in tr]
+        sampler, shuffle = WeightedRandomSampler(sw, num_samples=len(tr), replacement=True), False
+    tl = DataLoader(V2Dataset(tr, augment=True), batch_size=hp.batch_size, sampler=sampler, shuffle=shuffle,
                     num_workers=TRAIN_WORKERS, persistent_workers=TRAIN_WORKERS > 0,
                     prefetch_factor=PREFETCH if TRAIN_WORKERS else None)
     vl = DataLoader(V2Dataset(va, augment=False), batch_size=hp.batch_size, shuffle=False,
@@ -390,7 +395,7 @@ def export(opset: int = 17) -> Path:
         "coarse_labels": list(COARSE_LABELS), "fine_to_coarse": FINE_V2_TO_COARSE,
         "fine_idx_to_coarse_idx": F2C, "gate": GATE_DEFAULTS,
         # GG_API 계약(11-03): state_labels = state_logits 순서, state_gate.min_confidence = val 보정값
-        "state_labels": list(STATES), "state_gate": {"min_confidence": gate["tau"]}, "state_gate_basis": gate,
+        "state_labels": list(STATES), "state_gate": {"min_confidence": gate["tau"] if gate else 1.01}, "state_gate_basis": gate,  # 보정 불가(STATE_W=0)면 상태 미출력
         "best_epoch": ck["epoch"], "val": ck.get("val")}, ensure_ascii=False, indent=2), encoding="utf-8")
     log.info(f"[{ARCH}] ONNX → {out} (diff {diff:.1e}), taxonomy.json 동봉")
     return out
