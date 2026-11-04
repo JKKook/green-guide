@@ -80,8 +80,33 @@ def check_ood_calibration(
             not missing)
 
 
+def _state_head(taxonomy: dict[str, Any],
+                output_names: set[str]) -> tuple[list[str] | None, float]:
+    """CNN v2 상태 헤드 계약 확인 → (state_labels | None, 최소 확신도).
+
+    ONNX 출력 `state_logits` (1, S) + 사이드카 `state_labels`(S개, disposal.STATES 의
+    부분집합) 가 둘 다 있을 때만 켠다. 하나라도 없거나 어긋나면 None(v14 와 같은 동작).
+    """
+    labels = taxonomy.get("state_labels")
+    if "state_logits" not in output_names or not labels:
+        if ("state_logits" in output_names) != bool(labels):
+            log.warning("상태 헤드 계약 불일치(state_logits·state_labels 중 하나만) — 비활성")
+        return None, 1.0
+    from src import disposal_v2  # noqa: PLC0415
+    if disposal_v2.AVAILABLE and not set(labels) <= set(disposal_v2.STATES):
+        log.warning(f"state_labels {labels} 가 규칙표 상태 밖 — 상태 헤드 비활성")
+        return None, 1.0
+    min_conf = float((taxonomy.get("state_gate") or {}).get("min_confidence", 0.0))
+    log.info(f"상태 헤드 활성: {labels} (min_confidence={min_conf})")
+    return list(labels), min_conf
+
+
 class HierWasteClassifier:
     """fine logits → (fine, coarse 롤업, 게이트 판정)."""
+
+    # 상태 헤드 기본값 = 없음(v14) — __init__ 을 거치지 않고 만든 인스턴스도 v14 동작
+    state_labels: list[str] | None = None
+    state_min_conf: float = 1.0
 
     def __init__(self, model_path: Path | None = None) -> None:
         if model_path is None:
@@ -98,6 +123,8 @@ class HierWasteClassifier:
         self.session = ort.InferenceSession(
             str(model_path), providers=["CPUExecutionProvider"],
         )
+        self.state_labels, self.state_min_conf = _state_head(
+            self.taxonomy, {o.name for o in self.session.get_outputs()})
 
         # DINOv2 계층 앙상블 — 기본 비활성 (청사진 v2 트랙 B4, 2026-07-21).
         # 순수 홀드아웃 20장 실측: 기여 0 (solo 11/20 = 앙상블 11/20; 이전 +2는
@@ -191,7 +218,10 @@ class HierWasteClassifier:
             outputs.append("cam")
         if need_emb:
             outputs.append("embedding")
+        if self.state_labels:
+            outputs.append("state_logits")
         res = self.session.run(outputs, {"image": color_input})
+        named = dict(zip(outputs, res))
         logits = res[0]
         # 마스킹 전 non_object 확률 — 재분배 가드용 (W6 ③, config.NONOBJ_RAW_GUARD)
         raw_non_object = (float(_softmax(logits)[0][self.fine_labels.index("non_object")])
@@ -224,7 +254,7 @@ class HierWasteClassifier:
         ood_soft = False   # 세부 억제 (대분류 캡)
         ood_reject = False  # 완전 reject
         if need_emb:
-            emb = res[-1][0]
+            emb = named["embedding"][0]
             emb = emb / max(float(np.linalg.norm(emb)), 1e-9)
             ood_distance = float(1.0 - (self.ood_protos @ emb).max())
             ood_soft = ood_distance > self.ood_tau_soft
@@ -292,6 +322,13 @@ class HierWasteClassifier:
             "ood_distance": round(ood_distance, 4) if ood_distance is not None else None,
             "ood_reject": ood_reject,
         }
+        if self.state_labels:
+            # 분류 체계 v2 상태 헤드 — 임계 미달이면 None(규칙표가 판정 보류·VLM 상태 대기)
+            sp = _softmax(named["state_logits"])[0]
+            si = int(sp.argmax())
+            result["state_confidence"] = round(float(sp[si]), 4)
+            result["state"] = (self.state_labels[si]
+                               if float(sp[si]) >= self.state_min_conf else None)
         if want_cam:
             cam_all = res[1]  # (1, C_fine, 7, 7)
             result["cam"] = cam_all[0, fi]

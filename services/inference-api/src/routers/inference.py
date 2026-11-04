@@ -1,6 +1,8 @@
 """추론 엔드포인트 — /predict* , /segment."""
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
 from src.cam_renderer import render_overlay_png_base64
@@ -268,6 +270,7 @@ async def predict_hier(
     # 표시로 판정된 결과는 VLM 중재 대상에서 제외 (법정 표시가 최우선)
     # W6 실험 c: 지정 대분류 판정은 확신도와 무관하게 중재 (기본 빈 집합)
     class_arbitrate = result["coarse_class"] in config.VLM_ARBITRATE_CLASSES
+    vlm_v2: dict[str, Any] = {}   # 분류 체계 v2 축(fine_v2·state·mark) — VLM 채택 시에만
     if mark is None and (result["display_level"] == "reject"
             or result["coarse_confidence"] < 0.55 or evidence_conflict
             or class_arbitrate):
@@ -318,6 +321,14 @@ async def predict_hier(
                         result["fine_class"] = slug if slug != "etc" else None
                         result["coarse_class"] = coarse
                     result["model_arch"] = result["model_arch"] + "+vlm"
+                    vlm_v2 = {k: v[k] for k in ("fine_v2", "state", "mark") if k in v}
+                    # 장난감 → 재질 trash 고정 (GREENGUIDE_VLM_TOY, two_stage 2회차 판정)
+                    from src import disposal_v2  # noqa: PLC0415
+                    if v.get("toy") and disposal_v2.toy_applies(
+                            result["coarse_class"], result.get("fine_class")):
+                        result.update(display_level="fine", display_class="trash_other",
+                                      fine_class="trash_other", coarse_class="trash")
+                        vlm_v2 = {"toy": True}   # 원 재질 기준 세부·마크는 버린다
                     evidence.append({
                         "type": "vlm",
                         "token": v["reason"] or "AI 정밀 분석",
@@ -327,6 +338,24 @@ async def predict_hier(
                     })
         except Exception as exc:  # noqa: BLE001
             log.warning(f"vlm fallback failed: {exc}")
+    # ── 분류 체계 v2 — 재질×상태(+마크) → 배출 카테고리 (규칙표 도출, 모델 예측 아님) ──
+    # 기존 필드는 그대로 두고 fine_v2·state·disposal 만 덧붙인다(하위호환). 판정 보류면 null.
+    # 상태: VLM 우선, 없으면 CNN 상태 헤드(state_logits 가 있는 v2 ONNX 만)
+    cnn_state = result.get("state")
+    result["state"] = vlm_v2.get("state") or cnn_state
+    result["state_source"] = "vlm" if vlm_v2.get("state") else "cnn" if cnn_state else None
+    if result["display_level"] != "reject" and result.get("generated_item") is None:
+        from src import disposal_v2  # noqa: PLC0415
+        # 세부 분기: VLM 우선, 없으면 CNN v2 세부(fine_labels 에 metal_can 등이 있을 때)
+        cnn_fine = result.get("fine_class")
+        result["fine_v2"] = vlm_v2.get("fine_v2") or (
+            cnn_fine if cnn_fine in disposal_v2.FINE_V2_SPLITS.get(result["coarse_class"], ())
+            else None)
+        result["disposal"] = disposal_v2.resolve(
+            result["coarse_class"], result["fine_v2"] or result.get("fine_class"),
+            result["state"], vlm_v2.get("mark"))
+        if vlm_v2.get("toy") and result["disposal"] is not None:
+            result["disposal"]["notes"].append("toy")
     evidence = displayable_evidence(
         evidence, result["coarse_class"], clf.taxonomy["fine_to_coarse"])
     if evidence:

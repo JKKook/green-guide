@@ -25,6 +25,7 @@ from src.core import config
 from src.core.log import get_logger
 from src.core.singleton import lazy_singleton
 from src.streams import is_valid_stream, prompt_lines
+from src import disposal_v2
 
 log = get_logger(__name__)
 
@@ -117,23 +118,94 @@ class VlmFallback:
             "3. 폐기물이 아예 없으면(손·배경만) slug=non_object\n"
             "4. 품목 판정 시 상태 조건이 안내를 바꾸면 condition 에 한 줄 "
             "(예: 도자기 화분이면 불연 마대, 플라스틱이면 재활용)\n"
-            "5. 반드시 JSON 만 출력: "
-            '{"slug": "<fine 슬러그|null>", "item_name": "<품목명|null>", '
+            + (VlmFallback._v2_prompt() if VlmFallback._mode() == "single" else
+               "5. 반드시 JSON 만 출력: "
+               '{"slug": "<fine 슬러그|null>", "item_name": "<품목명|null>", '
+               '"stream": "<스트림 슬러그|null>", "condition": "<조건|null>", '
+               '"confidence": 0.0~1.0, "reason": "<한 줄>"}')
+        )
+
+    @staticmethod
+    def _mode() -> str:
+        """v2 축 질의 방식 — 공통 패키지가 없거나 값이 이상하면 off(v1 그대로)."""
+        m = config.VLM_TAXONOMY
+        if m not in ("off", "single", "two_stage"):
+            log.warning(f"GREENGUIDE_VLM_TAXONOMY={m!r} 미지원 — off 로 동작")
+            return "off"
+        return m if disposal_v2.AVAILABLE else "off"
+
+    @staticmethod
+    def _v2_axes_rules(n: int) -> str:
+        """v2 축 판정 규칙(n, n+1, n+2 번).
+
+        어휘는 greenguide_common.disposal 에서 가져온다(TAXONOMY_V2.md §1·§3-1).
+        """
+        splits = "\n".join(f"- 대분류 {c} → {' | '.join(v)}"
+                           for c, v in disposal_v2.FINE_V2_SPLITS.items())
+        return (
+            f"{n}. 세부 분기(fine_v2) — slug 의 대분류가 아래에 있으면 둘 중 하나, 아니면 null:\n"
+            + splits +
+            "\n   metal_can = 음료·통조림·부탄가스·스프레이 캔, "
+            "metal_scrap = 그 밖의 고철(냄비·공구·철사 등).\n"
+            "   food_inedible = 동물이 먹을 수 없거나 딱딱한 것(조개·게 껍데기, 큰 뼈, 복숭아 씨, "
+            "달걀·견과 껍데기, 양파·옥수수 겉껍질, 티백) — 종량제 대상.\n"
+            f"{n + 1}. 상태(state) — " + " | ".join(disposal_v2.STATES) + " 중 하나: "
+            "dirty=음식물·기름 오염, broken=깨짐·파손, composite=여러 재질이 붙어 분리 불가(코팅지·"
+            "영수증·칫솔·고무장갑 등). 내용물이 남은 것은 상태로 보지 않습니다.\n"
+            f"{n + 2}. 분리배출 표시(mark) — 제품의 분리배출 마크가 사진에서 직접 읽힐 때만 "
+            + " | ".join(disposal_v2.MARKS) + " 중 하나, 안 보이면 null(추측 금지).\n"
+        )
+
+    @staticmethod
+    def _v2_prompt() -> str:
+        """single 모드 — 재질 판정 규칙 1~4 뒤에 v2 축 5~7 과 확장 JSON 을 붙인다."""
+        return (
+            VlmFallback._v2_axes_rules(5) +
+            "8. 반드시 JSON 만 출력: "
+            '{"slug": "<fine 슬러그|null>", "fine_v2": "<세부 분기|null>", '
+            '"state": "<상태|null>", "mark": "<표시|null>", '
+            '"item_name": "<품목명|null>", '
             '"stream": "<스트림 슬러그|null>", "condition": "<조건|null>", '
             '"confidence": 0.0~1.0, "reason": "<한 줄>"}'
         )
 
     @staticmethod
-    def _parse_response(text: str, fine_labels: list[str]) -> dict[str, Any] | None:
+    def _axes_prompt() -> str:
+        """two_stage 2회차 system — 재질은 이미 정해졌고 세부·상태·마크만 묻는다(재질 재판정 금지).
+
+        재질 slug 는 user 메시지로 넘겨 system 을 고정(캐시 가능)으로 둔다.
+        """
+        return (
+            "당신은 한국 분리배출 전문가입니다. 사진 속 주 물체의 재질은 이미 판정되어 "
+            "사용자 메시지로 주어집니다. 재질은 바꾸지 말고 아래 세 가지만 답하세요.\n\n"
+            + VlmFallback._v2_axes_rules(1) +
+            (VlmFallback._toy_rule() if config.VLM_TOY else
+             '4. 반드시 JSON 만 출력: {"fine_v2": "<세부 분기|null>", '
+             '"state": "<상태|null>", "mark": "<표시|null>"}')
+        )
+
+    @staticmethod
+    def _toy_rule() -> str:
+        """GREENGUIDE_VLM_TOY=1 일 때만 2회차에 붙는 장난감 질의(TAXONOMY_V2 §3, 11-03 사용자)."""
+        return (
+            "4. 장난감(toy) — 놀이용으로 만든 물건"
+            "(레고·블록·프라모델·플라스틱 인형·피규어)이면 true. "
+            "병·컵·용기·포장재·생활용품은 캐릭터 그림이나 장난감 모양이어도 false. "
+            "확실하지 않으면 false.\n"
+            '5. 반드시 JSON 만 출력: {"fine_v2": "<세부 분기|null>", '
+            '"state": "<상태|null>", "mark": "<표시|null>", "toy": true|false}'
+        )
+
+    @staticmethod
+    def _parse_response(text: str, fine_labels: list[str],
+                        fine_to_coarse: dict[str, str] | None = None) -> dict[str, Any] | None:
         """VLM 텍스트 → 검증된 판정 dict | None. 네트워크 무관(단위 테스트 대상).
 
         허용되는 두 형태:
-        - fine 판정: slug ∈ fine_labels
+        - fine 판정: slug ∈ fine_labels (single 모드면 v2 축 포함)
         - 품목 생성: slug 없음 + item_name + stream ∈ 닫힌 스트림 목록
         """
-        if text.startswith("```"):
-            text = text.strip("`").lstrip("json").strip()
-        out = json.loads(text)
+        out = VlmFallback._load_json(text)
         slug = out.get("slug")
         item_name = (out.get("item_name") or "").strip() or None
         stream = out.get("stream")
@@ -144,12 +216,77 @@ class VlmFallback:
                           if out.get("condition") else None),
         }
         if slug in fine_labels:
-            return {"slug": slug, "item_name": None, "stream": None, **base}
+            v2 = (VlmFallback._parse_v2(out, slug, fine_to_coarse)
+                  if VlmFallback._mode() == "single" else {})
+            return {"slug": slug, "item_name": None, "stream": None, **base, **v2}
         if item_name and stream and is_valid_stream(str(stream)):
             return {"slug": None, "item_name": item_name[:60],
                     "stream": str(stream), **base}
         log.info(f"검증 실패 slug={slug!r} stream={stream!r} — 무시")
         return None
+
+    @staticmethod
+    def _load_json(text: str) -> dict[str, Any]:
+        text = text.strip()
+        if text.startswith("```"):
+            text = text.strip("`").lstrip("json").strip()
+        return json.loads(text)
+
+    @staticmethod
+    def _parse_v2(out: dict[str, Any], slug: str,
+                  fine_to_coarse: dict[str, str] | None) -> dict[str, Any]:
+        """v2 축 검증 — 목록 밖 값은 그 축만 null(재질 판정 자체는 버리지 않는다)."""
+        coarse = (fine_to_coarse or {}).get(slug, slug)
+        fine_v2 = out.get("fine_v2")
+        if fine_v2 not in disposal_v2.FINE_V2_SPLITS.get(coarse, ()):
+            fine_v2 = None
+        state = out.get("state")
+        if state not in disposal_v2.STATES:
+            state = None
+        mark = out.get("mark")
+        if mark not in disposal_v2.MARKS:
+            mark = None
+        return {"coarse": coarse, "fine_v2": fine_v2, "state": state, "mark": mark}
+
+    @staticmethod
+    def _parse_axes(text: str | None, slug: str,
+                    fine_to_coarse: dict[str, str] | None) -> dict[str, Any]:
+        """two_stage 2회차 응답 → v2 축. 실패(None·깨진 JSON)면 축만 null — 재질은 1회차 그대로."""
+        try:
+            out = VlmFallback._load_json(text) if text else {}
+        except (ValueError, AttributeError):
+            log.info("VLM 2회차(v2 축) 파싱 실패 — 축 null")
+            out = {}
+        out = out if isinstance(out, dict) else {}
+        axes = VlmFallback._parse_v2(out, slug, fine_to_coarse)
+        if config.VLM_TOY:
+            axes["toy"] = out.get("toy") is True   # 문자열 "true" 등은 false — 오탐 쪽으로 보수
+        return axes
+
+    def _request(self, system_text: str, b64: str, user_text: str | None = None) -> str | None:
+        """Messages API 1회 → 텍스트 | None(refusal·max_tokens). 호출마다 일일 카운터 +1."""
+        content: list[dict[str, Any]] = [{
+            "type": "image",
+            "source": {"type": "base64", "media_type": "image/jpeg", "data": b64},
+        }]
+        if user_text:
+            content.append({"type": "text", "text": user_text})
+        msg = self._client.messages.create(
+            model=MODEL,
+            max_tokens=2048,                     # thinking 포함 상한 — 200 이면 JSON 잘림
+            output_config={"effort": "low"},     # 단일 분류 — 깊은 추론 불필요
+            system=[{
+                "type": "text",
+                "text": system_text,
+                "cache_control": {"type": "ephemeral"},   # 프롬프트 캐싱
+            }],
+            messages=[{"role": "user", "content": content}],
+        )
+        self._bump_calls()
+        if msg.stop_reason != "end_turn":        # refusal·max_tokens → 판정 없음(fail-open)
+            log.info(f"VLM 판정 없음: stop_reason={msg.stop_reason}")
+            return None
+        return "".join(b.text for b in msg.content if b.type == "text").strip()
 
     def classify(
         self,
@@ -175,32 +312,29 @@ class VlmFallback:
             b64 = base64.b64encode(buf.getvalue()).decode("ascii")
 
             t0 = time.perf_counter()
-            msg = self._client.messages.create(
-                model=MODEL,
-                max_tokens=2048,                     # thinking 포함 상한 — 200 이면 JSON 잘림
-                output_config={"effort": "low"},     # 단일 분류 — 깊은 추론 불필요
-                system=[{
-                    "type": "text",
-                    "text": self._taxonomy_prompt(fine_labels, fine_to_coarse),
-                    "cache_control": {"type": "ephemeral"},   # 프롬프트 캐싱
-                }],
-                messages=[{
-                    "role": "user",
-                    "content": [{
-                        "type": "image",
-                        "source": {"type": "base64", "media_type": "image/jpeg",
-                                   "data": b64},
-                    }],
-                }],
-            )
-            self._bump_calls()
-            if msg.stop_reason != "end_turn":        # refusal·max_tokens → 판정 없음(fail-open)
-                log.info(f"VLM 판정 없음: stop_reason={msg.stop_reason}")
+            text = self._request(self._taxonomy_prompt(fine_labels, fine_to_coarse), b64)
+            if text is None:
                 return None
-            text = "".join(b.text for b in msg.content if b.type == "text").strip()
-            result = self._parse_response(text, fine_labels)
+            result = self._parse_response(text, fine_labels, fine_to_coarse)
             if result is None:
                 return None
+            result["vlm_calls"] = 1
+            # two_stage — 재질은 v1 프롬프트 원문 그대로 1회차, 세부·상태·마크는 짧은 2회차.
+            # 채택될 재질 판정(fine 임계 이상, non_object 제외)에만 부르고, 실패하면 v2 축만 null.
+            slug = result["slug"]
+            if (self._mode() == "two_stage" and slug is not None and slug != "non_object"
+                    and result["confidence"] >= config.VLM_MIN_CONF):
+                axes_text = None
+                if self._calls_today() < DAILY_CAP:
+                    coarse = fine_to_coarse.get(slug, slug)
+                    try:
+                        axes_text = self._request(
+                            self._axes_prompt(), b64,
+                            f"재질 판정: {slug} (대분류 {coarse})")
+                        result["vlm_calls"] = 2
+                    except Exception as exc:  # noqa: BLE001
+                        log.warning(f"VLM 2회차 실패 — v2 축 null: {str(exc)[:100]}")
+                result.update(self._parse_axes(axes_text, slug, fine_to_coarse))
             result["latency_ms"] = round((time.perf_counter() - t0) * 1000, 1)
             # 자동 라벨 축적 (검토용 — 학습 반영은 별도 판단)
             _LOG_PATH.parent.mkdir(parents=True, exist_ok=True)

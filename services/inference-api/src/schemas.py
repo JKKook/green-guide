@@ -208,6 +208,30 @@ class PredictionHierResponse(BaseModel):
         default=None,
         description="VLM 이 재질 taxonomy 밖에서 인식한 품목 — 재질 필드와 별개의 "
                     "스트림 안내 (사전 밖 품목 자유 생성 + 닫힌 스트림)")
+    fine_v2: str | None = Field(
+        default=None,
+        description="분류 체계 v2 세부 분기 — metal→metal_can|metal_scrap, "
+                    "food_waste→food_waste|food_inedible (모르면 null)")
+    state: str | None = Field(
+        default=None,
+        description='상태 "clean" | "dirty" | "broken" | "composite" (모르면 null)')
+    state_source: str | None = Field(
+        default=None, description='상태 출처 "vlm"(우선) | "cnn"(상태 헤드) | null')
+    state_confidence: float | None = Field(
+        default=None, description="CNN 상태 헤드 top1 확률 (상태 헤드 있는 모델만)")
+    disposal: "DisposalInfo | None" = Field(
+        default=None,
+        description="분리배출 카테고리 — 재질×상태 규칙표로 도출(제품 마크가 읽히면 마크 우선). "
+                    "판정 보류(세부 미상·reject)면 null")
+
+
+class DisposalInfo(BaseModel):
+    """분류 체계 v2 배출 판정 (greenguide_common.disposal 규칙표)."""
+
+    category: str = Field(description="표시 마크 9 · 배출 경로 6 · scrap_metal 중 하나")
+    notes: list[str] = Field(default_factory=list,
+                             description="안내 문구 키(rinse·contaminated 등) — 문장화는 앱 몫")
+    source: str = Field(description='"mark"=제품 표시 우선 | "rule"=규칙표')
 
 
 class StreamInfo(BaseModel):

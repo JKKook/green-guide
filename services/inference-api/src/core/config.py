@@ -150,6 +150,14 @@ VLM_MODEL: str = os.getenv("VLM_MODEL", "claude-opus-5-5")  # 사용자 결정 1
 VLM_DAILY_CAP: int = int(os.getenv("VLM_DAILY_CAP", "200"))
 VLM_MIN_CONF: float = float(os.getenv("VLM_MIN_CONF", "0.8"))            # fine 판정 채택 임계
 VLM_ITEM_MIN_CONF: float = float(os.getenv("VLM_ITEM_MIN_CONF", "0.6"))  # 품목 생성 채택 임계
+# 분류 체계 v2 축(fine_v2·state·mark) 질의 방식
+#   off(v1, 기본) | single(한 프롬프트) | two_stage(재질 v1 원문 + 축 별도 호출)
+# GG_VLM 실측(qwen): single 재질 66→54/79 회귀, two_stage 66 유지
+# → eval_v2 gate 79 로 셋 비교 후 채택
+VLM_TAXONOMY: str = os.getenv("GREENGUIDE_VLM_TAXONOMY", "off")
+# two_stage 2회차에 장난감 여부(toy) 질의 → 재질 trash 고정(TAXONOMY_V2 §3)
+# 기본 꺼짐 — CNN v2 와 함께 gate 65 측정 후 채택
+VLM_TOY: bool = os.getenv("GREENGUIDE_VLM_TOY", "0") == "1"
 
 # ── electronics 편향 완화 (W6 수정, ELECTRONICS_BIAS_ANALYSIS.md E절) ──
 # 실사용 피드백 51(사용자 라벨)·테스터 35(GG_CNN 라벨) 전후 측정으로 값 확정 — 끄려면 0/빈값
