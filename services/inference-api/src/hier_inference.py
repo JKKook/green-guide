@@ -54,8 +54,59 @@ def _resolve_hier_paths() -> tuple[Path, Path]:
     )
 
 
+def check_ood_calibration(
+    taxonomy: dict[str, Any], sidecar_path: Path | str = "taxonomy.json",
+) -> tuple[float, float, bool]:
+    """사이드카 ood 보정값 → (tau_soft, tau_hard, calibrated).
+
+    env(GREENGUIDE_API_OOD_TAU_SOFT/HARD)가 사이드카보다 우선한다.
+    값이 없는 단계는 inf(=끔)로 두고 경고 1줄을 남긴다 — 보정 안 된 고정
+    기본값으로 조용히 가면 재배포 때 실사용 사진 대량 오거부가 재현된다
+    (PRODUCTION_READINESS 결정 8). Sentry 등 알림 훅은 이 경고에 붙인다.
+    """
+    ood_cfg = taxonomy.get("ood") or {}
+    soft = config.OOD_TAU_SOFT if config.OOD_TAU_SOFT is not None \
+        else ood_cfg.get("tau_soft")
+    hard = config.OOD_TAU_HARD if config.OOD_TAU_HARD is not None \
+        else ood_cfg.get("tau_hard", ood_cfg.get("tau"))
+    missing = [n for n, v in (("tau_soft", soft), ("tau_hard", hard)) if v is None]
+    if missing:
+        log.warning(
+            f"OOD 보정값 누락 ({', '.join(missing)}) — {sidecar_path} 의 ood 를 "
+            "확인하세요. 누락 단계는 비활성(fail-open)으로 서빙합니다.")
+    inf = float("inf")
+    return (float(soft) if soft is not None else inf,
+            float(hard) if hard is not None else inf,
+            not missing)
+
+
+def _state_head(taxonomy: dict[str, Any],
+                output_names: set[str]) -> tuple[list[str] | None, float]:
+    """CNN v2 상태 헤드 계약 확인 → (state_labels | None, 최소 확신도).
+
+    ONNX 출력 `state_logits` (1, S) + 사이드카 `state_labels`(S개, disposal.STATES 의
+    부분집합) 가 둘 다 있을 때만 켠다. 하나라도 없거나 어긋나면 None(v14 와 같은 동작).
+    """
+    labels = taxonomy.get("state_labels")
+    if "state_logits" not in output_names or not labels:
+        if ("state_logits" in output_names) != bool(labels):
+            log.warning("상태 헤드 계약 불일치(state_logits·state_labels 중 하나만) — 비활성")
+        return None, 1.0
+    from src import disposal_v2  # noqa: PLC0415
+    if disposal_v2.AVAILABLE and not set(labels) <= set(disposal_v2.STATES):
+        log.warning(f"state_labels {labels} 가 규칙표 상태 밖 — 상태 헤드 비활성")
+        return None, 1.0
+    min_conf = float((taxonomy.get("state_gate") or {}).get("min_confidence", 0.0))
+    log.info(f"상태 헤드 활성: {labels} (min_confidence={min_conf})")
+    return list(labels), min_conf
+
+
 class HierWasteClassifier:
     """fine logits → (fine, coarse 롤업, 게이트 판정)."""
+
+    # 상태 헤드 기본값 = 없음(v14) — __init__ 을 거치지 않고 만든 인스턴스도 v14 동작
+    state_labels: list[str] | None = None
+    state_min_conf: float = 1.0
 
     def __init__(self, model_path: Path | None = None) -> None:
         if model_path is None:
@@ -72,6 +123,8 @@ class HierWasteClassifier:
         self.session = ort.InferenceSession(
             str(model_path), providers=["CPUExecutionProvider"],
         )
+        self.state_labels, self.state_min_conf = _state_head(
+            self.taxonomy, {o.name for o in self.session.get_outputs()})
 
         # DINOv2 계층 앙상블 — 기본 비활성 (청사진 v2 트랙 B4, 2026-07-21).
         # 순수 홀드아웃 20장 실측: 기여 0 (solo 11/20 = 앙상블 11/20; 이전 +2는
@@ -95,19 +148,15 @@ class HierWasteClassifier:
         # softmax 는 OOD 에 과신하므로 임베딩 거리로 '학습된 무엇과도 안 닮음'을 잡는다.
         self.ood_protos: np.ndarray | None = None   # (C, 512) L2-normalized
         # 2단 임계 — build_hier_prototypes.py 가 val 분포로 보정해 사이드카에 기록
-        # (tau_soft=p90, tau_hard=p97.5). 구버전 사이드카는 tau(=hard)만 있음.
+        # (tau_soft=p90, tau_hard=p94~97.5). 구버전 사이드카는 tau(=hard)만 있음.
         #  - soft: 넘으면 세부 표시 억제(대분류 캡)
         #  - hard: 넘으면 완전 reject — 극단 OOD 만
-        # env 로 운영 중 조정 가능. 보정값이 전혀 없으면 과거 기본값(0.30/0.40) —
-        # 실측(2026-10-18)에서 이 기본값은 실사용 사진 56장 중 32장을 오거부했다.
-        ood_cfg = self.taxonomy.get("ood") or {}
-        tau_hard = ood_cfg.get("tau_hard", ood_cfg.get("tau", 0.40))
-        tau_soft = ood_cfg.get("tau_soft", 0.30)
-        self.ood_tau_soft: float = float(
-            config.OOD_TAU_SOFT if config.OOD_TAU_SOFT is not None else tau_soft)
-        self.ood_tau_hard: float = float(
-            config.OOD_TAU_HARD if config.OOD_TAU_HARD is not None else tau_hard)
-        log.info(f"OOD τ soft={self.ood_tau_soft:.3f} hard={self.ood_tau_hard:.3f}")
+        # env 로 운영 중 조정 가능. 보정값이 없으면 그 단계를 끈다(fail-open) —
+        # 과거 기본값(0.30/0.40)은 실측(2026-10-18) 실사용 56장 중 32장을 오거부했다.
+        self.ood_tau_soft, self.ood_tau_hard, self.ood_calibrated = \
+            check_ood_calibration(self.taxonomy, sidecar_path)
+        log.info(f"OOD τ soft={self.ood_tau_soft:.3f} hard={self.ood_tau_hard:.3f} "
+                 f"calibrated={self.ood_calibrated}")
         ood_path = model_path.parent / "ood.npz"
         if ood_path.exists():
             data = np.load(ood_path, allow_pickle=False)
@@ -169,8 +218,14 @@ class HierWasteClassifier:
             outputs.append("cam")
         if need_emb:
             outputs.append("embedding")
+        if self.state_labels:
+            outputs.append("state_logits")
         res = self.session.run(outputs, {"image": color_input})
+        named = dict(zip(outputs, res))
         logits = res[0]
+        # 마스킹 전 non_object 확률 — 재분배 가드용 (W6 ③, config.NONOBJ_RAW_GUARD)
+        raw_non_object = (float(_softmax(logits)[0][self.fine_labels.index("non_object")])
+                          if "non_object" in self.fine_labels else 0.0)
 
         # DINOv2 앙상블 — softmax 확률 가중합 (마스킹 전 단계에서 결합)
         dino_probs: np.ndarray | None = None
@@ -189,13 +244,17 @@ class HierWasteClassifier:
                 dino_probs = dino_probs.copy()
                 dino_probs[:, self.fine_labels.index("non_object")] = 0.0
                 dino_probs = dino_probs / dino_probs.sum(axis=1, keepdims=True)
+        if config.ELEC_LOGIT_BIAS and "electronics" in self.fine_labels:
+            # 실사용 electronics 쏠림 보정 (W6 ④, config.ELEC_LOGIT_BIAS)
+            logits = logits.copy()
+            logits[:, self.fine_labels.index("electronics")] -= config.ELEC_LOGIT_BIAS
 
         # OOD 거리 — 최근접 prototype cosine distance (2단 판정)
         ood_distance: float | None = None
         ood_soft = False   # 세부 억제 (대분류 캡)
         ood_reject = False  # 완전 reject
         if need_emb:
-            emb = res[-1][0]
+            emb = named["embedding"][0]
             emb = emb / max(float(np.linalg.norm(emb)), 1e-9)
             ood_distance = float(1.0 - (self.ood_protos @ emb).max())
             ood_soft = ood_distance > self.ood_tau_soft
@@ -228,6 +287,13 @@ class HierWasteClassifier:
         if ood_reject:
             # 극단 OOD — softmax 확신과 무관하게 완전 reject (hard)
             coarse_ok = False
+        # W6 ④·③: electronics 전용 대분류 임계(미달 reject → 호출부 VLM 중재) / 마스킹 재분배 대신 reject
+        if (config.ELEC_COARSE_GATE and self.coarse_labels[ci] == "electronics"
+                and coarse_top1 < config.ELEC_COARSE_GATE):
+            coarse_ok = False
+        if (config.NONOBJ_RAW_GUARD and mask_non_object
+                and raw_non_object >= config.NONOBJ_RAW_GUARD):
+            coarse_ok = False
         if fine_ok and coarse_ok:
             display_level, display_class = "fine", self.fine_labels[fi]
         elif coarse_ok:
@@ -256,6 +322,13 @@ class HierWasteClassifier:
             "ood_distance": round(ood_distance, 4) if ood_distance is not None else None,
             "ood_reject": ood_reject,
         }
+        if self.state_labels:
+            # 분류 체계 v2 상태 헤드 — 임계 미달이면 None(규칙표가 판정 보류·VLM 상태 대기)
+            sp = _softmax(named["state_logits"])[0]
+            si = int(sp.argmax())
+            result["state_confidence"] = round(float(sp[si]), 4)
+            result["state"] = (self.state_labels[si]
+                               if float(sp[si]) >= self.state_min_conf else None)
         if want_cam:
             cam_all = res[1]  # (1, C_fine, 7, 7)
             result["cam"] = cam_all[0, fi]
