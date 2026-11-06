@@ -149,6 +149,10 @@ MARK_SHORT_MIN_SCORE: float = float(os.getenv("GREENGUIDE_API_MARK_SHORT_MIN_SCO
 VLM_MODEL: str = os.getenv("VLM_MODEL", "claude-opus-5-5")  # 사용자 결정 10-31: 최소 Sonnet 등급
 VLM_DAILY_CAP: int = int(os.getenv("VLM_DAILY_CAP", "200"))
 VLM_MIN_CONF: float = float(os.getenv("VLM_MIN_CONF", "0.8"))            # fine 판정 채택 임계
+# Sonnet 전용 채택 임계(기본 없음 = 위 값) — Sonnet 은 확신을 낮게 매긴다 (11-06 gate A 비교)
+_SONNET_MIN_CONF = os.getenv("GREENGUIDE_VLM_SONNET_MIN_CONF")
+if _SONNET_MIN_CONF and "sonnet" in VLM_MODEL:
+    VLM_MIN_CONF = float(_SONNET_MIN_CONF)
 VLM_ITEM_MIN_CONF: float = float(os.getenv("VLM_ITEM_MIN_CONF", "0.6"))  # 품목 생성 채택 임계
 # 중재 발동 임계 — 대분류 확신도가 이 값 미만이면 VLM 호출(reject·증거 불일치는 항상).
 # >1 이면 표시 판정 외 전 장 중재

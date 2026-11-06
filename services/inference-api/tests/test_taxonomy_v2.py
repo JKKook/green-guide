@@ -515,3 +515,19 @@ def test_material_rule_prompt(monkeypatch, on: bool) -> None:
     assert "반드시 JSON 만 출력" in p   # 출력 규칙은 그대로
     if on:
         assert "영수증" in p and "장난감" in p
+
+
+@pytest.mark.parametrize("model,expected", [
+    ("claude-sonnet-5-5", 0.6), ("claude-opus-5-5", 0.8)])
+def test_sonnet_min_conf(monkeypatch, model, expected) -> None:
+    import importlib
+
+    from src.core import config
+    monkeypatch.setenv("GREENGUIDE_VLM_SONNET_MIN_CONF", "0.6")
+    monkeypatch.setenv("VLM_MODEL", model)
+    monkeypatch.delenv("VLM_MIN_CONF", raising=False)
+    try:
+        assert importlib.reload(config).VLM_MIN_CONF == expected
+    finally:
+        monkeypatch.undo()
+        importlib.reload(config)
