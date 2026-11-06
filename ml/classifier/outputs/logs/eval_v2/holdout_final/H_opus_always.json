@@ -1,0 +1,1974 @@
+{
+ "n": 16,
+ "coarse_hit": 11,
+ "coarse_acc": 0.6875,
+ "errors": 5,
+ "coarse_hit_lenient": 11,
+ "reject": 4,
+ "wall_ms_p50": 6675.7,
+ "vlm_triggered": 16,
+ "electronics": {
+  "predicted": 6,
+  "false_positive": 0,
+  "share_of_errors": 0.0,
+  "fp_by_truth": {},
+  "recall": 0.75,
+  "support": 8
+ },
+ "error_pairs": {
+  "electronics->etc": 2,
+  "plastic->etc": 1,
+  "trash->paper": 1,
+  "trash->clothes": 1
+ },
+ "per_class": {
+  "paper": {
+   "support": 1,
+   "predicted": 2,
+   "tp": 1,
+   "precision": 0.5,
+   "recall": 1.0
+  },
+  "plastic": {
+   "support": 1,
+   "predicted": 0,
+   "tp": 0,
+   "precision": null,
+   "recall": 0.0
+  },
+  "vinyl": {
+   "support": 1,
+   "predicted": 1,
+   "tp": 1,
+   "precision": 1.0,
+   "recall": 1.0
+  },
+  "clothes": {
+   "support": 1,
+   "predicted": 2,
+   "tp": 1,
+   "precision": 0.5,
+   "recall": 1.0
+  },
+  "electronics": {
+   "support": 8,
+   "predicted": 6,
+   "tp": 6,
+   "precision": 1.0,
+   "recall": 0.75
+  },
+  "trash": {
+   "support": 3,
+   "predicted": 1,
+   "tp": 1,
+   "precision": 1.0,
+   "recall": 0.333
+  },
+  "etc": {
+   "support": 0,
+   "predicted": 3,
+   "tp": 0,
+   "precision": 0.0,
+   "recall": null
+  },
+  "non_object": {
+   "support": 1,
+   "predicted": 1,
+   "tp": 1,
+   "precision": 1.0,
+   "recall": 1.0
+  }
+ },
+ "confusion": {
+  "clothes->clothes": 1,
+  "electronics->electronics": 6,
+  "electronics->etc": 2,
+  "non_object->non_object": 1,
+  "paper->paper": 1,
+  "plastic->etc": 1,
+  "trash->clothes": 1,
+  "trash->paper": 1,
+  "trash->trash": 1,
+  "vinyl->vinyl": 1
+ },
+ "fine": {
+  "n": 10,
+  "hit": 7,
+  "confusion": {
+   "clothes->clothes": 1,
+   "electronics->clothes": 1,
+   "electronics->electronics": 6,
+   "electronics->food_waste": 1,
+   "non_object->trash_other": 1
+  }
+ },
+ "rows": [
+  {
+   "upload_id": "9490964dbdb14f22",
+   "truth": "clothes",
+   "truth_coarse": "clothes",
+   "pred_coarse": "clothes",
+   "pred_fine": "clothes",
+   "display_level": "fine",
+   "coarse_confidence": 0.9197,
+   "elec_prob": 0.0014870426384732127,
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "vlm_triggered": true,
+   "ok": true,
+   "ok_lenient": true,
+   "wall_ms": 5675.4
+  },
+  {
+   "upload_id": "e4ab3784d58f4519",
+   "truth": "electronics",
+   "truth_coarse": "electronics",
+   "pred_coarse": "electronics",
+   "pred_fine": "electronics",
+   "display_level": "fine",
+   "coarse_confidence": 0.7253,
+   "elec_prob": 0.7253258228302002,
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "vlm_triggered": true,
+   "ok": true,
+   "ok_lenient": true,
+   "wall_ms": 7342.0
+  },
+  {
+   "upload_id": "4b8c582b066e4e1b",
+   "truth": "plastic",
+   "truth_coarse": "plastic",
+   "pred_coarse": "etc",
+   "pred_fine": null,
+   "display_level": "reject",
+   "coarse_confidence": 0.1414,
+   "elec_prob": 0.0023692676331847906,
+   "model_arch": "cnn_hier (hier_v2)",
+   "vlm_triggered": true,
+   "ok": false,
+   "ok_lenient": false,
+   "wall_ms": 7634.4
+  },
+  {
+   "upload_id": "b6ab46f6ba3d439f",
+   "truth": "electronics",
+   "truth_coarse": "electronics",
+   "pred_coarse": "etc",
+   "pred_fine": null,
+   "display_level": "reject",
+   "coarse_confidence": 0.1832,
+   "elec_prob": 0.002399581018835306,
+   "model_arch": "cnn_hier (hier_v2)",
+   "vlm_triggered": true,
+   "ok": false,
+   "ok_lenient": false,
+   "wall_ms": 5718.6
+  },
+  {
+   "upload_id": "0e70a79bf65e47d3",
+   "truth": "electronics",
+   "truth_coarse": "electronics",
+   "pred_coarse": "etc",
+   "pred_fine": null,
+   "display_level": "reject",
+   "coarse_confidence": 0.3042,
+   "elec_prob": 0.0008871689205989242,
+   "model_arch": "cnn_hier (hier_v2)",
+   "vlm_triggered": true,
+   "ok": false,
+   "ok_lenient": false,
+   "wall_ms": 9433.8
+  },
+  {
+   "upload_id": "35370e76f36a47d0",
+   "truth": "vinyl",
+   "truth_coarse": "vinyl",
+   "pred_coarse": "vinyl",
+   "pred_fine": "vinyl_clean",
+   "display_level": "fine",
+   "coarse_confidence": 0.7849,
+   "elec_prob": 0.00592980207875371,
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "vlm_triggered": true,
+   "ok": true,
+   "ok_lenient": true,
+   "wall_ms": 8924.3
+  },
+  {
+   "upload_id": "f87fa6b2163a4088",
+   "truth": "non_object",
+   "truth_coarse": "non_object",
+   "pred_coarse": "non_object",
+   "pred_fine": null,
+   "display_level": "reject",
+   "coarse_confidence": 0.1739,
+   "elec_prob": 0.0024361885152757168,
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "vlm_triggered": true,
+   "ok": true,
+   "ok_lenient": true,
+   "wall_ms": 6297.6
+  },
+  {
+   "upload_id": "2a67d4caa28f4778",
+   "truth": "electronics",
+   "truth_coarse": "electronics",
+   "pred_coarse": "electronics",
+   "pred_fine": "electronics",
+   "display_level": "fine",
+   "coarse_confidence": 0.7866,
+   "elec_prob": 0.010471980087459087,
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "vlm_triggered": true,
+   "ok": true,
+   "ok_lenient": true,
+   "wall_ms": 5648.2
+  },
+  {
+   "upload_id": "49d8a1dd6afb4819",
+   "truth": "trash",
+   "truth_coarse": "trash",
+   "pred_coarse": "trash",
+   "pred_fine": "trash_other",
+   "display_level": "fine",
+   "coarse_confidence": 0.8928,
+   "elec_prob": 0.002398935379460454,
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "vlm_triggered": true,
+   "ok": true,
+   "ok_lenient": true,
+   "wall_ms": 6675.7
+  },
+  {
+   "upload_id": "f047c35fe1c14c29",
+   "truth": "electronics",
+   "truth_coarse": "electronics",
+   "pred_coarse": "electronics",
+   "pred_fine": "electronics",
+   "display_level": "fine",
+   "coarse_confidence": 0.7149,
+   "elec_prob": 0.7148545980453491,
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "vlm_triggered": true,
+   "ok": true,
+   "ok_lenient": true,
+   "wall_ms": 9577.3
+  },
+  {
+   "upload_id": "3c4ed6b5fccf482e",
+   "truth": "trash",
+   "truth_coarse": "trash",
+   "pred_coarse": "paper",
+   "pred_fine": "paper_other",
+   "display_level": "fine",
+   "coarse_confidence": 0.9289,
+   "elec_prob": 0.014100473374128342,
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "vlm_triggered": true,
+   "ok": false,
+   "ok_lenient": false,
+   "wall_ms": 7079.2
+  },
+  {
+   "upload_id": "local-20e429b939d8",
+   "truth": "electronics",
+   "truth_coarse": "electronics",
+   "pred_coarse": "electronics",
+   "pred_fine": "electronics",
+   "display_level": "fine",
+   "coarse_confidence": 0.8282,
+   "elec_prob": 0.8281793594360352,
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "vlm_triggered": true,
+   "ok": true,
+   "ok_lenient": true,
+   "wall_ms": 5816.3
+  },
+  {
+   "upload_id": "local-58e87d0cf99f",
+   "truth": "trash",
+   "truth_coarse": "trash",
+   "pred_coarse": "clothes",
+   "pred_fine": "clothes",
+   "display_level": "fine",
+   "coarse_confidence": 0.8753,
+   "elec_prob": 0.001735350233502686,
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "vlm_triggered": true,
+   "ok": false,
+   "ok_lenient": false,
+   "wall_ms": 3959.7
+  },
+  {
+   "upload_id": "local-6c458cd7bee5",
+   "truth": "paper",
+   "truth_coarse": "paper",
+   "pred_coarse": "paper",
+   "pred_fine": "paper_other",
+   "display_level": "fine",
+   "coarse_confidence": 0.8265,
+   "elec_prob": 0.028580868616700172,
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "vlm_triggered": true,
+   "ok": true,
+   "ok_lenient": true,
+   "wall_ms": 6618.9
+  },
+  {
+   "upload_id": "local-198da3d42c57",
+   "truth": "electronics",
+   "truth_coarse": "electronics",
+   "pred_coarse": "electronics",
+   "pred_fine": "electronics",
+   "display_level": "fine",
+   "coarse_confidence": 0.7042,
+   "elec_prob": 0.7041899561882019,
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "vlm_triggered": true,
+   "ok": true,
+   "ok_lenient": true,
+   "wall_ms": 6158.8
+  },
+  {
+   "upload_id": "b14fb838aa66424b",
+   "truth": "electronics",
+   "truth_coarse": "electronics",
+   "pred_coarse": "electronics",
+   "pred_fine": "electronics",
+   "display_level": "fine",
+   "coarse_confidence": 0.572,
+   "elec_prob": 0.5719509124755859,
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "vlm_triggered": true,
+   "ok": true,
+   "ok_lenient": true,
+   "wall_ms": 10066.3
+  }
+ ],
+ "config": {
+  "mode": "run",
+  "env": [
+   "GREENGUIDE_VLM_TAXONOMY=two_stage",
+   "GREENGUIDE_API_VLM_AGREE_ACCEPT=1",
+   "GREENGUIDE_VLM_MATERIAL_RULE=1",
+   "GREENGUIDE_API_VLM_TRIGGER_CONF=1.01",
+   "VLM_MODEL=claude-opus-5-5"
+  ],
+  "vlm": true,
+  "model_dir": "/Users/ethan/practice/greenguide/.worktrees/feature-classifier-v15-hardneg/ml/classifier/outputs/models/cnn_hier_v14",
+  "golden": "/Users/ethan/practice/greenguide/.worktrees/feature-classifier-realworld-eval/ml/classifier/outputs/logs/eval_v2/eval_v2_final_holdout.jsonl"
+ },
+ "raw": [
+  {
+   "display_level": "fine",
+   "display_class": "clothes",
+   "coarse_class": "clothes",
+   "coarse_confidence": 0.9197,
+   "fine_class": "clothes",
+   "fine_confidence": 0.9197,
+   "fine_margin": 0.9058,
+   "coarse_probabilities": {
+    "paper": 0.007245255634188652,
+    "paper_pack": 0.007352032698690891,
+    "glass": 0.0077511765994131565,
+    "metal": 0.0010537473717704415,
+    "plastic": 0.0026289199013262987,
+    "vinyl": 0.005447283387184143,
+    "styrofoam": 0.008336762897670269,
+    "clothes": 0.9197177886962891,
+    "food_waste": 0.009696416556835175,
+    "electronics": 0.0014870426384732127,
+    "hazardous": 0.0029038817156106234,
+    "trash": 0.012430699542164803,
+    "etc": 0.01394891832023859,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "clothes",
+     "prob": 0.9197177886962891
+    },
+    {
+     "slug": "etc",
+     "prob": 0.01394891832023859
+    },
+    {
+     "slug": "trash_other",
+     "prob": 0.010913432575762272
+    },
+    {
+     "slug": "food_waste",
+     "prob": 0.009696416556835175
+    },
+    {
+     "slug": "vinyl_dirty",
+     "prob": 0.004232656676322222
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "inference_ms": 246.03,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.3501,
+   "ood_reject": false,
+   "evidence": [
+    {
+     "type": "vlm",
+     "token": "검정·흰색 줄무늬 니트 원단의 옷이 의자 위에 걸쳐져 있어 의류로 판단",
+     "matched_text": "검정·흰색 줄무늬 니트 원단의 옷이 의자 위에 걸쳐져 있어 의류로 판단",
+     "mapped_class": "clothes",
+     "score": 0.85,
+     "primary": false
+    }
+   ],
+   "generated_item": null,
+   "fine_v2": null,
+   "state": "clean",
+   "state_source": "vlm",
+   "state_confidence": null,
+   "disposal": {
+    "category": "clothes_bin",
+    "notes": [],
+    "source": "rule"
+   },
+   "_vlm_triggered": true,
+   "_wall_ms": 5675.4,
+   "_vlm_usage": [
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 456,
+     "output": 135,
+     "cache_read": 0,
+     "cache_write": 2307
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 475,
+     "output": 25,
+     "cache_read": 0,
+     "cache_write": 622
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 312,
+     "output": 145,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 331,
+     "output": 25,
+     "cache_read": 622,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 736,
+     "output": 384,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 484,
+     "output": 329,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 456,
+     "output": 473,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 456,
+     "output": 205,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 480,
+     "output": 176,
+     "cache_read": 622,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 323,
+     "output": 318,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 232,
+     "output": 135,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 251,
+     "output": 25,
+     "cache_read": 622,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 248,
+     "output": 173,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 267,
+     "output": 83,
+     "cache_read": 622,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 190,
+     "output": 159,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 209,
+     "output": 77,
+     "cache_read": 622,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 338,
+     "output": 171,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 357,
+     "output": 74,
+     "cache_read": 622,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 350,
+     "output": 147,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 369,
+     "output": 25,
+     "cache_read": 622,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 512,
+     "output": 187,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 484,
+     "output": 175,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 503,
+     "output": 74,
+     "cache_read": 622,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 508,
+     "output": 140,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 527,
+     "output": 25,
+     "cache_read": 622,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 216,
+     "output": 137,
+     "cache_read": 2307,
+     "cache_write": 0
+    },
+    {
+     "model": "claude-opus-5-5",
+     "stop_reason": "end_turn",
+     "input": 235,
+     "output": 25,
+     "cache_read": 622,
+     "cache_write": 0
+    }
+   ]
+  },
+  {
+   "display_level": "fine",
+   "display_class": "electronics",
+   "coarse_class": "electronics",
+   "coarse_confidence": 0.7253,
+   "fine_class": "electronics",
+   "fine_confidence": 0.7253,
+   "fine_margin": 0.6912,
+   "coarse_probabilities": {
+    "paper": 0.015233059413731098,
+    "paper_pack": 0.028696738183498383,
+    "glass": 0.02117348648607731,
+    "metal": 0.0058283451944589615,
+    "plastic": 0.013833526521921158,
+    "vinyl": 0.03298739343881607,
+    "styrofoam": 0.0290275439620018,
+    "clothes": 0.017939982935786247,
+    "food_waste": 0.029594786465168,
+    "electronics": 0.7253258228302002,
+    "hazardous": 0.008018726482987404,
+    "trash": 0.04144786298274994,
+    "etc": 0.03089265152812004,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "electronics",
+     "prob": 0.7253258228302002
+    },
+    {
+     "slug": "trash_other",
+     "prob": 0.034171201288700104
+    },
+    {
+     "slug": "etc",
+     "prob": 0.03089265152812004
+    },
+    {
+     "slug": "food_waste",
+     "prob": 0.029594786465168
+    },
+    {
+     "slug": "vinyl_dirty",
+     "prob": 0.021786227822303772
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "inference_ms": 154.66,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.187,
+   "ood_reject": false,
+   "evidence": [
+    {
+     "type": "vlm",
+     "token": "흰색 로지텍 G 무선 게이밍 마우스로, 소형 전자제품이므로 소형가전 수거함 대상",
+     "matched_text": "흰색 로지텍 G 무선 게이밍 마우스로, 소형 전자제품이므로 소형가전 수거함 대상",
+     "mapped_class": "electronics",
+     "score": 0.95,
+     "primary": false
+    }
+   ],
+   "generated_item": null,
+   "fine_v2": null,
+   "state": "composite",
+   "state_source": "vlm",
+   "state_confidence": null,
+   "disposal": {
+    "category": "e_waste",
+    "notes": [],
+    "source": "rule"
+   },
+   "_vlm_triggered": true,
+   "_wall_ms": 7342.0
+  },
+  {
+   "display_level": "reject",
+   "display_class": "etc",
+   "coarse_class": "trash",
+   "coarse_confidence": 0.1414,
+   "fine_class": null,
+   "fine_confidence": 0.1232,
+   "fine_margin": 0.0056,
+   "coarse_probabilities": {
+    "paper": 0.04655954986810684,
+    "paper_pack": 0.09636806696653366,
+    "glass": 0.10027208924293518,
+    "metal": 0.034838881343603134,
+    "plastic": 0.05330893397331238,
+    "vinyl": 0.09196460247039795,
+    "styrofoam": 0.0903138667345047,
+    "clothes": 0.05697358399629593,
+    "food_waste": 0.12321238219738007,
+    "electronics": 0.0023692676331847906,
+    "hazardous": 0.044886745512485504,
+    "trash": 0.1414121687412262,
+    "etc": 0.11751988530158997,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "food_waste",
+     "prob": 0.12321238219738007
+    },
+    {
+     "slug": "trash_other",
+     "prob": 0.11765618622303009
+    },
+    {
+     "slug": "etc",
+     "prob": 0.11751988530158997
+    },
+    {
+     "slug": "vinyl_dirty",
+     "prob": 0.07055798918008804
+    },
+    {
+     "slug": "carton",
+     "prob": 0.057226747274398804
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)",
+   "inference_ms": 238.94,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.2102,
+   "ood_reject": false,
+   "evidence": null,
+   "generated_item": null,
+   "fine_v2": null,
+   "state": null,
+   "state_source": null,
+   "state_confidence": null,
+   "disposal": null,
+   "_vlm_triggered": true,
+   "_wall_ms": 7634.4
+  },
+  {
+   "display_level": "reject",
+   "display_class": "etc",
+   "coarse_class": "trash",
+   "coarse_confidence": 0.1832,
+   "fine_class": null,
+   "fine_confidence": 0.1442,
+   "fine_margin": 0.0055,
+   "coarse_probabilities": {
+    "paper": 0.07171940058469772,
+    "paper_pack": 0.05564294010400772,
+    "glass": 0.11278673261404037,
+    "metal": 0.02252955362200737,
+    "plastic": 0.05629746615886688,
+    "vinyl": 0.07113945484161377,
+    "styrofoam": 0.10287510603666306,
+    "clothes": 0.04256420582532883,
+    "food_waste": 0.14418728649616241,
+    "electronics": 0.002399581018835306,
+    "hazardous": 0.03532984480261803,
+    "trash": 0.1831868290901184,
+    "etc": 0.09934166818857193,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "food_waste",
+     "prob": 0.14418728649616241
+    },
+    {
+     "slug": "trash_other",
+     "prob": 0.13868273794651031
+    },
+    {
+     "slug": "etc",
+     "prob": 0.09934166818857193
+    },
+    {
+     "slug": "vinyl_dirty",
+     "prob": 0.051802925765514374
+    },
+    {
+     "slug": "styrofoam_color",
+     "prob": 0.044624898582696915
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)",
+   "inference_ms": 175.47,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.2624,
+   "ood_reject": false,
+   "evidence": null,
+   "generated_item": null,
+   "fine_v2": null,
+   "state": null,
+   "state_source": null,
+   "state_confidence": null,
+   "disposal": null,
+   "_vlm_triggered": true,
+   "_wall_ms": 5718.6
+  },
+  {
+   "display_level": "reject",
+   "display_class": "etc",
+   "coarse_class": "clothes",
+   "coarse_confidence": 0.3042,
+   "fine_class": null,
+   "fine_confidence": 0.3042,
+   "fine_margin": 0.0699,
+   "coarse_probabilities": {
+    "paper": 0.05349712818861008,
+    "paper_pack": 0.014269061386585236,
+    "glass": 0.024390934035182,
+    "metal": 0.0027896699029952288,
+    "plastic": 0.023625215515494347,
+    "vinyl": 0.15109725296497345,
+    "styrofoam": 0.08718512952327728,
+    "clothes": 0.3041594922542572,
+    "food_waste": 0.027578050270676613,
+    "electronics": 0.0008871689205989242,
+    "hazardous": 0.023425335064530373,
+    "trash": 0.24669039249420166,
+    "etc": 0.04040521755814552,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "clothes",
+     "prob": 0.3041594922542572
+    },
+    {
+     "slug": "trash_other",
+     "prob": 0.23426105082035065
+    },
+    {
+     "slug": "vinyl_dirty",
+     "prob": 0.0809299647808075
+    },
+    {
+     "slug": "vinyl_clean",
+     "prob": 0.07016728818416595
+    },
+    {
+     "slug": "styrofoam_white",
+     "prob": 0.048719681799411774
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)",
+   "inference_ms": 397.3,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.4426,
+   "ood_reject": false,
+   "evidence": null,
+   "generated_item": null,
+   "fine_v2": null,
+   "state": null,
+   "state_source": null,
+   "state_confidence": null,
+   "disposal": null,
+   "_vlm_triggered": true,
+   "_wall_ms": 9433.8
+  },
+  {
+   "display_level": "fine",
+   "display_class": "vinyl_clean",
+   "coarse_class": "vinyl",
+   "coarse_confidence": 0.7849,
+   "fine_class": "vinyl_clean",
+   "fine_confidence": 0.4541,
+   "fine_margin": 0.1233,
+   "coarse_probabilities": {
+    "paper": 0.07719185948371887,
+    "paper_pack": 0.002584598260000348,
+    "glass": 0.003901975927874446,
+    "metal": 0.004752411041408777,
+    "plastic": 0.008073421195149422,
+    "vinyl": 0.784875750541687,
+    "styrofoam": 0.0065477085299789906,
+    "clothes": 0.02752593159675598,
+    "food_waste": 0.003705433802679181,
+    "electronics": 0.00592980207875371,
+    "hazardous": 0.0025042013730853796,
+    "trash": 0.06856609880924225,
+    "etc": 0.0038407661486417055,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "vinyl_dirty",
+     "prob": 0.45409148931503296
+    },
+    {
+     "slug": "vinyl_clean",
+     "prob": 0.33078426122665405
+    },
+    {
+     "slug": "trash_other",
+     "prob": 0.06722865998744965
+    },
+    {
+     "slug": "paper_other",
+     "prob": 0.05813220888376236
+    },
+    {
+     "slug": "clothes",
+     "prob": 0.02752593159675598
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "inference_ms": 206.06,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.5595,
+   "ood_reject": false,
+   "evidence": [
+    {
+     "type": "text",
+     "token": "소주",
+     "matched_text": "최소주로 걱정도 깨끗이 닦아드러요",
+     "mapped_class": "glass_deposit",
+     "score": 0.751,
+     "primary": false
+    },
+    {
+     "type": "vlm",
+     "token": "코멧 아기물티슈의 비닐 필름 포장재로, 규칙상 내용물이 아닌 포장 자체를 판정",
+     "matched_text": "코멧 아기물티슈의 비닐 필름 포장재로, 규칙상 내용물이 아닌 포장 자체를 판정",
+     "mapped_class": "vinyl_clean",
+     "score": 0.85,
+     "primary": false
+    }
+   ],
+   "generated_item": null,
+   "fine_v2": null,
+   "state": "composite",
+   "state_source": "vlm",
+   "state_confidence": null,
+   "disposal": {
+    "category": "general",
+    "notes": [],
+    "source": "rule"
+   },
+   "_vlm_triggered": true,
+   "_wall_ms": 8924.3
+  },
+  {
+   "display_level": "reject",
+   "display_class": "non_object",
+   "coarse_class": "glass",
+   "coarse_confidence": 0.1739,
+   "fine_class": null,
+   "fine_confidence": 0.0995,
+   "fine_margin": 0.0008,
+   "coarse_probabilities": {
+    "paper": 0.03775259107351303,
+    "paper_pack": 0.06587643921375275,
+    "glass": 0.17391543090343475,
+    "metal": 0.009971548803150654,
+    "plastic": 0.10648215562105179,
+    "vinyl": 0.17098373174667358,
+    "styrofoam": 0.06413780152797699,
+    "clothes": 0.04027726501226425,
+    "food_waste": 0.09876358509063721,
+    "electronics": 0.0024361885152757168,
+    "hazardous": 0.02328665181994438,
+    "trash": 0.1189313679933548,
+    "etc": 0.0871853232383728,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "trash_other",
+     "prob": 0.09951425343751907
+    },
+    {
+     "slug": "food_waste",
+     "prob": 0.09876358509063721
+    },
+    {
+     "slug": "vinyl_dirty",
+     "prob": 0.09383277595043182
+    },
+    {
+     "slug": "etc",
+     "prob": 0.0871853232383728
+    },
+    {
+     "slug": "vinyl_clean",
+     "prob": 0.07715095579624176
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "inference_ms": 235.7,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.2871,
+   "ood_reject": false,
+   "evidence": [
+    {
+     "type": "vlm",
+     "token": "사진 속 물체는 길가에 주차된 운행 중인 승용차(기아 레이)로, 생활폐기물 분리배출 대상이 아님",
+     "matched_text": "사진 속 물체는 길가에 주차된 운행 중인 승용차(기아 레이)로, 생활폐기물 분리배출 대상이 아님",
+     "mapped_class": "non_object",
+     "score": 0.6,
+     "primary": false
+    }
+   ],
+   "generated_item": null,
+   "fine_v2": null,
+   "state": null,
+   "state_source": null,
+   "state_confidence": null,
+   "disposal": null,
+   "_vlm_triggered": true,
+   "_wall_ms": 6297.6
+  },
+  {
+   "display_level": "fine",
+   "display_class": "electronics",
+   "coarse_class": "electronics",
+   "coarse_confidence": 0.7866,
+   "fine_class": "electronics",
+   "fine_confidence": 0.6416,
+   "fine_margin": 0.4966,
+   "coarse_probabilities": {
+    "paper": 0.7866188883781433,
+    "paper_pack": 0.015417026355862617,
+    "glass": 0.016203707084059715,
+    "metal": 0.010977585799992085,
+    "plastic": 0.007542961277067661,
+    "vinyl": 0.04236505553126335,
+    "styrofoam": 0.02397148497402668,
+    "clothes": 0.01285478100180626,
+    "food_waste": 0.019092757254838943,
+    "electronics": 0.010471980087459087,
+    "hazardous": 0.009865977801382542,
+    "trash": 0.024503052234649658,
+    "etc": 0.02011479251086712,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "cardboard",
+     "prob": 0.6415991187095642
+    },
+    {
+     "slug": "paper_other",
+     "prob": 0.1450197696685791
+    },
+    {
+     "slug": "vinyl_dirty",
+     "prob": 0.03799287602305412
+    },
+    {
+     "slug": "etc",
+     "prob": 0.02011479251086712
+    },
+    {
+     "slug": "food_waste",
+     "prob": 0.019092757254838943
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "inference_ms": 145.03,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.3957,
+   "ood_reject": false,
+   "evidence": [
+    {
+     "type": "vlm",
+     "token": "빨간 확장 실드 위에 녹색 아두이노 나노 회로기판이 꽂힌 소형 전자부품으로, 전자제품에 해당합니다.",
+     "matched_text": "빨간 확장 실드 위에 녹색 아두이노 나노 회로기판이 꽂힌 소형 전자부품으로, 전자제품에 해당합니다.",
+     "mapped_class": "electronics",
+     "score": 0.9,
+     "primary": false
+    }
+   ],
+   "generated_item": null,
+   "fine_v2": null,
+   "state": "composite",
+   "state_source": "vlm",
+   "state_confidence": null,
+   "disposal": {
+    "category": "e_waste",
+    "notes": [],
+    "source": "rule"
+   },
+   "_vlm_triggered": true,
+   "_wall_ms": 5648.2
+  },
+  {
+   "display_level": "fine",
+   "display_class": "trash_other",
+   "coarse_class": "trash",
+   "coarse_confidence": 0.8928,
+   "fine_class": "trash_other",
+   "fine_confidence": 0.8918,
+   "fine_margin": 0.8631,
+   "coarse_probabilities": {
+    "paper": 0.031794674694538116,
+    "paper_pack": 0.001331404084339738,
+    "glass": 0.0034777161199599504,
+    "metal": 0.0009659359930083156,
+    "plastic": 0.03116515651345253,
+    "vinyl": 0.0046950411051511765,
+    "styrofoam": 0.021099669858813286,
+    "clothes": 0.001730885822325945,
+    "food_waste": 0.002645139116793871,
+    "electronics": 0.002398935379460454,
+    "hazardous": 0.0007504781242460012,
+    "trash": 0.8927639722824097,
+    "etc": 0.005180981010198593,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "trash_other",
+     "prob": 0.8918347358703613
+    },
+    {
+     "slug": "paper_other",
+     "prob": 0.028778070583939552
+    },
+    {
+     "slug": "styrofoam_white",
+     "prob": 0.01932939887046814
+    },
+    {
+     "slug": "pet",
+     "prob": 0.018487853929400444
+    },
+    {
+     "slug": "plastic_other",
+     "prob": 0.01267730351537466
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "inference_ms": 191.06,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.2827,
+   "ood_reject": false,
+   "evidence": [
+    {
+     "type": "vlm",
+     "token": "주황색 새우 모양의 레고 블록 조립품으로, 장난감류는 trash 계열로 분류함",
+     "matched_text": "주황색 새우 모양의 레고 블록 조립품으로, 장난감류는 trash 계열로 분류함",
+     "mapped_class": "trash_other",
+     "score": 0.8,
+     "primary": false
+    }
+   ],
+   "generated_item": null,
+   "fine_v2": null,
+   "state": "clean",
+   "state_source": "vlm",
+   "state_confidence": null,
+   "disposal": {
+    "category": "general",
+    "notes": [],
+    "source": "rule"
+   },
+   "_vlm_triggered": true,
+   "_wall_ms": 6675.7
+  },
+  {
+   "display_level": "fine",
+   "display_class": "electronics",
+   "coarse_class": "electronics",
+   "coarse_confidence": 0.7149,
+   "fine_class": "electronics",
+   "fine_confidence": 0.7149,
+   "fine_margin": 0.677,
+   "coarse_probabilities": {
+    "paper": 0.018963664770126343,
+    "paper_pack": 0.018876489251852036,
+    "glass": 0.03183865547180176,
+    "metal": 0.004895971622318029,
+    "plastic": 0.023399565368890762,
+    "vinyl": 0.0305060725659132,
+    "styrofoam": 0.02088329568505287,
+    "clothes": 0.01184057630598545,
+    "food_waste": 0.03299279883503914,
+    "electronics": 0.7148545980453491,
+    "hazardous": 0.014419403858482838,
+    "trash": 0.04599900543689728,
+    "etc": 0.030529910698533058,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "electronics",
+     "prob": 0.7148545980453491
+    },
+    {
+     "slug": "trash_other",
+     "prob": 0.0378764308989048
+    },
+    {
+     "slug": "food_waste",
+     "prob": 0.03299279883503914
+    },
+    {
+     "slug": "etc",
+     "prob": 0.030529910698533058
+    },
+    {
+     "slug": "vinyl_dirty",
+     "prob": 0.020831646397709846
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "inference_ms": 290.87,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.2308,
+   "ood_reject": false,
+   "evidence": [
+    {
+     "type": "vlm",
+     "token": "흰색 본체에 'SAMAS' 로고와 LED 표시등이 있는 소형 전자기기(NAS)로 보임",
+     "matched_text": "흰색 본체에 'SAMAS' 로고와 LED 표시등이 있는 소형 전자기기(NAS)로 보임",
+     "mapped_class": "electronics",
+     "score": 0.8,
+     "primary": false
+    }
+   ],
+   "generated_item": null,
+   "fine_v2": null,
+   "state": "clean",
+   "state_source": "vlm",
+   "state_confidence": null,
+   "disposal": {
+    "category": "e_waste",
+    "notes": [],
+    "source": "rule"
+   },
+   "_vlm_triggered": true,
+   "_wall_ms": 9577.3
+  },
+  {
+   "display_level": "fine",
+   "display_class": "paper_other",
+   "coarse_class": "paper",
+   "coarse_confidence": 0.9289,
+   "fine_class": "paper_other",
+   "fine_confidence": 0.8996,
+   "fine_margin": 0.8702,
+   "coarse_probabilities": {
+    "paper": 0.9288771748542786,
+    "paper_pack": 0.0079343868419528,
+    "glass": 0.004368637688457966,
+    "metal": 0.0023719274904578924,
+    "plastic": 0.003959478344768286,
+    "vinyl": 0.014075404033064842,
+    "styrofoam": 0.0035371524281799793,
+    "clothes": 0.0027232952415943146,
+    "food_waste": 0.006250767037272453,
+    "electronics": 0.014100473374128342,
+    "hazardous": 0.0018798534292727709,
+    "trash": 0.004913048818707466,
+    "etc": 0.005008309613913298,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "paper_other",
+     "prob": 0.8995612859725952
+    },
+    {
+     "slug": "cardboard",
+     "prob": 0.029315873980522156
+    },
+    {
+     "slug": "electronics",
+     "prob": 0.014100473374128342
+    },
+    {
+     "slug": "vinyl_clean",
+     "prob": 0.007946356199681759
+    },
+    {
+     "slug": "food_waste",
+     "prob": 0.006250767037272453
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "inference_ms": 326.81,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.432,
+   "ood_reject": false,
+   "evidence": [
+    {
+     "type": "vlm",
+     "token": "포켓몬빵 띠부씰 스티커로, 재질은 코팅된 종이 계열이지만 접착면 때문에 재활용이 불가합니다",
+     "matched_text": "포켓몬빵 띠부씰 스티커로, 재질은 코팅된 종이 계열이지만 접착면 때문에 재활용이 불가합니다",
+     "mapped_class": "paper_other",
+     "score": 0.8,
+     "primary": false
+    }
+   ],
+   "generated_item": null,
+   "fine_v2": null,
+   "state": null,
+   "state_source": null,
+   "state_confidence": null,
+   "disposal": {
+    "category": "paper",
+    "notes": [],
+    "source": "rule"
+   },
+   "_vlm_triggered": true,
+   "_wall_ms": 7079.2
+  },
+  {
+   "display_level": "fine",
+   "display_class": "electronics",
+   "coarse_class": "electronics",
+   "coarse_confidence": 0.8282,
+   "fine_class": "electronics",
+   "fine_confidence": 0.8282,
+   "fine_margin": 0.805,
+   "coarse_probabilities": {
+    "paper": 0.006406769156455994,
+    "paper_pack": 0.014885646291077137,
+    "glass": 0.026717161759734154,
+    "metal": 0.0018750930903479457,
+    "plastic": 0.01017095148563385,
+    "vinyl": 0.011775059625506401,
+    "styrofoam": 0.017542291432619095,
+    "clothes": 0.0038297888822853565,
+    "food_waste": 0.022899558767676353,
+    "electronics": 0.8281793594360352,
+    "hazardous": 0.012991147115826607,
+    "trash": 0.026582399383187294,
+    "etc": 0.0161447674036026,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "electronics",
+     "prob": 0.8281793594360352
+    },
+    {
+     "slug": "trash_other",
+     "prob": 0.02321777679026127
+    },
+    {
+     "slug": "food_waste",
+     "prob": 0.022899558767676353
+    },
+    {
+     "slug": "etc",
+     "prob": 0.0161447674036026
+    },
+    {
+     "slug": "glass_etc",
+     "prob": 0.01423611119389534
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "inference_ms": 179.16,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.2822,
+   "ood_reject": false,
+   "evidence": [
+    {
+     "type": "vlm",
+     "token": "한글 자판이 인쇄된 흰색 기계식 키보드로 소형 전자제품에 해당",
+     "matched_text": "한글 자판이 인쇄된 흰색 기계식 키보드로 소형 전자제품에 해당",
+     "mapped_class": "electronics",
+     "score": 0.9,
+     "primary": false
+    }
+   ],
+   "generated_item": null,
+   "fine_v2": null,
+   "state": "composite",
+   "state_source": "vlm",
+   "state_confidence": null,
+   "disposal": {
+    "category": "e_waste",
+    "notes": [],
+    "source": "rule"
+   },
+   "_vlm_triggered": true,
+   "_wall_ms": 5816.3
+  },
+  {
+   "display_level": "fine",
+   "display_class": "clothes",
+   "coarse_class": "clothes",
+   "coarse_confidence": 0.8753,
+   "fine_class": "clothes",
+   "fine_confidence": 0.8753,
+   "fine_margin": 0.8507,
+   "coarse_probabilities": {
+    "paper": 0.013715296983718872,
+    "paper_pack": 0.008530376479029655,
+    "glass": 0.009920267388224602,
+    "metal": 0.00308291707187891,
+    "plastic": 0.005972272716462612,
+    "vinyl": 0.009198347106575966,
+    "styrofoam": 0.013083074241876602,
+    "clothes": 0.8753340244293213,
+    "food_waste": 0.015379800461232662,
+    "electronics": 0.001735350233502686,
+    "hazardous": 0.004366965964436531,
+    "trash": 0.015017795376479626,
+    "etc": 0.024663371965289116,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "clothes",
+     "prob": 0.8753340244293213
+    },
+    {
+     "slug": "etc",
+     "prob": 0.024663371965289116
+    },
+    {
+     "slug": "food_waste",
+     "prob": 0.015379800461232662
+    },
+    {
+     "slug": "trash_other",
+     "prob": 0.011770226061344147
+    },
+    {
+     "slug": "cardboard",
+     "prob": 0.009913679212331772
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "inference_ms": 172.86,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.2577,
+   "ood_reject": false,
+   "evidence": [
+    {
+     "type": "vlm",
+     "token": "라탄풍 수납 바구니(페이퍼로프·레이스 장식) → 종량제 봉투",
+     "matched_text": "꼬인 끈(페이퍼로프/합성 라탄)으로 엮고 레이스 천을 덧댄 복합재질 수납 바구니라 재활용이 불가해 종량제 배출 대상",
+     "mapped_class": "general_trash",
+     "score": 0.7,
+     "primary": false
+    }
+   ],
+   "generated_item": {
+    "item_name": "라탄풍 수납 바구니(페이퍼로프·레이스 장식)",
+    "stream": {
+     "slug": "general_trash",
+     "display_name": "종량제 봉투",
+     "summary": "재활용 불가 가연성 폐기물은 종량제 봉투로 배출",
+     "how_to": [
+      "지자체 종량제 봉투 사용",
+      "배출 요일·장소 준수"
+     ]
+    },
+    "condition": "종량제 봉투에 들어가지 않는 큰 바구니는 대형폐기물 신고 배출",
+    "confidence": 0.7
+   },
+   "fine_v2": null,
+   "state": null,
+   "state_source": null,
+   "state_confidence": null,
+   "disposal": null,
+   "_vlm_triggered": true,
+   "_wall_ms": 3959.7
+  },
+  {
+   "display_level": "fine",
+   "display_class": "paper_other",
+   "coarse_class": "paper",
+   "coarse_confidence": 0.8265,
+   "fine_class": "paper_other",
+   "fine_confidence": 0.7798,
+   "fine_margin": 0.733,
+   "coarse_probabilities": {
+    "paper": 0.8264983296394348,
+    "paper_pack": 0.007749037817120552,
+    "glass": 0.010351291857659817,
+    "metal": 0.024424133822321892,
+    "plastic": 0.007678335066884756,
+    "vinyl": 0.010975306853652,
+    "styrofoam": 0.01065649650990963,
+    "clothes": 0.01135855633765459,
+    "food_waste": 0.010506410151720047,
+    "electronics": 0.028580868616700172,
+    "hazardous": 0.004909540992230177,
+    "trash": 0.03941258788108826,
+    "etc": 0.006899089086800814,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "paper_other",
+     "prob": 0.7797618508338928
+    },
+    {
+     "slug": "cardboard",
+     "prob": 0.046736475080251694
+    },
+    {
+     "slug": "trash_other",
+     "prob": 0.03742768242955208
+    },
+    {
+     "slug": "electronics",
+     "prob": 0.028580868616700172
+    },
+    {
+     "slug": "metal",
+     "prob": 0.024424133822321892
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "inference_ms": 271.66,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.5416,
+   "ood_reject": false,
+   "evidence": [
+    {
+     "type": "vlm",
+     "token": "손에 든 에쎄 체인지 담배갑으로, 코팅된 종이 재질입니다.",
+     "matched_text": "손에 든 에쎄 체인지 담배갑으로, 코팅된 종이 재질입니다.",
+     "mapped_class": "paper_other",
+     "score": 0.85,
+     "primary": false
+    }
+   ],
+   "generated_item": null,
+   "fine_v2": null,
+   "state": "composite",
+   "state_source": "vlm",
+   "state_confidence": null,
+   "disposal": {
+    "category": "general",
+    "notes": [
+     "non_recyclable_paper"
+    ],
+    "source": "rule"
+   },
+   "_vlm_triggered": true,
+   "_wall_ms": 6618.9
+  },
+  {
+   "display_level": "fine",
+   "display_class": "electronics",
+   "coarse_class": "electronics",
+   "coarse_confidence": 0.7042,
+   "fine_class": "electronics",
+   "fine_confidence": 0.7042,
+   "fine_margin": 0.6701,
+   "coarse_probabilities": {
+    "paper": 0.01518196240067482,
+    "paper_pack": 0.03086370974779129,
+    "glass": 0.030029941350221634,
+    "metal": 0.004173502326011658,
+    "plastic": 0.015630120411515236,
+    "vinyl": 0.028349744156003,
+    "styrofoam": 0.03339901566505432,
+    "clothes": 0.01905759610235691,
+    "food_waste": 0.03289714455604553,
+    "electronics": 0.7041899561882019,
+    "hazardous": 0.009241882711648941,
+    "trash": 0.0433834083378315,
+    "etc": 0.03360210359096527,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "electronics",
+     "prob": 0.7041899561882019
+    },
+    {
+     "slug": "trash_other",
+     "prob": 0.034092385321855545
+    },
+    {
+     "slug": "etc",
+     "prob": 0.03360210359096527
+    },
+    {
+     "slug": "food_waste",
+     "prob": 0.03289714455604553
+    },
+    {
+     "slug": "vinyl_dirty",
+     "prob": 0.01969055086374283
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "inference_ms": 260.63,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.1723,
+   "ood_reject": false,
+   "evidence": [
+    {
+     "type": "vlm",
+     "token": "로지텍 G 로고가 있는 흰색 무선 게이밍 마우스로 소형 전자제품에 해당",
+     "matched_text": "로지텍 G 로고가 있는 흰색 무선 게이밍 마우스로 소형 전자제품에 해당",
+     "mapped_class": "electronics",
+     "score": 0.95,
+     "primary": false
+    }
+   ],
+   "generated_item": null,
+   "fine_v2": null,
+   "state": "composite",
+   "state_source": "vlm",
+   "state_confidence": null,
+   "disposal": {
+    "category": "e_waste",
+    "notes": [],
+    "source": "rule"
+   },
+   "_vlm_triggered": true,
+   "_wall_ms": 6158.8
+  },
+  {
+   "display_level": "fine",
+   "display_class": "electronics",
+   "coarse_class": "electronics",
+   "coarse_confidence": 0.572,
+   "fine_class": "electronics",
+   "fine_confidence": 0.572,
+   "fine_margin": 0.4897,
+   "coarse_probabilities": {
+    "paper": 0.020672176033258438,
+    "paper_pack": 0.02372906729578972,
+    "glass": 0.03515903651714325,
+    "metal": 0.005464306101202965,
+    "plastic": 0.016951873898506165,
+    "vinyl": 0.03986259549856186,
+    "styrofoam": 0.03400658816099167,
+    "clothes": 0.08223520219326019,
+    "food_waste": 0.051468782126903534,
+    "electronics": 0.5719509124755859,
+    "hazardous": 0.0081180976703763,
+    "trash": 0.06504251062870026,
+    "etc": 0.04533885791897774,
+    "non_object": 0.0
+   },
+   "fine_top5": [
+    {
+     "slug": "electronics",
+     "prob": 0.5719509124755859
+    },
+    {
+     "slug": "clothes",
+     "prob": 0.08223520219326019
+    },
+    {
+     "slug": "trash_other",
+     "prob": 0.055297646671533585
+    },
+    {
+     "slug": "food_waste",
+     "prob": 0.051468782126903534
+    },
+    {
+     "slug": "etc",
+     "prob": 0.04533885791897774
+    }
+   ],
+   "model_arch": "cnn_hier (hier_v2)+vlm",
+   "inference_ms": 293.39,
+   "upload_id": null,
+   "cam_base64": null,
+   "ood_distance": 0.2121,
+   "ood_reject": false,
+   "evidence": [
+    {
+     "type": "vlm",
+     "token": "흰색 무선 마우스(애플 매직마우스 형태)가 주된 물체로, 소형 전자제품에 해당",
+     "matched_text": "흰색 무선 마우스(애플 매직마우스 형태)가 주된 물체로, 소형 전자제품에 해당",
+     "mapped_class": "electronics",
+     "score": 0.8,
+     "primary": false
+    }
+   ],
+   "generated_item": null,
+   "fine_v2": null,
+   "state": "clean",
+   "state_source": "vlm",
+   "state_confidence": null,
+   "disposal": {
+    "category": "e_waste",
+    "notes": [],
+    "source": "rule"
+   },
+   "_vlm_triggered": true,
+   "_wall_ms": 10066.3
+  }
+ ],
+ "vlm_usage": [
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 456,
+   "output": 135,
+   "cache_read": 0,
+   "cache_write": 2307
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 475,
+   "output": 25,
+   "cache_read": 0,
+   "cache_write": 622
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 312,
+   "output": 145,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 331,
+   "output": 25,
+   "cache_read": 622,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 736,
+   "output": 384,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 484,
+   "output": 329,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 456,
+   "output": 473,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 456,
+   "output": 205,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 480,
+   "output": 176,
+   "cache_read": 622,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 323,
+   "output": 318,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 232,
+   "output": 135,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 251,
+   "output": 25,
+   "cache_read": 622,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 248,
+   "output": 173,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 267,
+   "output": 83,
+   "cache_read": 622,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 190,
+   "output": 159,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 209,
+   "output": 77,
+   "cache_read": 622,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 338,
+   "output": 171,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 357,
+   "output": 74,
+   "cache_read": 622,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 350,
+   "output": 147,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 369,
+   "output": 25,
+   "cache_read": 622,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 512,
+   "output": 187,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 484,
+   "output": 175,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 503,
+   "output": 74,
+   "cache_read": 622,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 508,
+   "output": 140,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 527,
+   "output": 25,
+   "cache_read": 622,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 216,
+   "output": 137,
+   "cache_read": 2307,
+   "cache_write": 0
+  },
+  {
+   "model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "input": 235,
+   "output": 25,
+   "cache_read": 622,
+   "cache_write": 0
+  }
+ ]
+}
