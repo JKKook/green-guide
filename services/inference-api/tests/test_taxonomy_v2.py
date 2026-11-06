@@ -531,3 +531,22 @@ def test_sonnet_min_conf(monkeypatch, model, expected) -> None:
     finally:
         monkeypatch.undo()
         importlib.reload(config)
+
+
+def test_serving_defaults_1106(monkeypatch) -> None:
+    """사용자 결정 11-06: Sonnet · 상시 중재 · R1 · 재질 규칙 · 채택 0.8."""
+    import importlib
+
+    from src.core import config
+    for k in ("VLM_MODEL", "VLM_MIN_CONF", "GREENGUIDE_VLM_SONNET_MIN_CONF",
+              "GREENGUIDE_API_VLM_TRIGGER_CONF", "GREENGUIDE_API_VLM_AGREE_ACCEPT",
+              "GREENGUIDE_VLM_MATERIAL_RULE"):
+        monkeypatch.delenv(k, raising=False)
+    try:
+        c = importlib.reload(config)
+        assert c.VLM_MODEL == "claude-sonnet-5-5"
+        assert c.VLM_TRIGGER_CONF > 1 and c.VLM_MIN_CONF == 0.8
+        assert c.VLM_AGREE_ACCEPT and c.VLM_MATERIAL_RULE
+    finally:
+        monkeypatch.undo()
+        importlib.reload(config)
