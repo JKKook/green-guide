@@ -106,12 +106,12 @@ def test_non_single_modes_use_v1_prompt_verbatim(mode, m: str) -> None:
     assert set(out) == V1_KEYS
 
 
-def test_default_mode_is_off() -> None:
+def test_default_mode_is_two_stage() -> None:
     import importlib
     import os
     if "GREENGUIDE_VLM_TAXONOMY" in os.environ:
         pytest.skip("환경변수로 모드 지정됨")
-    assert importlib.reload(config).VLM_TAXONOMY == "off"
+    assert importlib.reload(config).VLM_TAXONOMY == "two_stage"   # 11-06 결정 측정 구성
 
 
 # ── 프롬프트 ──────────────────────────────────────────────────────────────

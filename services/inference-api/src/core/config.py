@@ -162,10 +162,10 @@ VLM_AGREE_ACCEPT: bool = os.getenv("GREENGUIDE_API_VLM_AGREE_ACCEPT", "1") == "1
 # 1회차 프롬프트 재질 규칙(기본 켜짐, 11-06): slug 칸에 배출 방법(trash) 대신 재질 (TAXONOMY_V2 §3)
 VLM_MATERIAL_RULE: bool = os.getenv("GREENGUIDE_VLM_MATERIAL_RULE", "1") == "1"
 # 분류 체계 v2 축(fine_v2·state·mark) 질의 방식
-#   off(v1, 기본) | single(한 프롬프트) | two_stage(재질 v1 원문 + 축 별도 호출)
+#   off(v1) | single(한 프롬프트) | two_stage(재질 v1 원문 + 축 별도 호출, 기본 11-06)
 # GG_VLM 실측(qwen): single 재질 66→54/79 회귀, two_stage 66 유지
 # → eval_v2 gate 79 로 셋 비교 후 채택
-VLM_TAXONOMY: str = os.getenv("GREENGUIDE_VLM_TAXONOMY", "off")
+VLM_TAXONOMY: str = os.getenv("GREENGUIDE_VLM_TAXONOMY", "two_stage")
 # two_stage 2회차에 장난감 여부(toy) 질의 → 재질 trash 고정(TAXONOMY_V2 §3)
 # 기본 꺼짐 — CNN v2 와 함께 gate 65 측정 후 채택
 VLM_TOY: bool = os.getenv("GREENGUIDE_VLM_TOY", "0") == "1"
