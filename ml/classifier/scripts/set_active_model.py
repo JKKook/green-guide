@@ -57,7 +57,7 @@ def main() -> int:
     )
     print(f"✓ 현재 active: v{check.data[0]['version']} ({check.data[0].get('test_accuracy')})")
     print("\nwaste-api 즉시 반영:")
-    print("  curl -X POST https://ethandev92-waste-api.hf.space/admin/reload-model")
+    print("  curl -X POST -H \"X-Admin-Token: $GREENGUIDE_ADMIN_TOKEN\" https://ethandev92-waste-api.hf.space/admin/reload-model")
     return 0
 
 

@@ -139,16 +139,16 @@ def calibrate(percentile: float = _DEFAULT_PERCENTILE) -> dict:
     with fail_open(log, "실사용 OOD 비교"):
         import io
 
-        import requests
-
         from etc_queue import _supabase  # 재사용
-        rows = (_supabase().table(settings.SUPABASE_TABLE_USER_UPLOADS)
-                .select("image_url,feedback_label")
+        from greenguide_classifier.uploads import fetch_upload_bytes
+        cli = _supabase()
+        rows = (cli.table(settings.SUPABASE_TABLE_USER_UPLOADS)
+                .select("image_url,storage_path,feedback_label")
                 .eq("feedback_label", "etc").limit(20).execute()).data or []
         ood_emb = []
         for r in rows:
             try:
-                im = Image.open(io.BytesIO(requests.get(r["image_url"], timeout=15).content))
+                im = Image.open(io.BytesIO(fetch_upload_bytes(cli, r, timeout=15)))
                 im = im.convert("RGB").resize((224, 224), Image.BILINEAR)
                 a = (np.asarray(im, np.float32) / 255.0 - _MEAN) / _STD
                 x = np.ascontiguousarray(a.transpose(2, 0, 1))[None]
