@@ -58,6 +58,12 @@ LABEL_SMOOTH = float(_os.getenv("GREENGUIDE_HIER_LABEL_SMOOTH", "0.0"))
 # 1 이면 last.pt(매 epoch 저장)에서 이어 학습 — 수면·재부팅으로 끊긴 사이클 재개용.
 # v14 는 세 번(10-10 ×2, 10-18) 모두 중간에 죽어 매번 처음부터 돌았다.
 RESUME = _os.getenv("GREENGUIDE_HIER_RESUME", "0") == "1"
+# DataLoader 메모리 — 검증 로더 워커 6개가 학습 내내 상주(persistent)하고 prefetch 4 로 배치를 쌓는 구성을
+# 줄인다(11-03 메모리 부족 대비). 학습 결과에는 영향 없음. 기본값 = 리더 합의값, 환경변수로 덮어쓰기.
+TRAIN_WORKERS = int(_os.getenv("GREENGUIDE_HIER_TRAIN_WORKERS", "6"))
+VAL_WORKERS = int(_os.getenv("GREENGUIDE_HIER_VAL_WORKERS", "2"))
+VAL_PERSISTENT = _os.getenv("GREENGUIDE_HIER_VAL_PERSISTENT", "0") == "1"
+PREFETCH = int(_os.getenv("GREENGUIDE_HIER_PREFETCH", "2"))
 CKPT_DIR = config.CHECKPOINTS_DIR / ARCH
 LOG_DIR = config.LOGS_DIR / ARCH
 LAST_CKPT_NAME = "last.pt"
@@ -279,12 +285,14 @@ def train_hier() -> Path:
     train_loader = DataLoader(
         HierImageDataset(train_items, augment=True),
         batch_size=hp.batch_size, shuffle=True,
-        num_workers=6, persistent_workers=True, prefetch_factor=4,
+        num_workers=TRAIN_WORKERS, persistent_workers=TRAIN_WORKERS > 0,
+        prefetch_factor=PREFETCH if TRAIN_WORKERS > 0 else None,
     )
     val_loader = DataLoader(
         HierImageDataset(val_items, augment=False),
         batch_size=hp.batch_size, shuffle=False,
-        num_workers=6, persistent_workers=True, prefetch_factor=4,
+        num_workers=VAL_WORKERS, persistent_workers=VAL_PERSISTENT and VAL_WORKERS > 0,
+        prefetch_factor=PREFETCH if VAL_WORKERS > 0 else None,
     )
 
     model = build_hier_model(NUM_FINE, BACKBONE).to(device)
