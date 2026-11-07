@@ -170,6 +170,10 @@ VLM_TAXONOMY: str = os.getenv("GREENGUIDE_VLM_TAXONOMY", "two_stage")
 # 기본 꺼짐 — CNN v2 와 함께 gate 65 측정 후 채택
 VLM_TOY: bool = os.getenv("GREENGUIDE_VLM_TOY", "0") == "1"
 
+# /predict-objects 근접 촬영 오분할 방지(기본 꺼짐, 11-07): saliency 성분이 잘게 흩어지면
+# (질감·근접 — 키보드 키 등) 후보를 나누지 않고 전체 사진 1개로
+OBJECTS_FRAG_WHOLE: bool = os.getenv("GREENGUIDE_API_OBJECTS_FRAG_WHOLE", "0") == "1"
+
 # ── electronics 편향 완화 (W6 수정, ELECTRONICS_BIAS_ANALYSIS.md E절) ──
 # 실사용 피드백 51(사용자 라벨)·테스터 35(GG_CNN 라벨) 전후 측정으로 값 확정 — 끄려면 0/빈값
 SCENE_AUTOCROP: bool = os.getenv("GREENGUIDE_API_SCENE_AUTOCROP", "1") == "1"       # 장면 경로 u2netp 물체 크롭(실패=전체 프레임)
