@@ -28,7 +28,6 @@ from datetime import datetime
 from typing import Any
 
 import numpy as np
-import requests
 import torch
 import torch.nn as nn
 from greenguide_common import imaging, settings
@@ -43,6 +42,7 @@ from greenguide_classifier.dataset import load_manifest
 from greenguide_classifier.infer import softmax
 from greenguide_classifier.model import build_model
 from greenguide_classifier.train import model_kind, pick_device
+from greenguide_classifier.uploads import fetch_upload_bytes
 
 log = get_logger(__name__)
 
@@ -116,11 +116,9 @@ def _embed_batch(
     return emb, probs
 
 
-def _download_image(url: str) -> Image.Image | None:
-    with fail_open(log, f"이미지 다운로드 {url[:60]}…"):
-        r = requests.get(url, timeout=20)
-        r.raise_for_status()
-        return Image.open(io.BytesIO(r.content))
+def _download_image(client: Client, row: dict) -> Image.Image | None:
+    with fail_open(log, f"이미지 다운로드 {row.get('id')}"):
+        return Image.open(io.BytesIO(fetch_upload_bytes(client, row, timeout=20)))
     return None
 
 
@@ -165,7 +163,7 @@ def process_etc_queue(apply: bool = False) -> dict[str, Any]:
     client = _supabase()
     rows = (
         client.table(settings.SUPABASE_TABLE_USER_UPLOADS)
-        .select("id,image_url,feedback_label")
+        .select("id,image_url,storage_path,feedback_label")
         .eq("feedback_label", "etc")
         .execute()
     ).data or []
@@ -180,7 +178,7 @@ def process_etc_queue(apply: bool = False) -> dict[str, Any]:
     # 이미지 로드
     imgs, kept_rows = [], []
     for r in rows:
-        img = _download_image(r["image_url"])
+        img = _download_image(client, r)
         if img is not None:
             imgs.append(_to_tensor(img))
             kept_rows.append(r)

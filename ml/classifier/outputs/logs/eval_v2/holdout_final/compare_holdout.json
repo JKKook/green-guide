@@ -1,0 +1,197 @@
+{
+ "set": "/Users/ethan/practice/greenguide/.worktrees/feature-classifier-realworld-eval/ml/classifier/outputs/logs/eval_v2/eval_v2_final_holdout.jsonl",
+ "onnx": "/Users/ethan/practice/greenguide/.worktrees/feature-classifier-v15-hardneg/ml/classifier/outputs/models/cnn_hier_v14/classifier.onnx",
+ "first_pass": {
+  "coarse": "10/16",
+  "elec_fp": "3/8",
+  "elec_recall": "7/8",
+  "reject": 0,
+  "vlm_triggered": 0
+ },
+ "runs": {
+  "current": {
+   "coarse": "9/16",
+   "elec_fp": "0/8",
+   "elec_recall": "4/8",
+   "reject": 5,
+   "vlm_triggered": 5,
+   "improved": [
+    {
+     "id": "f87fa6b2163a4088",
+     "truth": "non_object",
+     "first": "electronics",
+     "serving": "non_object",
+     "vlm": true
+    },
+    {
+     "id": "49d8a1dd6afb4819",
+     "truth": "trash",
+     "first": "electronics",
+     "serving": "trash",
+     "vlm": false
+    }
+   ],
+   "worsened": [
+    {
+     "id": "b6ab46f6ba3d439f",
+     "truth": "electronics",
+     "first": "electronics",
+     "serving": "etc",
+     "vlm": true
+    },
+    {
+     "id": "0e70a79bf65e47d3",
+     "truth": "electronics",
+     "first": "electronics",
+     "serving": "etc",
+     "vlm": true
+    },
+    {
+     "id": "b14fb838aa66424b",
+     "truth": "electronics",
+     "first": "electronics",
+     "serving": "etc",
+     "vlm": true
+    }
+   ],
+   "vlm_cost": {
+    "calls": 5,
+    "tokens": {
+     "input": 2215,
+     "output": 1625,
+     "cache_read": 8280,
+     "cache_write": 2070
+    },
+    "usd": 0.055,
+    "usd_per_call": 0.011,
+    "models": {
+     "claude-opus-5-5": 5
+    }
+   },
+   "wall_ms_p50": 2036.2,
+   "v2_axes": {
+    "state_hit": "0/16",
+    "state_answered": "0/16",
+    "fine_v2_hit": "0/0"
+   }
+  },
+  "sonnet06_always": {
+   "coarse": "9/16",
+   "elec_fp": "0/8",
+   "elec_recall": "6/8",
+   "reject": 4,
+   "vlm_triggered": 16,
+   "improved": [
+    {
+     "id": "2a67d4caa28f4778",
+     "truth": "electronics",
+     "first": "paper",
+     "serving": "electronics",
+     "vlm": true
+    }
+   ],
+   "worsened": [
+    {
+     "id": "b6ab46f6ba3d439f",
+     "truth": "electronics",
+     "first": "electronics",
+     "serving": "etc",
+     "vlm": true
+    },
+    {
+     "id": "0e70a79bf65e47d3",
+     "truth": "electronics",
+     "first": "electronics",
+     "serving": "non_object",
+     "vlm": true
+    }
+   ],
+   "vlm_cost": {
+    "calls": 26,
+    "tokens": {
+     "input": 9950,
+     "output": 3378,
+     "cache_read": 40203,
+     "cache_write": 2929
+    },
+    "usd": 0.1381,
+    "usd_per_call": 0.0053,
+    "models": {
+     "claude-sonnet-5-5": 26
+    }
+   },
+   "wall_ms_p50": 5071.1,
+   "v2_axes": {
+    "state_hit": "3/16",
+    "state_answered": "10/16",
+    "fine_v2_hit": "0/0"
+   }
+  },
+  "opus_always": {
+   "coarse": "11/16",
+   "elec_fp": "0/8",
+   "elec_recall": "6/8",
+   "reject": 4,
+   "vlm_triggered": 16,
+   "improved": [
+    {
+     "id": "f87fa6b2163a4088",
+     "truth": "non_object",
+     "first": "electronics",
+     "serving": "non_object",
+     "vlm": true
+    },
+    {
+     "id": "2a67d4caa28f4778",
+     "truth": "electronics",
+     "first": "paper",
+     "serving": "electronics",
+     "vlm": true
+    },
+    {
+     "id": "49d8a1dd6afb4819",
+     "truth": "trash",
+     "first": "electronics",
+     "serving": "trash",
+     "vlm": true
+    }
+   ],
+   "worsened": [
+    {
+     "id": "b6ab46f6ba3d439f",
+     "truth": "electronics",
+     "first": "electronics",
+     "serving": "etc",
+     "vlm": true
+    },
+    {
+     "id": "0e70a79bf65e47d3",
+     "truth": "electronics",
+     "first": "electronics",
+     "serving": "etc",
+     "vlm": true
+    }
+   ],
+   "vlm_cost": {
+    "calls": 27,
+    "tokens": {
+     "input": 10305,
+     "output": 4047,
+     "cache_read": 40825,
+     "cache_write": 2929
+    },
+    "usd": 0.1531,
+    "usd_per_call": 0.0057,
+    "models": {
+     "claude-opus-5-5": 27
+    }
+   },
+   "wall_ms_p50": 6675.7,
+   "v2_axes": {
+    "state_hit": "4/16",
+    "state_answered": "10/16",
+    "fine_v2_hit": "0/0"
+   }
+  }
+ }
+}
