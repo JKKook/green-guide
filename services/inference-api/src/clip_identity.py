@@ -136,10 +136,12 @@ class ClipIdentity:
                 if ratio > 1.0:
                     prior[i] = ratio ** w
 
-        # 설명용 — top1 컨셉 (임계 이상일 때만). token 은 앱 배지용 한국어.
+        # 설명용 — top1 컨셉. 표시 임계 = 판정 임계(MIN_CONCEPT_PROB) — 판정에
+        # 안 쓴 신호가 칩으로만 보이지 않게 (PRODUCTION_READINESS 결정 5).
+        # token 은 앱 배지용 한국어.
         evidence: list[dict[str, Any]] = []
         top = int(np.argmax(probs))
-        if float(probs[top]) >= 0.25:
+        if float(probs[top]) >= MIN_CONCEPT_PROB:
             evidence.append({
                 "type": "identity",
                 "token": self.phrases_ko[top],

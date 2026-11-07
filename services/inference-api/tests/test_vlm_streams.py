@@ -43,8 +43,10 @@ def test_to_api_dict_shape() -> None:
 def test_parse_fine_slug_path() -> None:
     out = VlmFallback._parse_response(
         '{"slug": "pet", "confidence": 0.9, "reason": "투명 음료병"}', FINE)
-    assert out == {"slug": "pet", "item_name": None, "stream": None,
-                   "confidence": 0.9, "reason": "투명 음료병", "condition": None}
+    # v1 키는 값 그대로 — 분류 체계 v2 축(coarse·fine_v2·state·mark)은 덧붙기만 한다
+    v1 = {"slug": "pet", "item_name": None, "stream": None,
+          "confidence": 0.9, "reason": "투명 음료병", "condition": None}
+    assert {k: out[k] for k in v1} == v1
 
 
 def test_parse_generated_item_path() -> None:

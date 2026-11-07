@@ -1,6 +1,8 @@
 """추론 엔드포인트 — /predict* , /segment."""
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
 from src.cam_renderer import render_overlay_png_base64
@@ -25,7 +27,11 @@ from src.services.image_io import (
     read_validate_with_orientation,
 )
 from src.services.recording import record_safely
-from src.services.regions_service import analyze_regions, evidence_conflicts
+from src.services.regions_service import (
+    analyze_regions,
+    displayable_evidence,
+    evidence_conflicts,
+)
 
 log = get_logger(__name__)
 router = APIRouter()
@@ -140,6 +146,10 @@ async def predict_hier(
     tap_region: list[float] | None = None
     if tap_x is not None and tap_y is not None:
         cropped_raw, tap_region = crop_at_tap(raw, tap_x, tap_y)
+    elif config.SCENE_AUTOCROP:
+        # W6 ②: 장면도 u2netp 물체 크롭 — 학습(물체 밀착 크롭)과 프레이밍 정렬, 실패 시 원본
+        from src.services.image_io import auto_crop_to_object  # noqa: PLC0415
+        cropped_raw = auto_crop_to_object(raw)
     else:
         cropped_raw = raw
 
@@ -184,7 +194,10 @@ async def predict_hier(
                 evidence, clf.fine_labels, clf.taxonomy["fine_to_coarse"]))
         except Exception as exc:  # noqa: BLE001
             log.warning(f"semantic evidence failed: {exc}")
-    if tap_region is not None:
+    # W6 실험 b: 장면 판정이 electronics 면 탭이 아니어도 CLIP 정체 prior 적용 (기본 꺼짐)
+    elec_clip = (tap_region is None and config.ELEC_CLIP_PRIOR
+                 and result["coarse_class"] == "electronics")
+    if tap_region is not None or elec_clip:
         try:
             clip_eng = get_clip_identity()
             probs = clip_eng.identity_probs(cropped_raw)
@@ -195,11 +208,31 @@ async def predict_hier(
                 evidence.extend(clip_ev)
         except Exception as exc:  # noqa: BLE001
             log.warning(f"clip identity failed: {exc}")
+        if tap_region is not None:
+            try:
+                from src.hier_inference import cam_region_prior  # noqa: PLC0415
+                prior = _mul(prior, cam_region_prior(clf, raw, tap_region))
+            except Exception as exc:  # noqa: BLE001
+                log.warning(f"cam region prior failed: {exc}")
+
+    # W6 ⑤: 장면 electronics 판정인데 CLIP 전자제품 컨셉 확률이 낮으면 억제
+    if (tap_region is None and config.ELEC_CLIP_MIN
+            and result["coarse_class"] == "electronics"):
         try:
-            from src.hier_inference import cam_region_prior  # noqa: PLC0415
-            prior = _mul(prior, cam_region_prior(clf, raw, tap_region))
+            import numpy as np  # noqa: PLC0415
+
+            clip_eng = get_clip_identity()
+            probs = clip_eng.identity_probs(cropped_raw)
+            if probs is not None:
+                elec_p = sum(float(p) for p, s in zip(probs, clip_eng.slugs, strict=True)
+                             if s == "electronics")
+                if elec_p < config.ELEC_CLIP_MIN:
+                    sup = np.ones(len(clf.fine_labels))
+                    sup[clf.fine_labels.index("electronics")] = 1e-3
+                    prior = _mul(prior, sup)
+                    log.info(f"electronics 억제: CLIP 전자제품 {elec_p:.2f} < {config.ELEC_CLIP_MIN}")
         except Exception as exc:  # noqa: BLE001
-            log.warning(f"cam region prior failed: {exc}")
+            log.warning(f"clip electronics check failed: {exc}")
 
     if prior is not None:
         refined = clf.predict(best_tensor, mask_non_object=True, fine_prior=prior,
@@ -235,8 +268,12 @@ async def predict_hier(
     if evidence_conflict:
         log.info(f"증거-불일치 중재 발동: CNN={result['coarse_class']}")
     # 표시로 판정된 결과는 VLM 중재 대상에서 제외 (법정 표시가 최우선)
+    # W6 실험 c: 지정 대분류 판정은 확신도와 무관하게 중재 (기본 빈 집합)
+    class_arbitrate = result["coarse_class"] in config.VLM_ARBITRATE_CLASSES
+    vlm_v2: dict[str, Any] = {}   # 분류 체계 v2 축(fine_v2·state·mark) — VLM 채택 시에만
     if mark is None and (result["display_level"] == "reject"
-            or result["coarse_confidence"] < 0.55 or evidence_conflict):
+            or result["coarse_confidence"] < config.VLM_TRIGGER_CONF or evidence_conflict
+            or class_arbitrate):
         try:
             from src.vlm_fallback import get_vlm_fallback  # noqa: PLC0415
             v = get_vlm_fallback().classify(
@@ -251,6 +288,11 @@ async def predict_hier(
                 min_conf = 0.5
             else:
                 min_conf = config.VLM_MIN_CONF
+                # R1: CNN 1위와 같은 재질 대분류면 두 판정이 서로 받쳐 준다 — 확신 무관 채택
+                if (config.VLM_AGREE_ACCEPT and v is not None
+                        and clf.taxonomy["fine_to_coarse"].get(v["slug"], v["slug"])
+                        == result["coarse_class"]):
+                    min_conf = 0.0
             if v is not None and v["confidence"] >= min_conf:
                 slug = v["slug"]
                 if slug is None:
@@ -284,6 +326,14 @@ async def predict_hier(
                         result["fine_class"] = slug if slug != "etc" else None
                         result["coarse_class"] = coarse
                     result["model_arch"] = result["model_arch"] + "+vlm"
+                    vlm_v2 = {k: v[k] for k in ("fine_v2", "state", "mark") if k in v}
+                    # 장난감 → 재질 trash 고정 (GREENGUIDE_VLM_TOY, two_stage 2회차 판정)
+                    from src import disposal_v2  # noqa: PLC0415
+                    if v.get("toy") and disposal_v2.toy_applies(
+                            result["coarse_class"], result.get("fine_class")):
+                        result.update(display_level="fine", display_class="trash_other",
+                                      fine_class="trash_other", coarse_class="trash")
+                        vlm_v2 = {"toy": True}   # 원 재질 기준 세부·마크는 버린다
                     evidence.append({
                         "type": "vlm",
                         "token": v["reason"] or "AI 정밀 분석",
@@ -293,6 +343,26 @@ async def predict_hier(
                     })
         except Exception as exc:  # noqa: BLE001
             log.warning(f"vlm fallback failed: {exc}")
+    # ── 분류 체계 v2 — 재질×상태(+마크) → 배출 카테고리 (규칙표 도출, 모델 예측 아님) ──
+    # 기존 필드는 그대로 두고 fine_v2·state·disposal 만 덧붙인다(하위호환). 판정 보류면 null.
+    # 상태: VLM 우선, 없으면 CNN 상태 헤드(state_logits 가 있는 v2 ONNX 만)
+    cnn_state = result.get("state")
+    result["state"] = vlm_v2.get("state") or cnn_state
+    result["state_source"] = "vlm" if vlm_v2.get("state") else "cnn" if cnn_state else None
+    if result["display_level"] != "reject" and result.get("generated_item") is None:
+        from src import disposal_v2  # noqa: PLC0415
+        # 세부 분기: VLM 우선, 없으면 CNN v2 세부(fine_labels 에 metal_can 등이 있을 때)
+        cnn_fine = result.get("fine_class")
+        result["fine_v2"] = vlm_v2.get("fine_v2") or (
+            cnn_fine if cnn_fine in disposal_v2.FINE_V2_SPLITS.get(result["coarse_class"], ())
+            else None)
+        result["disposal"] = disposal_v2.resolve(
+            result["coarse_class"], result["fine_v2"] or result.get("fine_class"),
+            result["state"], vlm_v2.get("mark"))
+        if vlm_v2.get("toy") and result["disposal"] is not None:
+            result["disposal"]["notes"].append("toy")
+    evidence = displayable_evidence(
+        evidence, result["coarse_class"], clf.taxonomy["fine_to_coarse"])
     if evidence:
         result["evidence"] = [
             {**{k: ev[k] for k in ("type", "token", "matched_text",
@@ -553,7 +623,10 @@ async def predict_with_regions(
     tap_x: float | None = Form(default=None, ge=0.0, le=1.0),
     tap_y: float | None = Form(default=None, ge=0.0, le=1.0),
 ) -> PredictionWithRegionsResponse:
-    """`/predict` + 다중재질 영역 분석 (Cascade + CAM-argmax + u2netp + 손 제외).
+    """계층 분류 + 다중재질 영역 분석 (Cascade + CAM-argmax + u2netp + 손 제외).
+
+    응답 스키마는 구 `/predict` 형식 유지(앱 하위호환). 분류는 2026-10-31 부터
+    계층 모델 — 본 판정(/predict-hier)과 같은 체계 (PRODUCTION_READINESS 결정 7).
 
     파이프라인:
       Stage 1 (binary): waste 아니면 → non_object 응답 (regions 분석 skip)
@@ -561,7 +634,7 @@ async def predict_with_regions(
                         후 셀별 argmax 로 재질 영역 추출. /predict-with-cam 과
                         같은 원본 입력 사용 — 둘의 영역 표시가 일치하도록.
     """
-    raw_orig = await read_and_validate_image(image)
+    raw_orig, exif_tag = await read_validate_with_orientation(image)
 
     # Stage 1: binary waste/non-waste 판정
     reason = stage1_gate(raw_orig)
@@ -575,7 +648,7 @@ async def predict_with_regions(
             overlay_base64=None, regions=[], grid_h=0, grid_w=0,
         )
 
-    out = analyze_regions(raw_orig, tap_x, tap_y)
+    out = analyze_regions(raw_orig, tap_x, tap_y, exif_tag)
 
     # 업로드 기록 없음 — /predict-hier 가 같은 사진을 이미 저장·피드백 대상으로
     # 삼는다(중복 저장 방지, 2026-08-29).
