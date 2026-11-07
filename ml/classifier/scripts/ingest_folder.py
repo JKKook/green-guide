@@ -16,6 +16,8 @@ from pathlib import Path
 from _base import RAW_DIR
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from greenguide_classifier.data_quality import image_quality, quality_issues
+
 STORE_SIZE = 256
 IMG_EXT = (".jpg", ".jpeg", ".png", ".bmp", ".webp", ".heic")
 
@@ -31,6 +33,8 @@ def main() -> int:
     ap.add_argument("--src", required=True, help="사진이 든 로컬 폴더 (재귀 탐색)")
     ap.add_argument("--cap", type=int, default=100000, help="이번 인제스트 최대 장수")
     ap.add_argument("--prefix", default="realworld", help="파일명 접두 (출처 구분용)")
+    ap.add_argument("--no-quality-gate", action="store_true",
+                    help="흐림·어두움 게이트 끄기 (기본: 앱과 같은 임계로 제외)")
     args = ap.parse_args()
 
     src = Path(args.src).expanduser()
@@ -46,12 +50,20 @@ def main() -> int:
     print(f"[ingest] {src} 에서 이미지 {len(files)}개 발견 → {args.our_class} (현재 {start}장)")
 
     added = 0
+    gated = 0
     for p in files:
         if added >= args.cap:
             break
         try:
             img = Image.open(p)
             img = ImageOps.exif_transpose(img).convert("RGB")  # 회전 보정 + EXIF 제거
+            if not args.no_quality_gate:
+                # 앱이 재촬영을 안내하는 것과 같은 기준 — 흐리거나 어두운 사진은 학습에서도 뺀다
+                issues = quality_issues(*image_quality(img))
+                if issues:
+                    gated += 1
+                    print(f"  [gate] {p.name}: {','.join(issues)}")
+                    continue
             img = img.resize((STORE_SIZE, STORE_SIZE), Image.BILINEAR)
             img.save(out_dir / f"{args.prefix}_{args.our_class}_{n:06d}.jpg", quality=88)
             n += 1
@@ -59,7 +71,7 @@ def main() -> int:
         except (UnidentifiedImageError, OSError) as exc:
             print(f"  [skip] {p.name}: {exc}")
 
-    print(f"✓ {added}장 추가 → {args.our_class} 총 {n}장")
+    print(f"✓ {added}장 추가 → {args.our_class} 총 {n}장 (품질 게이트 제외 {gated}장)")
     print("  다음: (다른 클래스도 인제스트 후) retrain.py 실행")
     return 0
 

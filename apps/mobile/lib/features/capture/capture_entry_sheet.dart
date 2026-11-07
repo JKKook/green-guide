@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/design_tokens.dart';
 import 'gallery_confirm_screen.dart';
 import 'live_camera_screen.dart';
+import 'mark_guide_sheet.dart';
 
 /// 스마트 촬영 진입 시트 — 시안 16a: 스마트 촬영 / 갤러리에서 선택.
 Future<void> showCaptureEntrySheet(BuildContext context) async {
@@ -21,6 +22,8 @@ Future<void> showCaptureEntrySheet(BuildContext context) async {
   if (choice == null || !context.mounted) return;
   switch (choice) {
     case _EntryChoice.smartCapture:
+      await showMarkGuideOnce(context);
+      if (!context.mounted) return;
       await Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => const LiveCameraScreen()));

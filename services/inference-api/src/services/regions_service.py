@@ -177,44 +177,105 @@ def evidence_conflicts(
     return False
 
 
-def analyze_regions(raw: bytes, tap_x: float | None, tap_y: float | None) -> dict:
+def displayable_evidence(
+    evidence: list[dict], coarse_class: str, fine_to_coarse: dict[str, str],
+) -> list[dict]:
+    """응답에 칩으로 내보낼 증거만 — identity 는 본 판정과 같은 대분류일 때만.
+
+    identity 칩은 '판정 근거' 로 읽히므로 본 판정과 대분류가 다르거나
+    non_object 매핑(손·사람·바닥 등)이면 내리지 않는다 — "형태 인식: 사람" 이
+    플라스틱 판정 옆에 붙던 모순 (PRODUCTION_READINESS 결정 5).
+    중재 판정(evidence_conflicts)은 필터 전 목록을 쓴다 — 충돌 신호는 살린다.
+    OCR·VLM 등 다른 유형은 그대로 둔다.
+    """
+    out: list[dict] = []
+    for ev in evidence:
+        if ev.get("type") == "identity":
+            mapped = ev.get("mapped_class")
+            if mapped == "non_object" \
+                    or fine_to_coarse.get(mapped, mapped) != coarse_class:
+                continue
+        out.append(ev)
+    return out
+
+
+def hier_flat_result(hier_clf, raw: bytes, exif_tag: int,
+                     tap_x: float | None, tap_y: float | None) -> dict:
+    """계층 모델 판정 → 구 /predict 응답 스키마 (앱 변경 0, 결정 7).
+
+    /predict-hier 1차 패스와 같은 입력·설정(탭 크롭 · EXIF 축소 TTA ·
+    non_object 마스킹 · 탭 OOD 완화). OCR·CLIP·VLM 융합은 /predict-hier 몫 —
+    앱은 단일 영역 배지를 결과 카드에 맞추므로 여기선 모델 판정만 낸다.
+    필드 대응은 /predict-hier 의 업로드 기록과 같다: predicted_class=display_class,
+    confidence=표시 등급의 확신, all_probabilities=대분류 분포.
+    predicted_index 는 세부 top1 의 fine_labels 인덱스.
+    """
+    from src.hier_inference import (  # noqa: PLC0415
+        degs_for_orientation,
+        predict_rotations,
+    )
+    from src.services.image_io import crop_at_tap  # noqa: PLC0415
+
+    src_raw = raw
+    if tap_x is not None and tap_y is not None:
+        src_raw, _ = crop_at_tap(raw, tap_x, tap_y)
+    r, _ = predict_rotations(hier_clf, src_raw, degs_for_orientation(exif_tag),
+                             mask_non_object=True, ood_relax=tap_x is not None)
+    top_slug = r["fine_top5"][0]["slug"] if r["fine_top5"] else None
+    return {
+        "predicted_class": r["display_class"],
+        "predicted_index": (hier_clf.fine_labels.index(top_slug)
+                            if top_slug in hier_clf.fine_labels else 0),
+        "confidence": (r["fine_confidence"] if r["display_level"] == "fine"
+                       else r["coarse_confidence"]),
+        "all_probabilities": r["coarse_probabilities"],
+        "model_arch": r["model_arch"],
+        "inference_ms": r["inference_ms"],
+    }
+
+
+def analyze_regions(raw: bytes, tap_x: float | None, tap_y: float | None,
+                    exif_tag: int = 1) -> dict:
     """/predict-with-regions Stage 2: 분류 + CAM/u2netp 마스크/손 제외 → 재질 영역.
 
+    분류는 계층 모델(/predict-hier 와 같은 체계, 결정 7). 계층 모델이 없을 때만
+    구 27클래스 CNN 경로로 폴백한다(로컬 개발 하위호환).
     반환: {"result", "overlay_base64", "regions", "grid_h", "grid_w"}
     """
     # auto_crop 제거 — /predict-with-cam 과 같은 원본 입력으로 일관성 확보.
     # 다중재질 분석은 전체 이미지가 본래 목적에 부합하고, region overlay 좌표가
     # cropped 좌표계로 떠서 CAM 과 시각적으로 어긋나는 문제도 해결됨.
-    classifier = get_classifier()
-    color_input, edge_input = preprocess_both(raw)
-
-    result, cam = classifier.region_cam(color_input)
-
-    # DINOv2 ensemble — confident-wrong 보정 (regions 분석은 ResNet18 CAM 그대로)
-    try:
-        result = ensemble_with_dinov2(result, raw)
-    except Exception as exc:  # noqa: BLE001
-        log.warning(f"dinov2 ensemble failed: {exc}")
-
-    # ── 계층 고해상 CAM 우선 (CAM_MATERIAL_UPGRADE_PLAN Stage 1) ─────────
-    # 448² forward → CAM (25,14,14): 셀 16px, 세부 25클래스 재질 어휘.
-    # 실패/구 ONNX 시 flat 7×7 CAM fallback (하위호환).
-    labels = list(classifier.labels)
-    allowed_indices: list[int] | None = None
     hier_clf = None
     try:
         from src.hier_inference import get_hier_classifier  # noqa: PLC0415
-        from src.preprocess import color_tensor_at  # noqa: PLC0415
         hier_clf = get_hier_classifier()
-        cam_hi = hier_clf.cam_hires(color_tensor_at(raw, 448))
-        if cam_hi is not None:
-            cam = cam_hi
+    except FileNotFoundError:
+        pass  # 계층 모델 미배치 — 구 flat 경로
+
+    cam = None
+    labels: list[str] = []
+    allowed_indices: list[int] | None = None
+    if hier_clf is not None:
+        result = hier_flat_result(hier_clf, raw, exif_tag, tap_x, tap_y)
+        # 계층 고해상 CAM (CAM_MATERIAL_UPGRADE_PLAN Stage 1) — 448² forward →
+        # (25,14,14): 셀 16px, 세부 25클래스 재질 어휘. 실패 시 영역 없이 응답.
+        try:
+            from src.preprocess import color_tensor_at  # noqa: PLC0415
+            cam = hier_clf.cam_hires(color_tensor_at(raw, 448))
             labels = list(hier_clf.fine_labels)
             allowed_indices = hier_clf.material_class_indices()
-    except FileNotFoundError:
-        pass  # 계층 모델 미배치 — flat CAM 유지
-    except Exception as exc:  # noqa: BLE001
-        log.warning(f"hier hi-res cam failed: {exc}")
+        except Exception as exc:  # noqa: BLE001
+            log.warning(f"hier hi-res cam failed: {exc}")
+    else:
+        classifier = get_classifier()
+        color_input, _ = preprocess_both(raw)
+        result, cam = classifier.region_cam(color_input)
+        # DINOv2 ensemble — confident-wrong 보정 (regions 분석은 ResNet18 CAM 그대로)
+        try:
+            result = ensemble_with_dinov2(result, raw)
+        except Exception as exc:  # noqa: BLE001
+            log.warning(f"dinov2 ensemble failed: {exc}")
+        labels = list(classifier.labels)
 
     overlay_b64: str | None = None
     regions_out: list[MaterialRegion] = []

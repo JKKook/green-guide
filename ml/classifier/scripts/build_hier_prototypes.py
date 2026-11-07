@@ -64,6 +64,8 @@ def main() -> None:
     ap.add_argument("--onnx", type=Path, default=ONNX_PATH)
     ap.add_argument("--out-dir", type=Path, default=None,
                     help="ood.npz·taxonomy.json 을 쓸 디렉터리 (기본: ONNX 가 있는 곳)")
+    ap.add_argument("--v2", action="store_true",
+                    help="분류 체계 v2 모델(hier_v2) — 세부 27 라벨·manifest_v2 아이템으로 프로토타입 구성")
     args = ap.parse_args()
     out_dir = args.out_dir or args.onnx.parent
     ood_path = out_dir / "ood.npz"
@@ -72,8 +74,13 @@ def main() -> None:
     rng = np.random.default_rng(SEED)
     sess = load_session(args.onnx)
 
-    items = build_hier_items()
-    splits = load_or_build_hier_splits(items)
+    if args.v2:
+        from greenguide_classifier.hier_v2 import build_items, split_items  # noqa: PLC0415
+        items = build_items()
+        splits = split_items(items)
+    else:
+        items = build_hier_items()
+        splits = load_or_build_hier_splits(items)
     train_items = [items[i] for i in splits["train"] if items[i]["sup_kind"] == "fine"]
     val_items = [items[i] for i in splits["val"] if items[i]["sup_kind"] == "fine"]
 

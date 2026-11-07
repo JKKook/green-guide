@@ -10,6 +10,7 @@ import '../../../core/ui/keep_all.dart';
 import '../../../data/image_quality.dart';
 import '../../../data/waste_info.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/design_tokens.dart';
 import 'explain_button.dart';
 
 /// 영역 분석 발견을 메인 답으로 승격하는 배너.
@@ -195,8 +196,8 @@ class UncertainBanner extends StatelessWidget {
           ),
           const SizedBox(height: kSpaceXS),
           Text(
-            keepAll('• 물체 하나만 화면 가운데에 담아주세요\n'
-                '• 밝은 곳에서 가까이 찍어주세요\n'
+            keepAll('• 물체 하나만 틀 안에 가깝게, 꽉 차게 담아주세요\n'
+                '• 밝은 곳에서 찍어주세요\n'
                 '• 아래 추측이 틀렸다면 피드백으로 알려주세요'),
             style: const TextStyle(fontSize: 13, height: 1.5),
           ),
@@ -211,6 +212,32 @@ class UncertainBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 재촬영 안내 — 물체가 작게 찍혀 배경이 대부분일 때 오분류가 커진다.
+const String kRetakeCloserHint = '재촬영: 물건을 틀 안에 가깝게 담아 다시 찍어보세요.';
+
+/// 전자제품↔플라스틱 혼동(coarse) 시 결과 카드 아래 한 줄 안내.
+class RetakeCloserTip extends StatelessWidget {
+  const RetakeCloserTip({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = DsTokens.of(context).muted;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.center_focus_strong_outlined, size: 14, color: muted),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            keepAll('전자제품과 플라스틱 사이에서 헷갈렸어요. $kRetakeCloserHint'),
+            style: TextStyle(fontSize: 12, height: 1.4, color: muted),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -269,7 +296,8 @@ class RejectCard extends StatelessWidget {
         ? '이 사진은 여러 재질이 섞여 있어서 한 가지로 분류하기 어려워요. '
               '아래 재질별 안내를 따라 분리해서 배출해주세요.'
         : '이 물건은 확실하게 분류하기 어려워요. 재질을 직접 확인해 배출하거나, '
-              '아래에서 올바른 분류를 알려주시면 다음 학습에 반영돼요.';
+              '아래에서 올바른 분류를 알려주시면 다음 학습에 반영돼요.\n'
+              '$kRetakeCloserHint';
     final guess =
         infoFor(prediction.predictedClass)?.displayName ??
         prediction.predictedClass;

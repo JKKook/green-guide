@@ -84,7 +84,19 @@ class RegionRule {
 
   /// 대분류를 재활용/음식물/일반으로 매핑해 해당 분류의 규정 행(라벨, 값) 추출.
   /// 결과 화면 가이드 카드와 품목 배출 기준 시트가 같은 행을 쓴다.
-  List<(String, String)> rowsFor(String coarse) {
+  /// [apartment] 면 공공데이터(주택 문 앞 배출 기준) 요일·시간·미수거일 대신 단지 안내.
+  List<(String, String)> rowsFor(String coarse, {bool apartment = false}) {
+    if (apartment) {
+      final place = coarse == 'food_waste'
+          ? '단지 내 음식물 수거함'
+          : _recyclables.contains(coarse)
+          ? '단지 내 분리배출장'
+          : '단지 내 종량제 봉투 수거함';
+      return [
+        ('배출 장소', place),
+        ('배출 시간', '상시 배출 · 단지에서 정한 요일이 있으면 그 안내를 따라요'),
+      ];
+    }
     final String? method;
     final String? days;
     if (coarse == 'food_waste') {
@@ -144,6 +156,7 @@ class EvidenceItem {
   final String token; // 표시용 (예: 무색페트, 키보드)
   final String mappedClass;
   final double score;
+
   /// 분리배출 표시가 최종 판정을 결정함 (스마트촬영 표시 최우선) — 칩 1순위·강조.
   final bool primary;
 
@@ -178,6 +191,10 @@ class Prediction {
 
   /// 서버가 융합한 시맨틱 증거 (없으면 빈 목록).
   final List<EvidenceItem> evidence;
+
+  /// AI 정밀 분석(VLM)이 채택된 판정 — 서버는 채택 시에만 vlm 증거를 붙인다.
+  /// CNN 보다 정확해서(eval_v2 실측) 화면의 다른 CNN 결과가 이 답을 덮지 않게 한다.
+  bool get vlmDecided => evidence.any((e) => e.type == 'vlm');
 
   const Prediction({
     required this.predictedClass,

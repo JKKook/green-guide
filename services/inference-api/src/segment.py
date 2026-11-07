@@ -141,6 +141,7 @@ _SPLIT_LEVELS = (0.55, 0.7, 0.8, 0.88)
 _ERODE_STEPS = (4, 8, 12, 16)
 _SEED_MIN_FRAC = 0.04    # 코어 유효 최소변 — 노이즈 조각 배제
 _SEED_MAX_N = 6          # 코어가 이보다 많으면 텍스처(키보드 키 등)로 보고 분리 포기
+_FRAG_MIN_COMPONENTS = 20  # 성분이 이 이상이면 흩어진 질감(근접 촬영)으로 보고 전체 1개 — 플래그 시
 
 
 def _erode_once(b: np.ndarray) -> np.ndarray:
@@ -348,8 +349,15 @@ def all_component_bboxes(
         return []
     min_side = _SIZE * min_side_frac
 
+    comps = _bfs_components(prob > threshold)
+    # 근접 촬영 — 화면을 채운 물건 1개가 잘게 흩어진 성분으로 잡혀 조각마다 다른 재질이 나옴
+    # (11-06 키보드 c5d599ef: 성분 44개 → 후보 4개). gate 79 실측: 단일 물건 오분할 12장 중
+    # 성분 ≥20 은 4장, 진짜 다중 물건 사진은 최대 17개라 놓치지 않음
+    if config.OBJECTS_FRAG_WHOLE and len(comps) >= _FRAG_MIN_COMPONENTS:
+        return [[0.0, 0.0, 1.0, 1.0]]
+
     out: list[tuple[int, list[float]]] = []
-    for area, bbox, mask in _bfs_components(prob > threshold):
+    for area, bbox, mask in comps:
         part = _partition_merged(prob, mask)
         parts = part[0] if part is not None else [bbox]
         valid = [

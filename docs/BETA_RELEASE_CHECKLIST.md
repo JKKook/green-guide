@@ -1,5 +1,7 @@
 # 그린가이드 AI 베타 배포 체크리스트 (2026-08-22 점검)
 
+> 2026-10-31 — 프로덕션 출시 전 점검(결정 19건·작업 묶음 W1~W5)은 [`plans/PRODUCTION_READINESS.md`](plans/PRODUCTION_READINESS.md) 가 정본. 이 문서는 베타 기준 기록.
+
 전체 점검(UI/UX · 라이선스 · 기능/릴리즈 · 백엔드) 결과와 조치 상태.
 검증 기준: `flutter analyze` 통과 · `flutter test` 9/9 통과 · `flutter build apk --release` 성공.
 

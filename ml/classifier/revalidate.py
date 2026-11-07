@@ -30,7 +30,6 @@ from collections import Counter
 from datetime import UTC, datetime
 
 import numpy as np
-import requests
 from greenguide_common import imaging, settings
 from greenguide_common.logging import get_logger
 from greenguide_common.supabase import get_client
@@ -39,6 +38,7 @@ from PIL import Image
 from feedback_monitor import REJECT_THRESHOLD
 from greenguide_classifier import config
 from greenguide_classifier.infer import load_session, softmax
+from greenguide_classifier.uploads import fetch_upload_bytes
 
 log = get_logger(__name__)
 
@@ -89,7 +89,7 @@ def main() -> int:
 
     cli = get_client()
     rows = (cli.table(settings.SUPABASE_TABLE_USER_UPLOADS)
-            .select("id,image_url,predicted_class,predicted_confidence")
+            .select("id,image_url,storage_path,predicted_class,predicted_confidence")
             .eq("feedback_status", "pending").execute().data) or []
     if args.limit:
         rows = rows[:args.limit]
@@ -101,7 +101,7 @@ def main() -> int:
     n_flip = n_reject = n_nonobj = 0
     for r in rows:
         try:
-            img = Image.open(io.BytesIO(requests.get(r["image_url"], timeout=20).content))
+            img = Image.open(io.BytesIO(fetch_upload_bytes(cli, r, timeout=20)))
         except Exception:  # noqa: BLE001 — fail-open: fetch 실패는 집계만 하고 건너뜀
             fetch_fail += 1
             continue

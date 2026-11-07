@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../api/models.dart';
 import '../../../core/ui/ds_card.dart';
 import '../../../core/ui/keep_all.dart';
+import '../../../data/settings_store.dart';
 import '../../../data/waste_info.dart';
 import '../../../theme/design_tokens.dart';
 
@@ -32,7 +33,10 @@ class GuideCard extends StatelessWidget {
     final rule = regionInfo?.representative;
     final regionRows = rule == null
         ? const <(String, String)>[]
-        : rule.rowsFor(coarse);
+        : rule.rowsFor(
+            coarse,
+            apartment: appHousingType.value == HousingType.apartment,
+          );
     final hasRegion = regionRows.isNotEmpty;
     final steps = [
       if (info.howTo.isEmpty && info.bin.isNotEmpty) info.bin,

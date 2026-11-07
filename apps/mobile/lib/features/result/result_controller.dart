@@ -2,6 +2,11 @@
 ///
 /// 분류(/predict-hier)·품질 평가·재질 영역·물건 후보·지역 규정·원본 크기의
 /// 6개 작업을 병렬로 돌리고, 탭-투-셀렉트/후보 선택/되돌리기 상태를 관리한다.
+///
+/// 응답 경합 규칙(docs/plans/PRODUCTION_READINESS.md 결정 6 — 하이브리드):
+/// - 첫 로드는 hier·regions·objects 세 응답을 모아 한 번에 반영·판정한다.
+/// - 사용자 조작(탭 재분류·물건 선택·되돌리기·재시도)마다 세대 번호를 올리고,
+///   요청 시점의 세대와 다른 응답은 버린다 — 늦게 온 옛 응답이 새 화면을 덮지 않게.
 /// 위젯은 [ChangeNotifier] 를 구독해 그리기만 하고, 컨텍스트가 필요한 일
 /// (스낵바·네비게이션)은 위젯이 맡는다.
 library;
@@ -82,6 +87,17 @@ class ResultController extends ChangeNotifier {
 
   bool _disposed = false;
 
+  /// 사용자 조작 세대 — 조작마다 증가. 응답은 요청 시점 세대와 같을 때만 반영.
+  int _gen = 0;
+
+  /// 새 세대 시작 — 진행 중이던 탭 재분류는 무효가 되므로 바쁨 표시도 내린다.
+  int _nextGen() {
+    _retapBusy = false;
+    return ++_gen;
+  }
+
+  bool _stale(int gen) => _disposed || gen != _gen;
+
   Prediction? get prediction => _result;
   ImageQualityResult? get quality => _quality;
   PredictionWithRegions? get regions => _regions;
@@ -117,6 +133,9 @@ class ResultController extends ChangeNotifier {
     if (_selectedObject != null) return null;
     final labels = objs.objects.map((o) => o.displayClass).toSet();
     if (_result != null && !labels.contains(_result!.predictedClass)) {
+      if (_result!.vlmDecided) {
+        return 'AI 정밀 분석 기준 결과예요 · 위 물건별 결과는 참고용이에요';
+      }
       return '전체 사진 기준 결과예요 · 물건별 결과와 다르면 위 목록에서 '
           '번호를 탭해 주세요';
     }
@@ -125,22 +144,20 @@ class ResultController extends ChangeNotifier {
 
   /// 6개 작업 병렬 시작 — 위젯 initState 에서 1회.
   void start() {
-    unawaited(classify());
     if (_quality == null) unawaited(_assessQuality());
-    unawaited(fetchRegions());
-    unawaited(_fetchObjects());
+    unawaited(loadInitial());
     unawaited(_fetchRegionInfo());
     resolveImageSize();
   }
 
-  /// 오류 상태에서 다시 시도 — 분류·재질 분석만 재실행.
+  /// 오류 상태에서 다시 시도 — 첫 로드(분류·재질 영역·물건 후보)를 새 세대로 재실행.
   void retry() {
+    _nextGen();
     _error = null;
     _classifyDone = false;
     _regionsDone = false;
     _notify();
-    unawaited(classify());
-    unawaited(fetchRegions());
+    unawaited(loadInitial());
   }
 
   void _notify() {
@@ -170,6 +187,7 @@ class ResultController extends ChangeNotifier {
 
   void undo() {
     if (_viewStack.isEmpty) return;
+    _nextGen(); // 진행 중인 탭 재분류·빗금 재분석 응답은 버린다
     Haptics.selection();
     final s = _viewStack.removeLast();
     _result = s.prediction;
@@ -197,17 +215,27 @@ class ResultController extends ChangeNotifier {
     }
   }
 
-  /// 탐지-후-분류 — 장면의 객체 후보들 (백그라운드, 실패해도 무해).
-  Future<void> _fetchObjects() async {
+  /// 탐지-후-분류 — 장면의 객체 후보들. 실패하면 null(구버전 서버 404 등 — 후보 카드 없이 진행).
+  Future<PredictObjects?> _requestObjects() async {
     try {
       final client = await _api();
-      final r = await client.predictObjects(image);
-      if (_disposed) return;
-      _objects = r;
-      _notify();
-      _maybeAdoptUnanimousObject(r);
+      return await client.predictObjects(image);
     } catch (_) {
-      // 구버전 서버(404) 등 — 후보 카드 없이 진행
+      return null;
+    }
+  }
+
+  /// 재질 영역 요청. 실패하면 null(오프라인 등 — 오버레이는 선택적 향상).
+  Future<PredictionWithRegions?> _requestRegions({Offset? tap}) async {
+    try {
+      final client = await _api();
+      return await client.predictWithRegions(
+        image,
+        tapX: tap?.dx,
+        tapY: tap?.dy,
+      );
+    } catch (_) {
+      return null;
     }
   }
 
@@ -221,6 +249,7 @@ class ResultController extends ChangeNotifier {
     }
     final current = _result;
     if (current == null || _autoAdoptedObject) return;
+    if (current.vlmDecided) return; // AI 정밀 분석 답을 CNN 물건별 결과로 바꾸지 않음
     final slugs = r.objects.map((o) => o.displayClass).toSet();
     if (slugs.length != 1 || slugs.first == current.predictedClass) return;
     _autoAdoptedObject = true;
@@ -245,6 +274,7 @@ class ResultController extends ChangeNotifier {
     final objs = _objects?.objects;
     if (objs == null || idx >= objs.length) return;
     if (haptic) Haptics.selection();
+    _nextGen(); // 이전 조작의 늦은 응답(탭 재분류·빗금)이 이 선택을 덮지 않게
     _pushSnapshot(); // 되돌리기용 — 선택 전 상태 보존
     _selectedObject = idx;
     _result = _withUploadId(objs[idx].toPrediction());
@@ -295,14 +325,21 @@ class ResultController extends ChangeNotifier {
   /// 탭 지점의 객체만 서버(u2netp 성분 크롭)로 재분류.
   /// 실패 시 예외를 다시 던진다 — 위젯이 스낵바로 안내.
   Future<void> reclassifyAt(double nx, double ny) async {
+    final gen = _nextGen();
     _retapBusy = true;
     _lastTapNorm = Offset(nx, ny);
     _notify();
     Haptics.selection();
     try {
-      final client = await _api();
-      final r = await client.predictHier(image, tapX: nx, tapY: ny);
-      if (_disposed) return;
+      final Prediction r;
+      try {
+        final client = await _api();
+        r = await client.predictHier(image, tapX: nx, tapY: ny);
+      } catch (_) {
+        if (_stale(gen)) return; // 이미 다른 조작으로 넘어감 — 옛 탭 실패는 알리지 않음
+        rethrow;
+      }
+      if (_stale(gen)) return; // 응답 사이 되돌리기·다른 탭·물건 선택 — 옛 결과 폐기
       _pushSnapshot(); // 되돌리기용 — 성공 시에만 이전 상태 보존 (다중 화면·빗금 포함)
       _result = r;
       // 탭 재분류 = 단일 분류로 전환 — 다중 뱃지·목록을 접어야 새 결과가
@@ -314,8 +351,10 @@ class ResultController extends ChangeNotifier {
       // 빗금(재질 영역)도 탭 성분 기준으로 재분석 — 마커와 함께 이동
       unawaited(fetchRegions(tap: Offset(nx, ny)));
     } finally {
-      _retapBusy = false;
-      _notify();
+      if (!_stale(gen)) {
+        _retapBusy = false;
+        _notify();
+      }
     }
   }
 
@@ -329,54 +368,60 @@ class ResultController extends ChangeNotifier {
   /// 다중재질 영역 + 빗금 오버레이 — 서버 /predict-with-regions 호출.
   /// 분류와 병렬, 실패해도 원본 표시. 확실히 다른 재질만 영역 분리.
   /// tap 좌표를 주면 그 성분에 집중한 재분석 — 탭 시 빗금도 함께 이동.
+  /// 요청 시점 세대가 바뀌었으면(그 사이 다른 조작) 응답을 버린다.
   Future<void> fetchRegions({Offset? tap}) async {
-    try {
-      final client = await _api();
-      final r = await client.predictWithRegions(
-        image,
-        tapX: tap?.dx,
-        tapY: tap?.dy,
-      );
-      if (_disposed) return;
-      if (r.hasOverlay) {
-        _regions = r;
-      } else if (tap != null) {
-        _regions = null; // 탭 영역에서 재질 미검출 — 이전 빗금 잔상 제거
-      }
-      _regionsDone = true;
-      _notify();
-    } catch (_) {
-      // 오프라인/실패 — 원본 그대로 (오버레이는 선택적 향상)
-      if (_disposed) return;
-      _regionsDone = true;
-      _notify();
+    final gen = _gen;
+    final r = await _requestRegions(tap: tap);
+    if (_stale(gen)) return;
+    if (r != null && r.hasOverlay) {
+      _regions = r;
+    } else if (r != null && tap != null) {
+      _regions = null; // 탭 영역에서 재질 미검출 — 이전 빗금 잔상 제거
     }
+    _regionsDone = true;
+    _notify();
   }
 
-  Future<void> classify() async {
+  /// 첫 로드 — 분류(/predict-hier)·재질 영역·물건 후보를 동시에 요청하고 셋이 모두
+  /// 도착하면 한 번에 반영한 뒤 만장일치 규칙을 판정한다. 따로 반영하면 "라벨 먼저 →
+  /// 물건 후보 도착 → 자동 채택으로 라벨이 다시 바뀜" 순으로 화면이 뒤집힌다.
+  /// 단일 worker 서버라 어차피 직렬 처리 — 모으는 추가 지연은 0~3초(실측).
+  Future<void> loadInitial() async {
+    final gen = _gen;
+    final regionsF = _requestRegions();
+    final objectsF = _requestObjects();
+    final Prediction result;
     try {
-      final result = await _prediction.predict(
+      result = await _prediction.predict(
         image,
         centered: isSmartCapture,
         meta: meta,
         onUploadProgress: (sent, total) {
-          if (_disposed) return;
+          if (_stale(gen)) return;
           _uploadSent = sent;
           _uploadTotal = total;
           _notify();
         },
       );
-      if (_disposed) return;
-      Haptics.medium();
-      _result = result;
-      _uploadId ??= result.uploadId;
-      _classifyDone = true;
-      _notify();
     } catch (e) {
-      if (_disposed) return;
+      if (_stale(gen)) return;
       _error = friendlyError(e);
       _notify();
+      return;
     }
+    final regions = await regionsF;
+    final objects = await objectsF;
+    if (_disposed) return;
+    _uploadId ??= result.uploadId; // 세대가 바뀌어도 피드백 대상 사진 ID 는 유지
+    if (_stale(gen)) return;
+    Haptics.medium();
+    _result = result;
+    if (regions != null && regions.hasOverlay) _regions = regions;
+    _objects = objects;
+    _classifyDone = true;
+    _regionsDone = true;
+    _notify();
+    if (objects != null) _maybeAdoptUnanimousObject(objects);
   }
 }
 

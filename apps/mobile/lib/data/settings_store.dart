@@ -24,6 +24,7 @@ class SettingsStore {
   static const _keyRegionSido = 'region_sido';
   static const _keyRegionSigungu = 'region_sigungu';
   static const _keyRegionPromptShown = 'region_prompt_shown';
+  static const _keyMarkGuideShown = 'mark_guide_shown';
 
   Future<String> getApiUrl() async {
     final prefs = await SharedPreferences.getInstance();
@@ -54,6 +55,17 @@ class SettingsStore {
   Future<void> setRegionPromptShown() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyRegionPromptShown, true);
+  }
+
+  /// 첫 스마트 촬영 때 분리배출 표시 안내를 이미 보여줬는지.
+  Future<bool> isMarkGuideShown() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyMarkGuideShown) ?? false;
+  }
+
+  Future<void> setMarkGuideShown() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyMarkGuideShown, true);
   }
 
   Future<void> setApiUrl(String url) async {

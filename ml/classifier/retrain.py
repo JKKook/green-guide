@@ -455,7 +455,7 @@ def main() -> int:
     if published_version:
         print(f"  publish 완료 — waste-api · Flutter 앱은 다음 부팅 시 자동으로 v{published_version} 로 갱신됨.")
         print("  즉시 반영하려면:")
-        print("    curl -X POST https://<waste-api>/admin/reload-model")
+        print("    curl -X POST -H \"X-Admin-Token: $GREENGUIDE_ADMIN_TOKEN\" https://<waste-api>/admin/reload-model")
     else:
         print("  ⚠️  publish 실패 — waste-api / Flutter 앱은 옛 모델 그대로 사용.")
     return 0

@@ -163,7 +163,7 @@ void main() {
       api: () async => _FakeApi(),
       settings: SettingsStore(),
     );
-    await c.classify();
+    await c.loadInitial();
     expect(svc.lastMeta, same(meta));
   });
 
@@ -185,13 +185,12 @@ void main() {
     expect(c.quality, same(q));
   });
 
-  test('로더는 분류와 재질 분석이 모두 끝나야 사라진다', () async {
+  test('로더는 첫 로드(분류·재질 영역·물건 후보)가 끝나야 사라진다', () async {
     final c = make();
     expect(c.loading, isTrue);
-    await c.classify();
+    await c.loadInitial();
     expect(c.classifyDone, isTrue);
-    expect(c.loading, isTrue, reason: '재질 분석 전');
-    await c.fetchRegions();
+    expect(c.regionsDone, isTrue);
     expect(c.loading, isFalse);
     expect(c.prediction?.predictedClass, 'paper');
     expect(c.uploadSent, 10);
@@ -199,7 +198,7 @@ void main() {
 
   test('분류 실패 → 한국어 오류, retry 로 복구', () async {
     final c = make(error: ApiException('x', statusCode: 503));
-    await c.classify();
+    await c.loadInitial();
     expect(c.loading, isFalse);
     expect(c.error, contains('준비 중'));
     c.retry();
@@ -309,7 +308,7 @@ void main() {
     final c = make();
     var notified = 0;
     c.addListener(() => notified++);
-    final f = c.classify();
+    final f = c.loadInitial();
     c.dispose();
     await f;
     expect(notified, 1, reason: '업로드 진행 1회만 (dispose 전)');
@@ -318,7 +317,7 @@ void main() {
   test('탭 재분류 시 이전 빗금 오버레이를 즉시 비우고 재분석 결과로 교체한다', () async {
     final api = _FakeApiWithRegions();
     final c = make(api: api);
-    await c.fetchRegions();
+    await c.loadInitial();
     expect(c.regions, isNotNull);
     await c.reclassifyAt(0.5, 0.5);
     expect(c.regions, isNull); // 재분석 응답 전 — 옛 빗금 잔상 없음
