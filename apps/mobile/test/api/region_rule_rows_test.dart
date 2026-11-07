@@ -33,4 +33,13 @@ void main() {
     expect(rule.rowsFor('trash').any((r) => r.$1 == '미수거일'), isFalse);
     expect(const RegionRule(district: '').rowsFor('paper'), isEmpty);
   });
+
+  test('아파트·오피스텔은 주택 기준 요일·시간·미수거일 대신 단지 안내', () {
+    final rows = rule.rowsFor('plastic', apartment: true);
+    expect(rows.map((r) => r.$1), ['배출 장소', '배출 시간']);
+    expect(rows.first.$2, '단지 내 분리배출장');
+    expect(rows.any((r) => r.$2.contains('화·목')), isFalse);
+    expect(rule.rowsFor('food_waste', apartment: true).first.$2, '단지 내 음식물 수거함');
+    expect(rule.rowsFor('trash', apartment: true).first.$2, '단지 내 종량제 봉투 수거함');
+  });
 }
