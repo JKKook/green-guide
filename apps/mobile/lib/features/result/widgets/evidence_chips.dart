@@ -29,9 +29,11 @@ class EvidenceChips extends StatelessWidget {
               color: e.primary
                   ? cs.primaryContainer
                   : cs.secondaryContainer.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(999),
+              // 여러 줄이 되면 999(알약)는 모서리 글자를 가려서 14
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: e.primary ? cs.primary : cs.outlineVariant),
+                color: e.primary ? cs.primary : cs.outlineVariant,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -49,21 +51,24 @@ class EvidenceChips extends StatelessWidget {
                       : cs.onSecondaryContainer,
                 ),
                 const SizedBox(width: 5),
-                Text(
-                  e.primary
-                      ? "분리배출 표시 '${e.token.toUpperCase()}' 기준으로 판정"
-                      : switch (e.type) {
-                          'mark' => "분리배출 표시 '${e.token}' 인식",
-                          'identity' => '형태 인식: ${e.token}',
-                          'vlm' => 'AI 정밀 분석: ${e.token}',
-                          _ => "라벨 문구 '${e.token}' 인식",
-                        },
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: e.primary
-                        ? cs.onPrimaryContainer
-                        : cs.onSecondaryContainer,
+                // AI 정밀 분석 문장은 길어서 칩 폭을 넘김 — 줄바꿈 허용
+                Flexible(
+                  child: Text(
+                    e.primary
+                        ? "분리배출 표시 '${e.token.toUpperCase()}' 기준으로 판정"
+                        : switch (e.type) {
+                            'mark' => "분리배출 표시 '${e.token}' 인식",
+                            'identity' => '형태 인식: ${e.token}',
+                            'vlm' => 'AI 정밀 분석: ${e.token}',
+                            _ => "라벨 문구 '${e.token}' 인식",
+                          },
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: e.primary
+                          ? cs.onPrimaryContainer
+                          : cs.onSecondaryContainer,
+                    ),
                   ),
                 ),
               ],

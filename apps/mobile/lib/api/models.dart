@@ -179,6 +179,10 @@ class Prediction {
   /// 서버가 융합한 시맨틱 증거 (없으면 빈 목록).
   final List<EvidenceItem> evidence;
 
+  /// AI 정밀 분석(VLM)이 채택된 판정 — 서버는 채택 시에만 vlm 증거를 붙인다.
+  /// CNN 보다 정확해서(eval_v2 실측) 화면의 다른 CNN 결과가 이 답을 덮지 않게 한다.
+  bool get vlmDecided => evidence.any((e) => e.type == 'vlm');
+
   const Prediction({
     required this.predictedClass,
     required this.predictedIndex,

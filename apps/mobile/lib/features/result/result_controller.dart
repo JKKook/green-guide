@@ -133,6 +133,9 @@ class ResultController extends ChangeNotifier {
     if (_selectedObject != null) return null;
     final labels = objs.objects.map((o) => o.displayClass).toSet();
     if (_result != null && !labels.contains(_result!.predictedClass)) {
+      if (_result!.vlmDecided) {
+        return 'AI 정밀 분석 기준 결과예요 · 위 물건별 결과는 참고용이에요';
+      }
       return '전체 사진 기준 결과예요 · 물건별 결과와 다르면 위 목록에서 '
           '번호를 탭해 주세요';
     }
@@ -246,6 +249,7 @@ class ResultController extends ChangeNotifier {
     }
     final current = _result;
     if (current == null || _autoAdoptedObject) return;
+    if (current.vlmDecided) return; // AI 정밀 분석 답을 CNN 물건별 결과로 바꾸지 않음
     final slugs = r.objects.map((o) => o.displayClass).toSet();
     if (slugs.length != 1 || slugs.first == current.predictedClass) return;
     _autoAdoptedObject = true;

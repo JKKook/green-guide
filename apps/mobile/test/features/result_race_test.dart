@@ -183,6 +183,40 @@ void main() {
     expect(c.canUndo, isTrue, reason: '자동 채택도 되돌리기로 장면 결과 복귀');
   });
 
+  test('AI 정밀 분석이 채택된 장면 결과는 물건별 만장일치(CNN)로 바꾸지 않는다', () async {
+    final f = c.loadInitial();
+    await _flush();
+    svc.calls.single.complete(
+      const Prediction(
+        predictedClass: 'pet',
+        predictedIndex: 0,
+        confidence: 0.9,
+        allProbabilities: {'pet': 0.9},
+        modelArch: 'test+vlm',
+        inferenceMs: 1,
+        uploadId: 'up-1',
+        evidence: [
+          EvidenceItem(
+            type: 'vlm',
+            token: '투명 PET 음료병',
+            mappedClass: 'pet',
+            score: 0.9,
+          ),
+        ],
+      ),
+    );
+    api.regionCalls.single.complete(_regions('pet'));
+    api.objectCalls.single.complete(
+      PredictObjects.fromJson({
+        'objects': [_obj('cardboard', 0.3), _obj('cardboard', 0.7)],
+      }),
+    );
+    await f;
+    expect(c.prediction?.predictedClass, 'pet');
+    expect(c.selectedObject, isNull);
+    expect(c.sceneNote, contains('AI 정밀 분석 기준'));
+  });
+
   test('물건 선택 뒤 빗금 재분석이 늦게 와도 되돌리기 이후면 버린다', () async {
     await loaded(
       objects: PredictObjects.fromJson({
@@ -222,10 +256,17 @@ void main() {
 
     api.hierCalls.single.complete(_pred('metal'));
     await tap;
-    expect(c.prediction?.predictedClass, 'paper', reason: '되돌린 화면을 옛 탭 결과가 덮지 않는다');
+    expect(
+      c.prediction?.predictedClass,
+      'paper',
+      reason: '되돌린 화면을 옛 탭 결과가 덮지 않는다',
+    );
     expect(c.retapBusy, isFalse);
-    expect(api.regionTaps.where((t) => t == const Offset(0.2, 0.2)), isEmpty,
-        reason: '폐기된 탭은 빗금 재분석도 요청하지 않는다');
+    expect(
+      api.regionTaps.where((t) => t == const Offset(0.2, 0.2)),
+      isEmpty,
+      reason: '폐기된 탭은 빗금 재분석도 요청하지 않는다',
+    );
   });
 
   test('연속 탭 — 첫 탭 응답이 두 번째 탭 뒤에 와도 두 번째 결과가 유지된다', () async {
