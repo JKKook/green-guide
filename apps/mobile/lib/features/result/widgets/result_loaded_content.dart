@@ -67,7 +67,10 @@ class ResultLoadedContent extends StatelessWidget {
     final accent = info?.color ?? cs.primary;
 
     final hasQualityIssue = quality?.hasIssue ?? false;
-    final isMulti = regions?.isMultiMaterial ?? false;
+    // AI 정밀 분석(VLM)이 채택된 판정은 사진 전체를 본 결론 — CNN 만 쓰는 영역 분석이
+    // 다른 재질(예: PET 라벨 → 종이상자)을 내도 다중재질로 덮지 않는다(11-08 실사진).
+    final vlmDecided = prediction.vlmDecided;
+    final isMulti = !vlmDecided && (regions?.isMultiMaterial ?? false);
     // realMulti — 진짜 다중재질로 인정하려면 두 조건 모두:
     //   1. global top1 이 확신 영역 (reject 아님)
     //   2. 모든 region 의 avg_conf >= 0.60 (region 별로도 확신)
@@ -106,7 +109,9 @@ class ResultLoadedContent extends StatelessWidget {
             index: 1,
             child: MultiMaterialCard(regions: regions!.regions),
           ),
-        ] else if (reject && topConfidentRegion(regions) != null) ...[
+        ] else if (reject &&
+            !vlmDecided &&
+            topConfidentRegion(regions) != null) ...[
           // (2') 장면 단위론 불확실하지만 재질 영역 분석(CAM+검증 재분류)이
           //      확신하는 재질이 있는 경우 — 오버레이 배지와 결과 카드가
           //      어긋나던 불일치 해소: 영역 발견을 메인 답으로 승격.
@@ -199,6 +204,10 @@ class ResultLoadedContent extends StatelessWidget {
               tapNorm: tapNorm,
             ),
           ),
+          if (isElectronicsPlasticConfusion(prediction)) ...[
+            const SizedBox(height: 8),
+            const RetakeCloserTip(),
+          ],
           if (sceneNote != null) ...[
             const SizedBox(height: 8),
             Row(
