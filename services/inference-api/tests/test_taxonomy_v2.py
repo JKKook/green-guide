@@ -540,13 +540,21 @@ def test_serving_defaults_1106(monkeypatch) -> None:
     from src.core import config
     for k in ("VLM_MODEL", "VLM_MIN_CONF", "GREENGUIDE_VLM_SONNET_MIN_CONF",
               "GREENGUIDE_API_VLM_TRIGGER_CONF", "GREENGUIDE_API_VLM_AGREE_ACCEPT",
-              "GREENGUIDE_VLM_MATERIAL_RULE"):
+              "GREENGUIDE_VLM_MATERIAL_RULE", "GREENGUIDE_VLM_MARK_READ"):
         monkeypatch.delenv(k, raising=False)
     try:
         c = importlib.reload(config)
         assert c.VLM_MODEL == "claude-sonnet-5-5"
         assert c.VLM_TRIGGER_CONF > 1 and c.VLM_MIN_CONF == 0.8
         assert c.VLM_AGREE_ACCEPT and c.VLM_MATERIAL_RULE
+        assert c.VLM_MARK_READ                       # 11-08 사용자 승인 기본 on
     finally:
         monkeypatch.undo()
         importlib.reload(config)
+
+
+@pytest.mark.parametrize("on", [True, False])
+def test_mark_read_prompt(monkeypatch, on) -> None:
+    monkeypatch.setattr(config, "VLM_MARK_READ", on)
+    p = VlmFallback._taxonomy_prompt(FINE, F2C)
+    assert ("4-2." in p) is on and ("전면:PET" in p) is on

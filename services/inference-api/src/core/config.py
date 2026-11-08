@@ -144,6 +144,8 @@ OCR_SKIP_CONFIDENCE: float = float(os.getenv("GREENGUIDE_API_OCR_SKIP_CONF", "0.
 MARK_PRIORITY_SMART: bool = os.getenv("GREENGUIDE_API_MARK_PRIORITY", "1") != "0"
 MARK_OVERRIDE_MIN_SCORE: float = float(os.getenv("GREENGUIDE_API_MARK_MIN_SCORE", "0.6"))
 MARK_SHORT_MIN_SCORE: float = float(os.getenv("GREENGUIDE_API_MARK_SHORT_MIN_SCORE", "0.75"))  # 2글자 표시(pp·ps) 교체 임계
+# 서로 다른 재질 표시가 함께 읽히면(복합 포장) 표시 교체 대신 VLM 중재 — 11-08 b6437a2f
+MARK_CONFLICT_VLM: bool = os.getenv("GREENGUIDE_API_MARK_CONFLICT_VLM", "1") == "1"
 
 # ── VLM 폴백 ──
 VLM_MODEL: str = os.getenv("VLM_MODEL", "claude-sonnet-5-5")  # 사용자 결정 11-06
@@ -161,6 +163,9 @@ VLM_TRIGGER_CONF: float = float(os.getenv("GREENGUIDE_API_VLM_TRIGGER_CONF", "1.
 VLM_AGREE_ACCEPT: bool = os.getenv("GREENGUIDE_API_VLM_AGREE_ACCEPT", "1") == "1"
 # 1회차 프롬프트 재질 규칙(기본 켜짐, 11-06): slug 칸에 배출 방법(trash) 대신 재질 (TAXONOMY_V2 §3)
 VLM_MATERIAL_RULE: bool = os.getenv("GREENGUIDE_VLM_MATERIAL_RULE", "1") == "1"
+# 1회차 프롬프트 표시 읽기 규칙 4-2(기본 켜짐, 11-08 사용자 승인)
+# — 삼각 마크 글자를 읽어 찍힌 부분 재질에 우선 반영
+VLM_MARK_READ: bool = os.getenv("GREENGUIDE_VLM_MARK_READ", "1") == "1"
 # 분류 체계 v2 축(fine_v2·state·mark) 질의 방식
 #   off(v1) | single(한 프롬프트) | two_stage(재질 v1 원문 + 축 별도 호출, 기본 11-06)
 # GG_VLM 실측(qwen): single 재질 66→54/79 회귀, two_stage 66 유지
