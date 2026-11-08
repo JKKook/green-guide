@@ -144,6 +144,8 @@ OCR_SKIP_CONFIDENCE: float = float(os.getenv("GREENGUIDE_API_OCR_SKIP_CONF", "0.
 MARK_PRIORITY_SMART: bool = os.getenv("GREENGUIDE_API_MARK_PRIORITY", "1") != "0"
 MARK_OVERRIDE_MIN_SCORE: float = float(os.getenv("GREENGUIDE_API_MARK_MIN_SCORE", "0.6"))
 MARK_SHORT_MIN_SCORE: float = float(os.getenv("GREENGUIDE_API_MARK_SHORT_MIN_SCORE", "0.75"))  # 2글자 표시(pp·ps) 교체 임계
+# 서로 다른 재질 표시가 함께 읽히면(복합 포장) 표시 교체 대신 VLM 중재 — 11-08 b6437a2f
+MARK_CONFLICT_VLM: bool = os.getenv("GREENGUIDE_API_MARK_CONFLICT_VLM", "1") == "1"
 
 # ── VLM 폴백 ──
 VLM_MODEL: str = os.getenv("VLM_MODEL", "claude-sonnet-5-5")  # 사용자 결정 11-06

@@ -311,8 +311,11 @@ class VlmFallback:
         image_bytes: bytes,
         fine_labels: list[str],
         fine_to_coarse: dict[str, str],
+        ocr_hint: str | None = None,
     ) -> dict[str, Any] | None:
         """사진 → 판정 dict | None(비활성·한도·실패).
+
+        ocr_hint: 복합 표시 중재 때 OCR 문구(참고용) — 1회차 user 텍스트로 붙는다.
 
         fine 판정: {slug, item_name=None, stream=None, ...}
         품목 생성: {slug=None, item_name, stream, condition, ...}
@@ -330,7 +333,8 @@ class VlmFallback:
             b64 = base64.b64encode(buf.getvalue()).decode("ascii")
 
             t0 = time.perf_counter()
-            text = self._request(self._taxonomy_prompt(fine_labels, fine_to_coarse), b64)
+            text = self._request(
+                self._taxonomy_prompt(fine_labels, fine_to_coarse), b64, ocr_hint)
             if text is None:
                 return None
             result = self._parse_response(text, fine_labels, fine_to_coarse)

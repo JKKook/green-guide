@@ -171,6 +171,7 @@ async def predict_hier(
     from src.semantic_evidence import (  # noqa: PLC0415
         evidence_prior,
         get_evidence_engine,
+        mark_conflict,
         mark_override,
         match_evidence,
     )
@@ -243,7 +244,12 @@ async def predict_hier(
         result = refined
 
     # ── 분리배출 표시 최우선 판정 (스마트촬영) — 몸체 표시가 읽히면 모델 결과 교체 ──
-    mark = mark_override(evidence) if mark_priority else None
+    # 서로 다른 재질 표시가 함께 읽히면(복합 포장) 교체하지 않고 VLM 중재로 — OCR 문구는 참고로만
+    mark_mixed = (mark_priority and config.MARK_CONFLICT_VLM
+                  and mark_conflict(evidence, clf.taxonomy["fine_to_coarse"]))
+    if mark_mixed:
+        log.info("복합 표시(재질 둘 이상) — 표시 교체 대신 VLM 중재")
+    mark = mark_override(evidence) if mark_priority and not mark_mixed else None
     if mark is not None:
         result = apply_mark_override(result, mark, clf.taxonomy["fine_to_coarse"])
         log.info(f"분리배출 표시 최우선 판정: {mark['token']} → {result['display_class']}")
@@ -273,11 +279,17 @@ async def predict_hier(
     vlm_v2: dict[str, Any] = {}   # 분류 체계 v2 축(fine_v2·state·mark) — VLM 채택 시에만
     if mark is None and (result["display_level"] == "reject"
             or result["coarse_confidence"] < config.VLM_TRIGGER_CONF or evidence_conflict
-            or class_arbitrate):
+            or class_arbitrate or mark_mixed):
         try:
             from src.vlm_fallback import get_vlm_fallback  # noqa: PLC0415
+            ocr_hint = None
+            if mark_mixed:
+                marks = [e["matched_text"] for e in evidence if e.get("type") == "mark"]
+                ocr_hint = ("참고: 사진 속 분리배출 표기 OCR(오독 가능) — " + " / ".join(marks)
+                            + ". 표기가 여러 재질이면 물체 몸체(가장 큰 부분)의 재질을 고르세요.")
             v = get_vlm_fallback().classify(
-                cropped_raw, clf.fine_labels, clf.taxonomy["fine_to_coarse"])
+                cropped_raw, clf.fine_labels, clf.taxonomy["fine_to_coarse"],
+                **({"ocr_hint": ocr_hint} if ocr_hint else {}))
             # 과신 가드 3단 — 재질 교체 0.8: etc 잡동사니에 재질을 부여하는
             # 오버라이드가 홀드아웃 실측서 4건 중 2건 오답 / non_object 0.5:
             # 재촬영 신호라 보수적 방향 / 품목 생성 0.6: 재질 필드 미변경
