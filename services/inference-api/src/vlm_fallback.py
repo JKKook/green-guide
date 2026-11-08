@@ -119,11 +119,26 @@ class VlmFallback:
             "4. 품목 판정 시 상태 조건이 안내를 바꾸면 condition 에 한 줄 "
             "(예: 도자기 화분이면 불연 마대, 플라스틱이면 재활용)\n"
             + (VlmFallback._material_rule() if config.VLM_MATERIAL_RULE else "")
+            + (VlmFallback._mark_read_rule() if config.VLM_MARK_READ else "")
             + (VlmFallback._v2_prompt() if VlmFallback._mode() == "single" else
                "5. 반드시 JSON 만 출력: "
                '{"slug": "<fine 슬러그|null>", "item_name": "<품목명|null>", '
                '"stream": "<스트림 슬러그|null>", "condition": "<조건|null>", '
                '"confidence": 0.0~1.0, "reason": "<한 줄>"}')
+        )
+
+    @staticmethod
+    def _mark_read_rule() -> str:
+        """규칙 4-2 — 사진 속 분리배출 표시를 직접 읽어 우선 반영 (11-08 b6437a2f).
+
+        OCR 이 삼각 마크 안 글자('종이')를 놓쳐 칫솔 포장 카드가 plastic 으로 판정된 사례.
+        """
+        return (
+            "4-2. 사진에 분리배출 표시(삼각 화살표 마크)가 보이면 마크 안 글자"
+            "(종이·PET·플라스틱·비닐류·캔류 등)를 읽어 reason 에 적고, 그 표시가 가리키는 "
+            "재질을 사진에 찍힌 부분(포장재 등)의 판정에 우선 반영합니다(4-1 의 품목 예시보다 "
+            "우선). '전면:PET'·'캡:PP' 처럼 다른 면·부속을 가리키는 표기는 분리 안내로만 "
+            "쓰고 slug 에 반영하지 않습니다.\n"
         )
 
     @staticmethod
