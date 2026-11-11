@@ -169,12 +169,16 @@ async def predict_hier(
     # prior 가 생기면 베스트 회전 텐서 1장만 재예측 — TTA 전체 재실행 없음.
     from src.clip_identity import get_clip_identity  # noqa: PLC0415
     from src.semantic_evidence import (  # noqa: PLC0415
+        cosmetic_prior,
         evidence_prior,
         get_evidence_engine,
+        mark_conflict,
         mark_override,
+        has_cosmetic_text,
         match_evidence,
     )
     evidence: list[dict] = []
+    texts: list[dict] = []
     prior = None
 
     def _mul(a, b):
@@ -192,6 +196,9 @@ async def predict_hier(
             evidence = match_evidence(texts)
             prior = _mul(prior, evidence_prior(
                 evidence, clf.fine_labels, clf.taxonomy["fine_to_coarse"]))
+            if config.COSMETIC_PRIOR:
+                prior = _mul(prior, cosmetic_prior(
+                    texts, clf.fine_labels, clf.taxonomy["fine_to_coarse"]))
         except Exception as exc:  # noqa: BLE001
             log.warning(f"semantic evidence failed: {exc}")
     # W6 실험 b: 장면 판정이 electronics 면 탭이 아니어도 CLIP 정체 prior 적용 (기본 꺼짐)
@@ -242,8 +249,21 @@ async def predict_hier(
             result["inference_ms"] + refined["inference_ms"], 2)
         result = refined
 
+    # C: 종이로 보이는데 화장품 문구 — 용기 라벨만 찍힌 근접 사진일 공산이 커 물체 전체 재촬영 신호.
+    # 표시가 읽혔으면 표시가 답이라 신호 없음. VLM 결과와 무관(A 와 겹치지 않게 CNN·prior 기준,
+    # prior 재예측이 result 를 갈아끼우므로 그 뒤에서 판정)
+    if (config.RETAKE_TEXT_HINT and result["coarse_class"] in ("paper", "paper_pack")
+            and has_cosmetic_text(texts)
+            and not any(e.get("type") == "mark" for e in evidence)):
+        result["retake_hint"] = "whole_object"
+
     # ── 분리배출 표시 최우선 판정 (스마트촬영) — 몸체 표시가 읽히면 모델 결과 교체 ──
-    mark = mark_override(evidence) if mark_priority else None
+    # 서로 다른 재질 표시가 함께 읽히면(복합 포장) 교체하지 않고 VLM 중재로 — OCR 문구는 참고로만
+    mark_mixed = (mark_priority and config.MARK_CONFLICT_VLM
+                  and mark_conflict(evidence, clf.taxonomy["fine_to_coarse"]))
+    if mark_mixed:
+        log.info("복합 표시(재질 둘 이상) — 표시 교체 대신 VLM 중재")
+    mark = mark_override(evidence) if mark_priority and not mark_mixed else None
     if mark is not None:
         result = apply_mark_override(result, mark, clf.taxonomy["fine_to_coarse"])
         log.info(f"분리배출 표시 최우선 판정: {mark['token']} → {result['display_class']}")
@@ -273,11 +293,17 @@ async def predict_hier(
     vlm_v2: dict[str, Any] = {}   # 분류 체계 v2 축(fine_v2·state·mark) — VLM 채택 시에만
     if mark is None and (result["display_level"] == "reject"
             or result["coarse_confidence"] < config.VLM_TRIGGER_CONF or evidence_conflict
-            or class_arbitrate):
+            or class_arbitrate or mark_mixed):
         try:
             from src.vlm_fallback import get_vlm_fallback  # noqa: PLC0415
+            ocr_hint = None
+            if mark_mixed:
+                marks = [e["matched_text"] for e in evidence if e.get("type") == "mark"]
+                ocr_hint = ("참고: 사진 속 분리배출 표기 OCR(오독 가능) — " + " / ".join(marks)
+                            + ". 표기가 여러 재질이면 물체 몸체(가장 큰 부분)의 재질을 고르세요.")
             v = get_vlm_fallback().classify(
-                cropped_raw, clf.fine_labels, clf.taxonomy["fine_to_coarse"])
+                cropped_raw, clf.fine_labels, clf.taxonomy["fine_to_coarse"],
+                **({"ocr_hint": ocr_hint} if ocr_hint else {}))
             # 과신 가드 3단 — 재질 교체 0.8: etc 잡동사니에 재질을 부여하는
             # 오버라이드가 홀드아웃 실측서 4건 중 2건 오답 / non_object 0.5:
             # 재촬영 신호라 보수적 방향 / 품목 생성 0.6: 재질 필드 미변경
@@ -293,6 +319,16 @@ async def predict_hier(
                         and clf.taxonomy["fine_to_coarse"].get(v["slug"], v["slug"])
                         == result["coarse_class"]):
                     min_conf = 0.0
+            # A: 다른 대분류 판정이 확신 미달로 버려지면 결과는 그대로 두고 확인 필요를 알린다
+            if (config.VLM_DISAGREE_CONFIRM and v is not None and v["slug"] is not None
+                    and v["slug"] != "non_object" and v["confidence"] < min_conf
+                    and clf.taxonomy["fine_to_coarse"].get(v["slug"], v["slug"])
+                    != result["coarse_class"]):
+                result["needs_confirm"] = True
+                result["alt_candidate"] = {
+                    "class": v["slug"],
+                    "coarse_class": clf.taxonomy["fine_to_coarse"].get(v["slug"], v["slug"]),
+                    "confidence": v["confidence"], "reason": (v["reason"] or "")[:120]}
             if v is not None and v["confidence"] >= min_conf:
                 slug = v["slug"]
                 if slug is None:

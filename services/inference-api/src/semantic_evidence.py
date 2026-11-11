@@ -119,7 +119,9 @@ _LATIN_RE = {
 # 부속 표기 — '캡:PP' '라벨:PP' '뚜껑:HDPE' 처럼 몸체가 아닌 부속의 재질.
 # 토큰 바로 앞에 부속어가 붙은 경우만 (같은 줄의 '몸체:PET 라벨:PP' 에서 PET 는 몸체).
 # 증거로는 쓰되 최우선 판정(override) 후보에서는 뺀다 (몸체 표기가 우선).
-_ATTACHMENT_PREFIX_RE = re.compile(r"(캡|라벨|뚜껑|마개|cap|label)[:：]?$")
+# 11-08: 복합 포장 면 표기('전면:PET'·'뒷면:종이'·'덮개'·'창') 추가 — OCR 오독 '전연'·'전:' 포함
+_ATTACHMENT_PREFIX_RE = re.compile(
+    r"(캡|라벨|뚜껑|마개|전[면연]?|앞면|후면|뒷면|덮개|창|cap|label)[:：/]?$")
 
 # 일반 문장에서도 흔히 나오는 토큰은 '표시 줄' 모양일 때만 매칭 (교체 판정 오탐 방지):
 # OTHER 는 짧은 줄(OTHER / OTHER캡:PP), 도포·첩합은 둘이 함께, 발포는 '발포스티렌' 계열만.
@@ -231,6 +233,31 @@ def match_evidence(texts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return found
 
 
+def _mark_eligible(ev: dict[str, Any], thr: float) -> bool:
+    """교체 후보가 될 만큼 강한 표시인가 (부속 여부는 호출부가 따로 본다)."""
+    if ev.get("type") != "mark" or float(ev.get("boost", 0)) < _BOOST_MARK:
+        return False   # 약화된 토큰('철' 등 오탐 여지)은 보조 증거로만
+    if float(ev.get("score", 0)) < thr:
+        return False
+    # 2글자 라틴 표시(pp·ps)는 잡문자 OCR 오탐이 잦아 더 높은 확신만 교체에 쓴다
+    # (실사용 863d3324: 'pp' 0.644 가 종이 0.90 판정을 plastic 으로 덮음). prior 로는 계속 쓴다
+    return not (len(ev["token"]) <= 2 and float(ev["score"]) < config.MARK_SHORT_MIN_SCORE)
+
+
+def mark_conflict(evidence: list[dict[str, Any]], fine_to_coarse: dict[str, str],
+                  min_score: float | None = None) -> bool:
+    """서로 다른 재질 대분류의 표시(부속 표기 포함)가 함께 읽혔는가.
+
+    복합 포장('종이' 마크 + '전면:PET')은 어느 표시가 몸체인지 OCR 만으로 못 가린다
+    (11-08 b6437a2f: '전연:PET' 오독이 몸체로 잡혀 종이 카드가 pet 최우선 판정).
+    이때는 표시 교체를 하지 않고 VLM 중재로 넘긴다.
+    """
+    thr = config.MARK_OVERRIDE_MIN_SCORE if min_score is None else min_score
+    coarse = {fine_to_coarse.get(ev["mapped_class"], ev["mapped_class"])
+              for ev in evidence if _mark_eligible(ev, thr)}
+    return len(coarse) >= 2
+
+
 def mark_override(evidence: list[dict[str, Any]],
                   min_score: float | None = None) -> dict[str, Any] | None:
     """분리배출 표시 최우선 판정 — 몸체 표시 중 OCR 확신이 가장 높은 한 건.
@@ -242,15 +269,7 @@ def mark_override(evidence: list[dict[str, Any]],
     thr = config.MARK_OVERRIDE_MIN_SCORE if min_score is None else min_score
     best = None
     for ev in evidence:
-        if ev.get("type") != "mark" or ev.get("attachment"):
-            continue
-        if float(ev.get("boost", 0)) < _BOOST_MARK:
-            continue   # 약화된 토큰('철' 등 오탐 여지)은 보조 증거로만
-        if float(ev.get("score", 0)) < thr:
-            continue
-        # 2글자 라틴 표시(pp·ps)는 잡문자 OCR 오탐이 잦아 더 높은 확신만 교체에 쓴다
-        # (실사용 863d3324: 'pp' 0.644 가 종이 0.90 판정을 plastic 으로 덮음). prior 로는 계속 쓴다
-        if len(ev["token"]) <= 2 and float(ev["score"]) < config.MARK_SHORT_MIN_SCORE:
+        if ev.get("attachment") or not _mark_eligible(ev, thr):
             continue
         # 같은 줄에서 '종이팩'과 '종이'가 함께 잡히면 긴 토큰(구체적 표시)이 우선
         rank = (float(ev["score"]), len(ev["token"]))
@@ -293,6 +312,27 @@ def evidence_prior(
                 prior[i] *= max(boost, 1.0) ** 0.5
             used = used or bool(child)
     return prior if used else None
+
+
+# 화장품·헤어케어 문구 — 용기(플라스틱·유리)가 대부분이라 라벨 근접 사진의 종이 판정을 누른다.
+# 화장품 종이 상자도 같은 문구가 있어 교체가 아니라 감쇠(×0.5)·가중(×1.5)만 한다 (11-11 40e4a32a)
+_COSMETIC_WORDS = ("화장품", "트리트먼트", "로션", "크림", "에센스", "앰플", "세럼", "샴푸",
+                   "컨디셔너", "린스", "바디워시", "클렌징", "토너", "스킨케어")
+_COSMETIC_SCALE = {"paper": 0.5, "plastic": 1.5, "glass": 1.2}
+
+
+def has_cosmetic_text(texts: list[dict[str, Any]]) -> bool:
+    """OCR 문구에 화장품·헤어케어 류 단어가 있는가."""
+    joined = "".join(re.sub(r"\s+", "", t["text"]) for t in texts)
+    return any(w in joined for w in _COSMETIC_WORDS)
+
+
+def cosmetic_prior(texts: list[dict[str, Any]], fine_labels: list[str],
+                   fine_to_coarse: dict[str, str]) -> np.ndarray | None:
+    """OCR 문구에 화장품 류가 있으면 대분류별 승수 벡터, 없으면 None."""
+    if not has_cosmetic_text(texts):
+        return None
+    return np.array([_COSMETIC_SCALE.get(fine_to_coarse.get(f, f), 1.0) for f in fine_labels])
 
 
 @lazy_singleton

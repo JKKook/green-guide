@@ -90,6 +90,10 @@ class ResultLoadedContent extends StatelessWidget {
           QualityBanner(quality: quality!),
           const SizedBox(height: kSpaceM),
         ],
+        if (prediction.retakeHint == 'whole_object') ...[
+          const RetakeWholeTip(),
+          const SizedBox(height: kSpaceM),
+        ],
 
         // 메인 결론 — 세 갈래.
         if (realMulti) ...[
@@ -189,12 +193,16 @@ class ResultLoadedContent extends StatelessWidget {
           ],
         ] else ...[
           // (3) 일반 분류 — 불확실 배너(있으면) → PredictionCard → 가이드.
-          if (assessment.isUncertain) ...[
+          // 판단이 갈린 결과는 두 후보 안내가 불확실 배너를 대신한다
+          if (prediction.needsConfirm) ...[
+            AnimatedEntry(child: ConfirmBanner(prediction: prediction)),
+            const SizedBox(height: kSpaceM),
+          ] else if (assessment.isUncertain) ...[
             AnimatedEntry(child: UncertainBanner(prediction: prediction)),
             const SizedBox(height: kSpaceM),
           ],
           AnimatedEntry(
-            index: assessment.isUncertain ? 1 : 0,
+            index: prediction.needsConfirm || assessment.isUncertain ? 1 : 0,
             child: PredictionCard(
               image: image,
               prediction: prediction,

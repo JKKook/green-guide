@@ -189,3 +189,49 @@ def test_short_mark_needs_higher_ocr_score() -> None:
     assert mark_override(match_evidence([_t("pp", 0.9)]))["token"] == "pp"
     # 긴 표시는 기존 임계(0.6) 그대로
     assert mark_override(match_evidence([_t("알미늄", 0.65)]))["mapped_class"] == "metal"
+
+
+# ── 복합 포장 표기 (11-08 b6437a2f: '종이' 마크 + '전면:PET' → pet 오판정) ──────
+
+@pytest.mark.parametrize("text", ["전면:PET", "전연:PET", "앞면:PET", "후면:PET",
+                                  "뒷면:종이", "덮개:PET", "창:PET", "전연/PET", "전: PET"])
+def test_face_words_are_attachments(text: str) -> None:
+    ev = [e for e in match_evidence([_t(text)]) if e["type"] == "mark"]
+    assert ev and all(e["attachment"] for e in ev)
+    assert mark_override(ev) is None
+
+
+def test_mark_conflict_detects_mixed_materials() -> None:
+    from src.semantic_evidence import mark_conflict
+    f2c = {**FINE_TO_COARSE, "paper": "paper"}
+    assert mark_conflict(match_evidence([_t("종이"), _t("전면:PET")]), f2c)
+    # 같은 대분류(몸체 PET + 캡 PP = plastic)는 충돌 아님 — 기존 교체 유지
+    assert not mark_conflict(match_evidence([_t("무색페트"), _t("캡:PP")]), f2c)
+    # 약한·저확신 토큰은 충돌 판단에도 안 쓴다
+    assert not mark_conflict(match_evidence([_t("종이"), _t("pp", 0.6)]), f2c)
+
+
+def test_router_mixed_marks_go_to_vlm(client: TestClient, sample_image_bytes: bytes,
+                                      stub: dict, monkeypatch: pytest.MonkeyPatch) -> None:
+    import src.semantic_evidence as se
+    import src.vlm_fallback as vf
+
+    class MixedOCR:
+        available = True
+
+        def read_texts(self, image_bytes):
+            return [_t("종이", 0.9), _t("PET", 0.75)]     # 부속어 오독으로 몸체처럼 읽힌 경우
+
+    calls: list[dict] = []
+
+    class FakeVlm:
+        def classify(self, raw, fine_labels, f2c, ocr_hint=None):
+            calls.append({"hint": ocr_hint})
+            return None                                  # fail-open — CNN 결과 유지
+
+    monkeypatch.setattr(se, "get_evidence_engine", lambda: MixedOCR())
+    monkeypatch.setattr(vf, "get_vlm_fallback", lambda: FakeVlm())
+    body = _post(client, sample_image_bytes, capture_mode="smart")
+    assert "mark:" not in body["model_arch"]             # 표시 교체 안 함
+    assert calls and "종이" in calls[0]["hint"] and "PET" in calls[0]["hint"]
+    assert body["display_class"] == "metal"

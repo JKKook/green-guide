@@ -223,6 +223,24 @@ class PredictionHierResponse(BaseModel):
         default=None,
         description="분리배출 카테고리 — 재질×상태 규칙표로 도출(제품 마크가 읽히면 마크 우선). "
                     "판정 보류(세부 미상·reject)면 null")
+    # 라벨 근접 오분류 대응(11-11, 플래그 기본 꺼짐) — 플래그 off·해당 없음이면 null
+    needs_confirm: bool | None = Field(
+        default=None,
+        description="VLM 이 다른 대분류를 냈으나 확신 미달 — 결과 재질은 그대로, 확인 필요")
+    alt_candidate: "AltCandidate | None" = Field(
+        default=None,
+        description="needs_confirm 일 때 VLM 후보 {class, coarse_class, confidence, reason}")
+    retake_hint: str | None = Field(
+        default=None, description='재촬영 신호 — "whole_object"(라벨만 찍힘). 모르는 값은 무시')
+
+
+class AltCandidate(BaseModel):
+    """VLM 이 낸 다른 대분류 판정 — 확신 미달로 채택되지 않았을 때만 (needs_confirm)."""
+    model_config = {"populate_by_name": True}
+    class_: str = Field(alias="class", serialization_alias="class", description="fine 슬러그")
+    coarse_class: str
+    confidence: float
+    reason: str = ""
 
 
 class DisposalInfo(BaseModel):
