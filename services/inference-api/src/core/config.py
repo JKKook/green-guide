@@ -166,6 +166,14 @@ VLM_MATERIAL_RULE: bool = os.getenv("GREENGUIDE_VLM_MATERIAL_RULE", "1") == "1"
 # 1회차 프롬프트 표시 읽기 규칙 4-2(기본 켜짐, 11-08 사용자 승인)
 # — 삼각 마크 글자를 읽어 찍힌 부분 재질에 우선 반영
 VLM_MARK_READ: bool = os.getenv("GREENGUIDE_VLM_MARK_READ", "1") == "1"
+# 라벨 근접 오분류(11-11 40e4a32a 페트병 라벨 → 종이 0.92 단정) 대응 3종 — 모두 기본 꺼짐
+# A: VLM 이 다른 대분류를 냈는데 확신 미달로 버려지면 needs_confirm + alt_candidate
+VLM_DISAGREE_CONFIRM: bool = os.getenv("GREENGUIDE_API_VLM_DISAGREE_CONFIRM", "0") == "1"
+# B: OCR 에 화장품 문구 → paper 계열 prior 감쇠, plastic·glass 가중
+COSMETIC_PRIOR: bool = os.getenv("GREENGUIDE_API_COSMETIC_PRIOR", "0") == "1"
+# C: 종이 판정인데 화장품 문구가 있고 분리배출 표시가 없으면 retake_hint="whole_object"
+# (용기 라벨만 찍힌 근접 사진 — 글자 수 조건은 종이 문서 오경보 3/65 로 폐기, 11-11)
+RETAKE_TEXT_HINT: bool = os.getenv("GREENGUIDE_API_RETAKE_TEXT_HINT", "0") == "1"
 # 분류 체계 v2 축(fine_v2·state·mark) 질의 방식
 #   off(v1) | single(한 프롬프트) | two_stage(재질 v1 원문 + 축 별도 호출, 기본 11-06)
 # GG_VLM 실측(qwen): single 재질 66→54/79 회귀, two_stage 66 유지

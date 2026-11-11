@@ -314,6 +314,27 @@ def evidence_prior(
     return prior if used else None
 
 
+# 화장품·헤어케어 문구 — 용기(플라스틱·유리)가 대부분이라 라벨 근접 사진의 종이 판정을 누른다.
+# 화장품 종이 상자도 같은 문구가 있어 교체가 아니라 감쇠(×0.5)·가중(×1.5)만 한다 (11-11 40e4a32a)
+_COSMETIC_WORDS = ("화장품", "트리트먼트", "로션", "크림", "에센스", "앰플", "세럼", "샴푸",
+                   "컨디셔너", "린스", "바디워시", "클렌징", "토너", "스킨케어")
+_COSMETIC_SCALE = {"paper": 0.5, "plastic": 1.5, "glass": 1.2}
+
+
+def has_cosmetic_text(texts: list[dict[str, Any]]) -> bool:
+    """OCR 문구에 화장품·헤어케어 류 단어가 있는가."""
+    joined = "".join(re.sub(r"\s+", "", t["text"]) for t in texts)
+    return any(w in joined for w in _COSMETIC_WORDS)
+
+
+def cosmetic_prior(texts: list[dict[str, Any]], fine_labels: list[str],
+                   fine_to_coarse: dict[str, str]) -> np.ndarray | None:
+    """OCR 문구에 화장품 류가 있으면 대분류별 승수 벡터, 없으면 None."""
+    if not has_cosmetic_text(texts):
+        return None
+    return np.array([_COSMETIC_SCALE.get(fine_to_coarse.get(f, f), 1.0) for f in fine_labels])
+
+
 @lazy_singleton
 def get_evidence_engine() -> SemanticEvidence:
     return SemanticEvidence()
