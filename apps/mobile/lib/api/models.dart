@@ -177,6 +177,28 @@ class EvidenceItem {
   );
 }
 
+/// 판단이 갈렸을 때 AI 정밀 분석(VLM)이 본 다른 재질 후보 — 서버 alt_candidate.
+class AltCandidate {
+  final String slug; // fine 슬러그
+  final String coarseClass;
+  final double confidence;
+  final String reason;
+
+  const AltCandidate({
+    required this.slug,
+    required this.coarseClass,
+    required this.confidence,
+    this.reason = '',
+  });
+
+  factory AltCandidate.fromJson(Map<String, dynamic> json) => AltCandidate(
+    slug: json['class'] as String,
+    coarseClass: json['coarse_class'] as String,
+    confidence: (json['confidence'] as num).toDouble(),
+    reason: json['reason'] as String? ?? '',
+  );
+}
+
 class Prediction {
   final String predictedClass;
   final int predictedIndex;
@@ -196,6 +218,15 @@ class Prediction {
   /// CNN 보다 정확해서(eval_v2 실측) 화면의 다른 CNN 결과가 이 답을 덮지 않게 한다.
   bool get vlmDecided => evidence.any((e) => e.type == 'vlm');
 
+  /// 모델(CNN)과 AI 정밀 분석의 재질 판단이 갈려 단정하지 않는 결과 — 서버 needs_confirm.
+  final bool needsConfirm;
+
+  /// needsConfirm 일 때 AI 정밀 분석이 본 다른 후보 (없으면 null).
+  final AltCandidate? altCandidate;
+
+  /// 재촬영 안내 코드 — 'whole_object'(라벨만 가깝게 찍힘). 모르는 값은 무시.
+  final String? retakeHint;
+
   const Prediction({
     required this.predictedClass,
     required this.predictedIndex,
@@ -206,6 +237,9 @@ class Prediction {
     this.uploadId,
     this.hier,
     this.evidence = const [],
+    this.needsConfirm = false,
+    this.altCandidate,
+    this.retakeHint,
   });
 
   factory Prediction.fromJson(Map<String, dynamic> json) {
@@ -252,6 +286,11 @@ class Prediction {
       evidence: (json['evidence'] as List<dynamic>? ?? const [])
           .map((e) => EvidenceItem.fromJson(e as Map<String, dynamic>))
           .toList(),
+      needsConfirm: json['needs_confirm'] as bool? ?? false,
+      altCandidate: json['alt_candidate'] is Map<String, dynamic>
+          ? AltCandidate.fromJson(json['alt_candidate'] as Map<String, dynamic>)
+          : null,
+      retakeHint: json['retake_hint'] as String?,
     );
   }
 
