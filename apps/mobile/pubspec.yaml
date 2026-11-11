@@ -1,7 +1,7 @@
 name: greenguide
 description: "GreenGuide AI - Waste Classification"
 publish_to: 'none'
-version: 1.0.0-beta.3+5
+version: 1.0.0-beta.4+6
 
 environment:
   sdk: ^3.11.5
